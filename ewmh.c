@@ -402,8 +402,7 @@ ewmh_set_state(Client *c) {
 
 	XChangeProperty(dpy, c->window, ewmh_atom[_NET_WM_STATE],
 		XA_ATOM, 32, PropModeReplace, (unsigned char *)a, atoms);
-	if (a != NULL) free(a);
-	
+	free(a);
 }
 
 void

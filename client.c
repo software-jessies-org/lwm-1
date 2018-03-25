@@ -285,11 +285,8 @@ Client_Remove(Client *c) {
 		free(c->wmcmaps);
 	}
 	
-	if (c->name != 0)
-		free(c->name);
-	if (c->menu_name != 0)
-		free(c->name);
-	
+	free(c->name);
+	free(c->menu_name);
 	free(c);
 
 	ewmh_set_client_list(screen);
@@ -799,12 +796,12 @@ Client_Name(Client *c, const char *name, Bool is_utf8) {
 	static const char dots[] = " [...] ";
 	int cut;
 
-	if (c->name) free(c->name);
+	free(c->name);
 	c->name = sdup((char *) name);
 	c->namelen = strlen(c->name);
 	c->name_utf8 = is_utf8;
 
-	if (c->menu_name) free(c->menu_name);
+	free(c->menu_name);
 	c->menu_name = 0;
 	tx = titleWidth(popup_font_set, c);
 	if (tx <= (c->screen->display_width - (c->screen->display_width / 10)))
@@ -815,10 +812,8 @@ Client_Name(Client *c, const char *name, Bool is_utf8) {
 	 */
 	cut = 5;
 	do {
-		if (c->menu_name) {
-			free(c->menu_name);
-			c->menu_name = 0;
-		}
+		free(c->menu_name);
+		c->menu_name = 0;
 		if (cut >= (strlen(c->name) / 2)) break;
 		c->menu_name = sdup(c->name);
 		/* FIXME: this is not UTF-8 safe! */
