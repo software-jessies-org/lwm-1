@@ -47,6 +47,25 @@ client_head(void) {
 	return clients;
 }
 
+
+static void
+focusChildrenOf(Window parent) {
+	unsigned int nwins;
+	Window dw1;
+	Window dw2;
+	Window * wins;
+	XWindowAttributes attr;
+	XQueryTree(dpy, parent, &dw1, &dw2, &wins, &nwins);
+	for (int i = 0; i < nwins; i++) {
+		XGetWindowAttributes(dpy, wins[i], &attr);
+		if (attr.all_event_masks & FocusChangeMask) {
+			XSetInputFocus(dpy, wins[i], RevertToPointerRoot, CurrentTime);
+		}
+	}
+	XFree(wins);
+}
+
+
 void
 setactive(Client *c, int on, long timestamp) {
 	int inhibit;
@@ -66,6 +85,13 @@ setactive(Client *c, int on, long timestamp) {
 
 	if (on && c->accepts_focus) {
 		XSetInputFocus(dpy, c->window, RevertToPointerRoot, CurrentTime);
+		// Also send focus messages to child windows that can receive
+		// focus events.
+		// This fixes a bug in focus-follows-mouse whereby Java apps,
+		// which have a child window called FocusProxy which must be
+		// given the focus event, would not get input focus when the
+		// mouse was moved into them.
+		focusChildrenOf(c->window);
 		if (c->proto & Ptakefocus)
 			sendClientMessage(c->window, wm_protocols,
 				wm_take_focus, timestamp);
