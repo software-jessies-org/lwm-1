@@ -597,7 +597,7 @@ ewmh_set_client_list(ScreenInfo *screen) {
 		int i;
 		Window dw1;
 		Window dw2;
-		Window *wins;
+		Window *wins = 0;
 		unsigned int win;
 		unsigned int nwins;
 

@@ -53,7 +53,7 @@ focusChildrenOf(Window parent) {
 	unsigned int nwins;
 	Window dw1;
 	Window dw2;
-	Window * wins;
+	Window * wins = 0;
 	XWindowAttributes attr;
 	XQueryTree(dpy, parent, &dw1, &dw2, &wins, &nwins);
 	for (int i = 0; i < nwins; i++) {
@@ -62,7 +62,7 @@ focusChildrenOf(Window parent) {
 			XSetInputFocus(dpy, wins[i], RevertToPointerRoot, CurrentTime);
 		}
 	}
-	XFree(wins);
+	if (wins) XFree(wins);
 }
 
 
@@ -261,7 +261,7 @@ Client_Remove(Client *c) {
 			if (!focus) {
 				Window dw1;
 				Window dw2;
-				Window *wins;
+				Window *wins = 0;
 				unsigned int nwins;
 
 				XQueryTree(dpy, c->screen->root, &dw1,

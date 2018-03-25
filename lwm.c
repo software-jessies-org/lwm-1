@@ -238,7 +238,7 @@ scanWindowTree(int screen) {
 	Client * c;
 	Window dw1;
 	Window dw2;
-	Window * wins;
+	Window * wins = 0;
 	XWindowAttributes attr;
 	
 	XQueryTree(dpy, screens[screen].root, &dw1, &dw2, &wins, &nwins);
@@ -272,7 +272,7 @@ scanWindowTree(int screen) {
 			}
 		}
 	}
-	XFree(wins);
+	if (wins) XFree(wins);  /* wins==0 should be impossible; paranoia. */
 }
 
 /*ARGSUSED*/
