@@ -78,10 +78,6 @@ static void initScreen(int);
 
 /*ARGSUSED*/
 extern int main(int argc, char *argv[]) {
-  XEvent ev;
-  struct sigaction sa;
-  int dpy_fd, max_fd;
-
   argv0 = argv[0];
 
   mode = wm_initialising;
@@ -105,6 +101,7 @@ extern int main(int argc, char *argv[]) {
   signal(SIGHUP, Terminate);
 
   /* Ignore SIGCHLD. */
+  struct sigaction sa;
   sa.sa_handler = SIG_IGN;
 #ifdef SA_NOCLDWAIT
   sa.sa_flags = SA_NOCLDWAIT;
@@ -185,8 +182,8 @@ extern int main(int argc, char *argv[]) {
   /*
    * The main event loop.
    */
-  dpy_fd = ConnectionNumber(dpy);
-  max_fd = dpy_fd + 1;
+  int dpy_fd = ConnectionNumber(dpy);
+  int max_fd = dpy_fd + 1;
   if (ice_fd > dpy_fd) {
     max_fd = ice_fd + 1;
   }
@@ -201,6 +198,7 @@ extern int main(int argc, char *argv[]) {
     if (select(max_fd, &readfds, NULL, NULL, NULL) > -1) {
       if (FD_ISSET(dpy_fd, &readfds)) {
         while (XPending(dpy)) {
+          XEvent ev;
           XNextEvent(dpy, &ev);
           dispatch(&ev);
         }
@@ -214,7 +212,6 @@ extern int main(int argc, char *argv[]) {
 
 void sendConfigureNotify(Client *c) {
   XConfigureEvent ce;
-
   ce.type = ConfigureNotify;
   ce.event = c->window;
   ce.window = c->window;
@@ -237,21 +234,19 @@ void sendConfigureNotify(Client *c) {
 }
 
 extern void scanWindowTree(int screen) {
-  unsigned int i;
   unsigned int nwins;
-  Client *c;
   Window dw1;
   Window dw2;
   Window *wins = 0;
   XWindowAttributes attr;
 
   XQueryTree(dpy, screens[screen].root, &dw1, &dw2, &wins, &nwins);
-  for (i = 0; i < nwins; i++) {
+  for (int i = 0; i < nwins; i++) {
     XGetWindowAttributes(dpy, wins[i], &attr);
     if (attr.override_redirect || wins[i] == screens[screen].popup) {
       continue;
     }
-    c = Client_Add(wins[i], screens[screen].root);
+    Client *c = Client_Add(wins[i], screens[screen].root);
     if (c != 0 && c->window == wins[i]) {
       c->screen = &screens[screen];
       c->size.x = attr.x;
@@ -273,7 +268,7 @@ extern void scanWindowTree(int screen) {
 /*ARGSUSED*/
 extern void shell(ScreenInfo *screen, int button, int x, int y) {
   /* Get the command we're to execute. Give up if there isn't one. */
-  char *command = NULL;
+  const char *command = NULL;
   if (button == Button1) {
     command = btn1_command;
   } else if (button == Button2) {
@@ -366,11 +361,8 @@ static void initScreens(void) {
 }
 
 static void initScreen(int screen) {
-  XGCValues gv;
-  XSetWindowAttributes attr;
-  char *display_string = DisplayString(dpy);
-
   /* Set the DISPLAY specification. */
+  char *display_string = DisplayString(dpy);
   char *colon = strrchr(display_string, ':');
   if (colon) {
     char *dot = strrchr(colon, '.');
@@ -405,6 +397,7 @@ static void initScreen(int screen) {
   screens[screen].gray = colour.pixel;
 
   /* Set up root (frame) GC's. */
+  XGCValues gv;
   gv.foreground = screens[screen].black ^ screens[screen].white;
   gv.background = screens[screen].white;
   gv.function = GXxor;
@@ -425,6 +418,7 @@ static void initScreen(int screen) {
   screens[screen].popup =
       XCreateSimpleWindow(dpy, screens[screen].root, 0, 0, 1, 1, 1,
                           screens[screen].black, screens[screen].white);
+  XSetWindowAttributes attr;
   attr.event_mask = ButtonMask | ButtonMotionMask | ExposureMask;
   XChangeWindowAttributes(dpy, screens[screen].popup, CWEventMask, &attr);
 

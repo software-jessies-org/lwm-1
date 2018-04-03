@@ -1,17 +1,17 @@
 /*
  * lwm, a window manager for X11
  * Copyright (C) 1997-2016 Elliott Hughes, James Carter
- * 
+ *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
  * of the License, or (at your option) any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
@@ -34,68 +34,58 @@
 #include "lwm.h"
 
 /*ARGSUSED*/
-extern void 
-setShape(Client *c) {
-#ifdef  SHAPE
-	int n;
-	int order;
-	XRectangle *rect;
-
-	if (shape) {
-		XShapeSelectInput(dpy, c->window, ShapeNotifyMask);
-		rect = XShapeGetRectangles(dpy, c->window, ShapeBounding,
-			&n, &order);
-		if (n > 1)
-			XShapeCombineShape(dpy, c->parent, ShapeBounding,
-				border - 1, border - 1, c->window,
-				ShapeBounding, ShapeSet);
-		XFree(rect);
-	}
-#else
+extern void setShape(Client *c) {
+#ifdef SHAPE
+  if (!shape) {
+    return;
+  }
+  XShapeSelectInput(dpy, c->window, ShapeNotifyMask);
+  int order;
+  int n;
+  XRectangle *rect =
+      XShapeGetRectangles(dpy, c->window, ShapeBounding, &n, &order);
+  if (n > 1) {
+    XShapeCombineShape(dpy, c->parent, ShapeBounding, border - 1, border - 1,
+                       c->window, ShapeBounding, ShapeSet);
+  }
+  XFree(rect);
 #endif
 }
 
 /*ARGSUSED*/
-extern int
-shapeEvent(XEvent *ev) {
-#ifdef  SHAPE
-	if (shape && ev->type == shape_event) {
-		Client *c;
-		XShapeEvent *e = (XShapeEvent *)ev;
-
-		c = Client_Get(e->window);
-		if (c != 0)
-			setShape(c);
-		return 1;
-	}
-#else
+extern int shapeEvent(XEvent *ev) {
+#ifdef SHAPE
+  if (shape && ev->type == shape_event) {
+    XShapeEvent *e = (XShapeEvent *)ev;
+    Client *c = Client_Get(e->window);
+    if (c != 0) {
+      setShape(c);
+    }
+    return 1;
+  }
 #endif
-	return 0;
+  return 0;
 }
 
 /*ARGSUSED*/
-extern int
-isShaped(Window w) {
+extern int isShaped(Window w) {
 #ifdef SHAPE
-	int	n;
-	int	order;
-	XRectangle	*rect;
+  int n;
+  int order;
+  XRectangle *rect = XShapeGetRectangles(dpy, w, ShapeBounding, &n, &order);
+  XFree(rect);
 
-	rect = XShapeGetRectangles(dpy, w, ShapeBounding, &n, &order);
-	XFree(rect);
-
-	return (n > 1);
+  return (n > 1);
 #else
-	return 0;
+  return 0;
 #endif
 }
 
-extern int
-serverSupportsShapes(void) {
+extern int serverSupportsShapes(void) {
 #ifdef SHAPE
-	int shape_error;
-	return XShapeQueryExtension(dpy, &shape_event, &shape_error);
+  int shape_error;
+  return XShapeQueryExtension(dpy, &shape_event, &shape_error);
 #else
-	return 0;
+  return 0;
 #endif
 }
