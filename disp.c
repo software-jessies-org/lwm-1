@@ -36,6 +36,7 @@
 typedef struct Disp Disp;
 struct Disp {
   int type;
+  char const* const name;
   void (*handler)(XEvent *);
 };
 
@@ -57,34 +58,36 @@ static void motionnotify(XEvent *);
 
 void reshaping_motionnotify(XEvent *);
 
+#define REG_DISP(x, y) {x, #x, y}
 static Disp disps[] = {
-    {Expose, expose},
-    {MotionNotify, motionnotify},
-    {ButtonPress, buttonpress},
-    {ButtonRelease, buttonrelease},
-    {FocusIn, focuschange},
-    {FocusOut, focuschange},
-    {MapRequest, maprequest},
-    {ConfigureRequest, configurereq},
-    {UnmapNotify, unmap},
-    {DestroyNotify, destroy},
-    {ClientMessage, clientmessage},
-    {ColormapNotify, colormap},
-    {PropertyNotify, property},
-    {ReparentNotify, reparent},
-    {EnterNotify, enter},
-    {CirculateRequest, circulaterequest},
-    {LeaveNotify, 0},
-    {ConfigureNotify, 0},
-    {CreateNotify, 0},
-    {GravityNotify, 0},
-    {MapNotify, 0},
-    {MappingNotify, 0},
-    {SelectionClear, 0},
-    {SelectionNotify, 0},
-    {SelectionRequest, 0},
-    {NoExpose, 0},
+    REG_DISP(Expose, expose),
+    REG_DISP(MotionNotify, motionnotify),
+    REG_DISP(ButtonPress, buttonpress),
+    REG_DISP(ButtonRelease, buttonrelease),
+    REG_DISP(FocusIn, focuschange),
+    REG_DISP(FocusOut, focuschange),
+    REG_DISP(MapRequest, maprequest),
+    REG_DISP(ConfigureRequest, configurereq),
+    REG_DISP(UnmapNotify, unmap),
+    REG_DISP(DestroyNotify, destroy),
+    REG_DISP(ClientMessage, clientmessage),
+    REG_DISP(ColormapNotify, colormap),
+    REG_DISP(PropertyNotify, property),
+    REG_DISP(ReparentNotify, reparent),
+    REG_DISP(EnterNotify, enter),
+    REG_DISP(CirculateRequest, circulaterequest),
+    REG_DISP(LeaveNotify, 0),
+    REG_DISP(ConfigureNotify, 0),
+    REG_DISP(CreateNotify, 0),
+    REG_DISP(GravityNotify, 0),
+    REG_DISP(MapNotify, 0),
+    REG_DISP(MappingNotify, 0),
+    REG_DISP(SelectionClear, 0),
+    REG_DISP(SelectionNotify, 0),
+    REG_DISP(SelectionRequest, 0),
+    REG_DISP(NoExpose, 0),
 };
+#undef REG_DISP
 
 /**
  * pending it the client in which an action has been started by a mouse press
@@ -97,6 +100,9 @@ extern void dispatch(XEvent *ev) {
     if (p->type == ev->type) {
       if (p->handler != 0) {
         p->handler(ev);
+      } else {
+        fprintf(stderr, "%s: unhandled event %d (%s)\n", argv0, p->type,
+                p->name);
       }
       return;
     }

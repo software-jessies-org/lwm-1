@@ -33,71 +33,48 @@ Atom ewmh_atom[EWMH_ATOM_LAST];
 Atom utf8_string;
 
 void ewmh_init(void) {
-  /* build half a million EWMH atoms */
-  ewmh_atom[_NET_SUPPORTED] = XInternAtom(dpy, "_NET_SUPPORTED", False);
-  ewmh_atom[_NET_CLIENT_LIST] = XInternAtom(dpy, "_NET_CLIENT_LIST", False);
-  ewmh_atom[_NET_CLIENT_LIST_STACKING] =
-      XInternAtom(dpy, "_NET_CLIENT_LIST_STACKING", False);
-  ewmh_atom[_NET_NUMBER_OF_DESKTOPS] =
-      XInternAtom(dpy, "_NET_NUMBER_OF_DESKTOPS", False);
-  ewmh_atom[_NET_DESKTOP_GEOMETRY] =
-      XInternAtom(dpy, "_NET_DESKTOP_GEOMETRY", False);
-  ewmh_atom[_NET_DESKTOP_VIEWPORT] =
-      XInternAtom(dpy, "_NET_DESKTOP_VIEWPORT", False);
-  ewmh_atom[_NET_CURRENT_DESKTOP] =
-      XInternAtom(dpy, "_NET_CURRENT_DESKTOP", False);
-  ewmh_atom[_NET_ACTIVE_WINDOW] = XInternAtom(dpy, "_NET_ACTIVE_WINDOW", False);
-  ewmh_atom[_NET_WORKAREA] = XInternAtom(dpy, "_NET_WORKAREA", False);
-  ewmh_atom[_NET_SUPPORTING_WM_CHECK] =
-      XInternAtom(dpy, "_NET_SUPPORTING_WM_CHECK", False);
-  ewmh_atom[_NET_CLOSE_WINDOW] = XInternAtom(dpy, "_NET_CLOSE_WINDOW", False);
-  ewmh_atom[_NET_MOVERESIZE_WINDOW] =
-      XInternAtom(dpy, "_NET_MOVERESIZE_WINDOW", False);
-  ewmh_atom[_NET_WM_MOVERESIZE] = XInternAtom(dpy, "_NET_WM_MOVERESIZE", False);
-  ewmh_atom[_NET_WM_NAME] = XInternAtom(dpy, "_NET_WM_NAME", False);
-  ewmh_atom[_NET_WM_WINDOW_TYPE] =
-      XInternAtom(dpy, "_NET_WM_WINDOW_TYPE", False);
-  ewmh_atom[_NET_WM_STATE] = XInternAtom(dpy, "_NET_WM_STATE", False);
-  ewmh_atom[_NET_WM_ALLOWED_ACTIONS] =
-      XInternAtom(dpy, "_NET_WM_ALLOWED_ACTIONS", False);
-  ewmh_atom[_NET_WM_STRUT] = XInternAtom(dpy, "_NET_WM_STRUT", False);
-  ewmh_atom[_NET_WM_WINDOW_TYPE_DESKTOP] =
-      XInternAtom(dpy, "_NET_WM_WINDOW_TYPE_DESKTOP", False);
-  ewmh_atom[_NET_WM_WINDOW_TYPE_DOCK] =
-      XInternAtom(dpy, "_NET_WM_WINDOW_TYPE_DOCK", False);
-  ewmh_atom[_NET_WM_WINDOW_TYPE_TOOLBAR] =
-      XInternAtom(dpy, "_NET_WM_WINDOW_TYPE_TOOLBAR", False);
-  ewmh_atom[_NET_WM_WINDOW_TYPE_MENU] =
-      XInternAtom(dpy, "_NET_WM_WINDOW_TYPE_MENU", False);
-  ewmh_atom[_NET_WM_WINDOW_TYPE_UTILITY] =
-      XInternAtom(dpy, "_NET_WM_WINDOW_TYPE_UTILITY", False);
-  ewmh_atom[_NET_WM_WINDOW_TYPE_SPLASH] =
-      XInternAtom(dpy, "_NET_WM_WINDOW_TYPE_SPLASH", False);
-  ewmh_atom[_NET_WM_WINDOW_TYPE_DIALOG] =
-      XInternAtom(dpy, "_NET_WM_WINDOW_TYPE_DIALOG", False);
-  ewmh_atom[_NET_WM_WINDOW_TYPE_NORMAL] =
-      XInternAtom(dpy, "_NET_WM_WINDOW_TYPE_NORMAL", False);
-  ewmh_atom[_NET_WM_STATE_SKIP_TASKBAR] =
-      XInternAtom(dpy, "_NET_WM_STATE_SKIP_TASKBAR", False);
-  ewmh_atom[_NET_WM_STATE_SKIP_PAGER] =
-      XInternAtom(dpy, "_NET_WM_STATE_SKIP_PAGER", False);
-  ewmh_atom[_NET_WM_STATE_HIDDEN] =
-      XInternAtom(dpy, "_NET_WM_STATE_HIDDEN", False);
-  ewmh_atom[_NET_WM_STATE_FULLSCREEN] =
-      XInternAtom(dpy, "_NET_WM_STATE_FULLSCREEN", False);
-  ewmh_atom[_NET_WM_ACTION_MOVE] =
-      XInternAtom(dpy, "_NET_WM_ACTION_MOVE", False);
-  ewmh_atom[_NET_WM_ACTION_RESIZE] =
-      XInternAtom(dpy, "_NET_WM_ACTION_RESIZE", False);
-  ewmh_atom[_NET_WM_ACTION_FULLSCREEN] =
-      XInternAtom(dpy, "_NET_WM_ACTION_FULLSCREEN", False);
-  ewmh_atom[_NET_WM_ACTION_CLOSE] =
-      XInternAtom(dpy, "_NET_WM_ACTION_CLOSE", False);
+  // Build half a million EWMH atoms.
+#define SET_ATOM(x) ewmh_atom[x] = XInternAtom(dpy, #x, False)
+  SET_ATOM(_NET_SUPPORTED);
+  SET_ATOM(_NET_CLIENT_LIST);
+  SET_ATOM(_NET_CLIENT_LIST_STACKING);
+  SET_ATOM(_NET_NUMBER_OF_DESKTOPS);
+  SET_ATOM(_NET_DESKTOP_GEOMETRY);
+  SET_ATOM(_NET_DESKTOP_VIEWPORT);
+  SET_ATOM(_NET_CURRENT_DESKTOP);
+  SET_ATOM(_NET_ACTIVE_WINDOW);
+  SET_ATOM(_NET_WORKAREA);
+  SET_ATOM(_NET_SUPPORTING_WM_CHECK);
+  SET_ATOM(_NET_CLOSE_WINDOW);
+  SET_ATOM(_NET_MOVERESIZE_WINDOW);
+  SET_ATOM(_NET_WM_MOVERESIZE);
+  SET_ATOM(_NET_WM_NAME);
+  SET_ATOM(_NET_WM_WINDOW_TYPE);
+  SET_ATOM(_NET_WM_STATE);
+  SET_ATOM(_NET_WM_ALLOWED_ACTIONS);
+  SET_ATOM(_NET_WM_STRUT);
+  SET_ATOM(_NET_WM_WINDOW_TYPE_DESKTOP);
+  SET_ATOM(_NET_WM_WINDOW_TYPE_DOCK);
+  SET_ATOM(_NET_WM_WINDOW_TYPE_TOOLBAR);
+  SET_ATOM(_NET_WM_WINDOW_TYPE_MENU);
+  SET_ATOM(_NET_WM_WINDOW_TYPE_UTILITY);
+  SET_ATOM(_NET_WM_WINDOW_TYPE_SPLASH);
+  SET_ATOM(_NET_WM_WINDOW_TYPE_DIALOG);
+  SET_ATOM(_NET_WM_WINDOW_TYPE_NORMAL);
+  SET_ATOM(_NET_WM_STATE_SKIP_TASKBAR);
+  SET_ATOM(_NET_WM_STATE_SKIP_PAGER);
+  SET_ATOM(_NET_WM_STATE_HIDDEN);
+  SET_ATOM(_NET_WM_STATE_FULLSCREEN);
+  SET_ATOM(_NET_WM_ACTION_MOVE);
+  SET_ATOM(_NET_WM_ACTION_RESIZE);
+  SET_ATOM(_NET_WM_ACTION_FULLSCREEN);
+  SET_ATOM(_NET_WM_ACTION_CLOSE);
+#undef SET_ATOM
   utf8_string = XInternAtom(dpy, "UTF8_STRING", False);
 }
 
 void ewmh_init_screens(void) {
-  /* announce EWMH compatibility on all screens */
+  // Announce EWMH compatibility on all screens.
   for (int i = 0; i < screen_count; i++) {
     screens[i].ewmh_set_client_list = False;
     screens[i].ewmh_compat =
@@ -337,6 +314,9 @@ void ewmh_set_state(Client *c) {
     if (c->wstate.below == True) {
       a[atoms++] = ewmh_atom[_NET_WM_STATE_BELOW];
     }
+  }
+  if (atoms > MAX_ATOMS) {
+    panic("too many atoms! Change MAX_ATOMS in ewmh_set_state");
   }
   XChangeProperty(dpy, c->window, ewmh_atom[_NET_WM_STATE], XA_ATOM, 32,
                   PropModeReplace, (unsigned char *)a, atoms);
