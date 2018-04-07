@@ -664,7 +664,6 @@ static void property(XEvent *ev) {
 
   if (e->atom == _mozilla_url || e->atom == XA_WM_NAME) {
     getWindowName(c);
-    setactive(c, c == current, 0L);
   } else if (e->atom == XA_WM_TRANSIENT_FOR) {
     getTransientFor(c);
   } else if (e->atom == XA_WM_NORMAL_HINTS) {
