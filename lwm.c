@@ -52,6 +52,7 @@ XFontSetExtents *popup_font_set_ext = NULL;
 
 Bool shape;      /* Does server have Shape Window extension? */
 int shape_event; /* ShapeEvent event type. */
+Bool debug_events;  // Set when run with the --debug-events flag.
 
 /* Atoms we're interested in. See the ICCCM for more information. */
 Atom wm_state;
@@ -79,6 +80,11 @@ static void initScreen(int);
 /*ARGSUSED*/
 extern int main(int argc, char *argv[]) {
   argv0 = argv[0];
+  for (int i = 1; i < argc; i++) {
+    if (!strcmp(argv[i], "--debug-events")) {
+      debug_events = True;
+    }
+  }
 
   mode = wm_initialising;
 

@@ -68,7 +68,7 @@ void setactive(Client *c, int on, long timestamp) {
   }
 
   const int inhibit = !c->framed;
-
+  
   if (!inhibit) {
     XMoveResizeWindow(dpy, c->parent, c->size.x, c->size.y - titleHeight(),
                       c->size.width, c->size.height + titleHeight());

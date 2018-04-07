@@ -29,12 +29,19 @@
 #include "ewmh.h"
 #include "lwm.h"
 
+// The following two arrays are co-indexed. The ewmh_atom_names is used to look
+// up the name of a given Atom value, for debugging.
 Atom ewmh_atom[EWMH_ATOM_LAST];
+char const* ewmh_atom_names[EWMH_ATOM_LAST];
 Atom utf8_string;
 
 void ewmh_init(void) {
   // Build half a million EWMH atoms.
-#define SET_ATOM(x) ewmh_atom[x] = XInternAtom(dpy, #x, False)
+#define SET_ATOM(x)                                          \
+    do {                                                     \
+      ewmh_atom[x] = XInternAtom(dpy, #x, False);            \
+      ewmh_atom_names[x] = #x;                               \
+    } while (0)
   SET_ATOM(_NET_SUPPORTED);
   SET_ATOM(_NET_CLIENT_LIST);
   SET_ATOM(_NET_CLIENT_LIST_STACKING);
@@ -42,17 +49,29 @@ void ewmh_init(void) {
   SET_ATOM(_NET_DESKTOP_GEOMETRY);
   SET_ATOM(_NET_DESKTOP_VIEWPORT);
   SET_ATOM(_NET_CURRENT_DESKTOP);
+  SET_ATOM(_NET_DESKTOP_NAMES);
   SET_ATOM(_NET_ACTIVE_WINDOW);
   SET_ATOM(_NET_WORKAREA);
   SET_ATOM(_NET_SUPPORTING_WM_CHECK);
+  SET_ATOM(_NET_VIRTUAL_ROOTS);
+  SET_ATOM(_NET_DESKTOP_LAYOUT);
+  SET_ATOM(_NET_SHOWING_DESKTOP);
   SET_ATOM(_NET_CLOSE_WINDOW);
   SET_ATOM(_NET_MOVERESIZE_WINDOW);
   SET_ATOM(_NET_WM_MOVERESIZE);
   SET_ATOM(_NET_WM_NAME);
+  SET_ATOM(_NET_WM_VISIBLE_NAME);
+  SET_ATOM(_NET_WM_ICON_NAME);
+  SET_ATOM(_NET_WM_VISIBLE_ICON_NAME);
+  SET_ATOM(_NET_WM_DESKTOP);
   SET_ATOM(_NET_WM_WINDOW_TYPE);
   SET_ATOM(_NET_WM_STATE);
   SET_ATOM(_NET_WM_ALLOWED_ACTIONS);
   SET_ATOM(_NET_WM_STRUT);
+  SET_ATOM(_NET_WM_ICON_GEOMETRY);
+  SET_ATOM(_NET_WM_ICON);
+  SET_ATOM(_NET_WM_PID);
+  SET_ATOM(_NET_WM_HANDLED_ICONS);
   SET_ATOM(_NET_WM_WINDOW_TYPE_DESKTOP);
   SET_ATOM(_NET_WM_WINDOW_TYPE_DOCK);
   SET_ATOM(_NET_WM_WINDOW_TYPE_TOOLBAR);
@@ -61,16 +80,38 @@ void ewmh_init(void) {
   SET_ATOM(_NET_WM_WINDOW_TYPE_SPLASH);
   SET_ATOM(_NET_WM_WINDOW_TYPE_DIALOG);
   SET_ATOM(_NET_WM_WINDOW_TYPE_NORMAL);
+  SET_ATOM(_NET_WM_STATE_MODAL);
+  SET_ATOM(_NET_WM_STATE_STICKY);
+  SET_ATOM(_NET_WM_STATE_MAXIMISED_VERT);
+  SET_ATOM(_NET_WM_STATE_MAXIMISED_HORZ);
+  SET_ATOM(_NET_WM_STATE_SHADED);
   SET_ATOM(_NET_WM_STATE_SKIP_TASKBAR);
   SET_ATOM(_NET_WM_STATE_SKIP_PAGER);
   SET_ATOM(_NET_WM_STATE_HIDDEN);
   SET_ATOM(_NET_WM_STATE_FULLSCREEN);
+  SET_ATOM(_NET_WM_STATE_ABOVE);
+  SET_ATOM(_NET_WM_STATE_BELOW);
   SET_ATOM(_NET_WM_ACTION_MOVE);
   SET_ATOM(_NET_WM_ACTION_RESIZE);
+  SET_ATOM(_NET_WM_ACTION_MINIMIZE);
+  SET_ATOM(_NET_WM_ACTION_SHADE);
+  SET_ATOM(_NET_WM_ACTION_STICK);
+  SET_ATOM(_NET_WM_ACTION_MAXIMIZE_HORIZ);
+  SET_ATOM(_NET_WM_ACTION_MAXIMIZE_VERT);
   SET_ATOM(_NET_WM_ACTION_FULLSCREEN);
+  SET_ATOM(_NET_WM_ACTION_CHANGE_DESKTOP);
   SET_ATOM(_NET_WM_ACTION_CLOSE);
 #undef SET_ATOM
   utf8_string = XInternAtom(dpy, "UTF8_STRING", False);
+}
+
+char const *ewmh_atom_name(Atom at) {
+  for (int i = 0; i < EWMH_ATOM_LAST; i++) {
+    if (at == ewmh_atom[i]) {
+      return ewmh_atom_names[i];
+    }
+  }
+  return "unknown atom";
 }
 
 void ewmh_init_screens(void) {

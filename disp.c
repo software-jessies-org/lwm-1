@@ -38,6 +38,7 @@ struct Disp {
   int type;
   char const* const name;
   void (*handler)(XEvent *);
+  void (*debug)(XEvent *);
 };
 
 static void expose(XEvent *);
@@ -58,34 +59,38 @@ static void motionnotify(XEvent *);
 
 void reshaping_motionnotify(XEvent *);
 
-#define REG_DISP(x, y) {x, #x, y}
+static void debugGeneric(XEvent *);
+static void debugConfigureNotify(XEvent *);
+static void debugPropertyNotify(XEvent *);
+
+#define REG_DISP(ev, hand, dbg) {ev, #ev, hand, dbg}
 static Disp disps[] = {
-    REG_DISP(Expose, expose),
-    REG_DISP(MotionNotify, motionnotify),
-    REG_DISP(ButtonPress, buttonpress),
-    REG_DISP(ButtonRelease, buttonrelease),
-    REG_DISP(FocusIn, focuschange),
-    REG_DISP(FocusOut, focuschange),
-    REG_DISP(MapRequest, maprequest),
-    REG_DISP(ConfigureRequest, configurereq),
-    REG_DISP(UnmapNotify, unmap),
-    REG_DISP(DestroyNotify, destroy),
-    REG_DISP(ClientMessage, clientmessage),
-    REG_DISP(ColormapNotify, colormap),
-    REG_DISP(PropertyNotify, property),
-    REG_DISP(ReparentNotify, reparent),
-    REG_DISP(EnterNotify, enter),
-    REG_DISP(CirculateRequest, circulaterequest),
-    REG_DISP(LeaveNotify, 0),
-    REG_DISP(ConfigureNotify, 0),
-    REG_DISP(CreateNotify, 0),
-    REG_DISP(GravityNotify, 0),
-    REG_DISP(MapNotify, 0),
-    REG_DISP(MappingNotify, 0),
-    REG_DISP(SelectionClear, 0),
-    REG_DISP(SelectionNotify, 0),
-    REG_DISP(SelectionRequest, 0),
-    REG_DISP(NoExpose, 0),
+    REG_DISP(Expose, expose, debugGeneric),
+    REG_DISP(MotionNotify, motionnotify, debugGeneric),
+    REG_DISP(ButtonPress, buttonpress, debugGeneric),
+    REG_DISP(ButtonRelease, buttonrelease, debugGeneric),
+    REG_DISP(FocusIn, focuschange, debugGeneric),
+    REG_DISP(FocusOut, focuschange, debugGeneric),
+    REG_DISP(MapRequest, maprequest, debugGeneric),
+    REG_DISP(ConfigureRequest, configurereq, debugGeneric),
+    REG_DISP(UnmapNotify, unmap, debugGeneric),
+    REG_DISP(DestroyNotify, destroy, debugGeneric),
+    REG_DISP(ClientMessage, clientmessage, debugGeneric),
+    REG_DISP(ColormapNotify, colormap, debugGeneric),
+    REG_DISP(PropertyNotify, property, debugPropertyNotify),
+    REG_DISP(ReparentNotify, reparent, debugGeneric),
+    REG_DISP(EnterNotify, enter, debugGeneric),
+    REG_DISP(CirculateRequest, circulaterequest, debugGeneric),
+    REG_DISP(LeaveNotify, 0, debugGeneric),
+    REG_DISP(ConfigureNotify, 0, debugConfigureNotify),
+    REG_DISP(CreateNotify, 0, debugGeneric),
+    REG_DISP(GravityNotify, 0, debugGeneric),
+    REG_DISP(MapNotify, 0, debugGeneric),
+    REG_DISP(MappingNotify, 0, debugGeneric),
+    REG_DISP(SelectionClear, 0, debugGeneric),
+    REG_DISP(SelectionNotify, 0, debugGeneric),
+    REG_DISP(SelectionRequest, 0, debugGeneric),
+    REG_DISP(NoExpose, 0, debugGeneric),
 };
 #undef REG_DISP
 
@@ -95,14 +100,20 @@ static Disp disps[] = {
  */
 static Client *pending = NULL;
 
+static void debug(void (*fn)(XEvent *), XEvent *ev, char const *evName) {
+  if (!debug_events) {
+    return;
+  }
+  fprintf(stderr, "%s: ", evName);
+  fn(ev);
+}
+
 extern void dispatch(XEvent *ev) {
   for (Disp *p = disps; p < disps + sizeof(disps) / sizeof(disps[0]); p++) {
     if (p->type == ev->type) {
-      if (p->handler != 0) {
+      debug(p->debug, ev, p->name);
+      if (p->handler) {
         p->handler(ev);
-      } else {
-        fprintf(stderr, "%s: unhandled event %d (%s)\n", argv0, p->type,
-                p->name);
       }
       return;
     }
@@ -110,6 +121,36 @@ extern void dispatch(XEvent *ev) {
   if (!shapeEvent(ev)) {
     fprintf(stderr, "%s: unknown event %d\n", argv0, ev->type);
   }
+}
+
+static void debugGeneric(XEvent *ev) {
+  fprintf(stderr, "window 0x%lx\n", ev->xany.window);
+}
+
+static void debugConfigureNotify(XEvent *ev) {
+  XConfigureEvent *xc = &(ev->xconfigure);
+  fprintf(stderr,
+          "ev window 0x%lx, window 0x%lx; pos %d, %d; size %d, %d\n",
+          xc->event, xc->window, xc->x, xc->y, xc->width, xc->height);
+}
+
+static char const *debugPropertyState(int state) {
+  switch (state) {
+  case PropertyNewValue:
+    return "PropertyNewValue";
+  case PropertyDelete:
+    return "PropertyDelete";
+  default:
+    "WeirdPropertyState";
+  }
+}
+
+static void debugPropertyNotify(XEvent *ev) {
+    XPropertyEvent *xp = &(ev->xproperty);
+    fprintf(stderr,
+            "window 0x%lx, atom %ld (%s); state %s\n",
+            xp->window, xp->atom, ewmh_atom_name(xp->atom),
+            debugPropertyState(xp->state));
 }
 
 static void expose(XEvent *ev) {
