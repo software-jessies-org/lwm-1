@@ -112,7 +112,7 @@ void setactive(Client *c, int on, long timestamp) {
 
 void Client_DrawBorder(Client *c, int active) {
   const int quarter = (border + titleHeight()) / 4;
-
+    
   if (c->parent == c->screen->root || c->parent == 0 || c->framed == False ||
       c->wstate.fullscreen == True) {
     return;
@@ -143,16 +143,38 @@ void Client_DrawBorder(Client *c, int active) {
   }
 }
 
+// Returns the parent window of w, or NULL if we hit the root or on error.
+static Window getParentWindow(Window w) {
+  Window *children = NULL;
+  int nChildren = 0;
+  Window root = 0;
+  Window parent = 0;
+  XQueryTree(dpy, w, &root, &parent, &children, &nChildren);
+  if (children) {
+    XFree(children);
+  }
+  if (parent == root) {
+    return 0;
+  }
+  return parent;
+}
+
 Client *Client_Get(Window w) {
   if (w == 0 || (getScreenFromRoot(w) != 0)) {
     return 0;
   }
 
-  /* Search for the client corresponding to this window. */
-  for (Client *c = clients; c; c = c->next) {
-    if (c->window == w || c->parent == w) {
-      return c;
+  while (w) {
+    /* Search for the client corresponding to this window. */
+    for (Client *c = clients; c; c = c->next) {
+      if (c->window == w || c->parent == w) {
+        return c;
+      }
     }
+    // Didn't find this one; try to see if we find its parent. This can be
+    // necessary if we receive a FocusIn event for a child window of a
+    // window we're managing (eg the 'FocusProxy' on Java windows).
+    w = getParentWindow(w);
   }
 
   /* Not found. */

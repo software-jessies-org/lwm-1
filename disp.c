@@ -36,7 +36,7 @@
 typedef struct Disp Disp;
 struct Disp {
   int type;
-  char const* const name;
+  char const *const name;
   void (*handler)(XEvent *);
   void (*debug)(XEvent *);
 };
@@ -59,18 +59,105 @@ static void motionnotify(XEvent *);
 
 void reshaping_motionnotify(XEvent *);
 
-static void debugGeneric(XEvent *);
-static void debugConfigureNotify(XEvent *);
-static void debugPropertyNotify(XEvent *);
+//
+// Code for decoding events and printing them out in an understandable way.
+//
 
-#define REG_DISP(ev, hand, dbg) {ev, #ev, hand, dbg}
+// Helper functions for decoding specific types of X integers.
+#define CASE_STR(x)                                                            \
+  case x:                                                                      \
+    return #x
+#define WEIRD(x)                                                               \
+  default:                                                                     \
+    return "Weird" #x
+
+static char const *debugFocusType(int v) {
+  switch (v) {
+    CASE_STR(FocusIn);
+    CASE_STR(FocusOut);
+    WEIRD(Focus);
+  }
+}
+
+static char const *debugPropertyState(int v) {
+  switch (v) {
+    CASE_STR(PropertyNewValue);
+    CASE_STR(PropertyDelete);
+    WEIRD(PropertyState);
+  }
+}
+
+static char const *debugFocusMode(int v) {
+  switch (v) {
+    CASE_STR(NotifyNormal);
+    CASE_STR(NotifyGrab);
+    CASE_STR(NotifyUngrab);
+    WEIRD(FocusMode);
+  }
+}
+
+static char const *debugFocusDetail(int v) {
+  switch (v) {
+    CASE_STR(NotifyAncestor);
+    CASE_STR(NotifyVirtual);
+    CASE_STR(NotifyInferior);
+    CASE_STR(NotifyNonlinear);
+    CASE_STR(NotifyNonlinearVirtual);
+    CASE_STR(NotifyPointer);
+    CASE_STR(NotifyPointerRoot);
+    CASE_STR(NotifyDetailNone);
+    WEIRD(FocusDetail);
+  }
+}
+
+// Undefine our helper macros, so they don't pollute anyone else.
+#undef CASE_STR
+#undef WEIRD
+
+static void debug(void (*fn)(XEvent *), XEvent *ev, char const *evName) {
+  if (!debug_events) {
+    return;
+  }
+  fprintf(stderr, "%s: ", evName);
+  fn(ev);
+}
+
+static void debugGeneric(XEvent *ev) {
+  fprintf(stderr, "window 0x%lx\n", ev->xany.window);
+}
+
+static void debugConfigureNotify(XEvent *ev) {
+  XConfigureEvent *xc = &(ev->xconfigure);
+  fprintf(stderr, "ev window 0x%lx, window 0x%lx; pos %d, %d; size %d, %d\n",
+          xc->event, xc->window, xc->x, xc->y, xc->width, xc->height);
+}
+
+static void debugPropertyNotify(XEvent *ev) {
+  XPropertyEvent *xp = &(ev->xproperty);
+  fprintf(stderr, "window 0x%lx, atom %ld (%s); state %s\n", xp->window,
+          xp->atom, ewmh_atom_name(xp->atom), debugPropertyState(xp->state));
+}
+
+static void debugFocusChange(XEvent *ev) {
+  XFocusChangeEvent *xf = &(ev->xfocus);
+  fprintf(stderr, "%s, window 0x%lx, mode=%s, detail=%s\n",
+          debugFocusType(xf->type), xf->window, debugFocusMode(xf->mode),
+          debugFocusDetail(xf->detail));
+}
+
+//
+// End of all the debugging support.
+//
+
+#define REG_DISP(ev, hand, dbg)                                                \
+  { ev, #ev, hand, dbg }
 static Disp disps[] = {
     REG_DISP(Expose, expose, debugGeneric),
     REG_DISP(MotionNotify, motionnotify, debugGeneric),
     REG_DISP(ButtonPress, buttonpress, debugGeneric),
     REG_DISP(ButtonRelease, buttonrelease, debugGeneric),
-    REG_DISP(FocusIn, focuschange, debugGeneric),
-    REG_DISP(FocusOut, focuschange, debugGeneric),
+    REG_DISP(FocusIn, focuschange, debugFocusChange),
+    REG_DISP(FocusOut, focuschange, debugFocusChange),
     REG_DISP(MapRequest, maprequest, debugGeneric),
     REG_DISP(ConfigureRequest, configurereq, debugGeneric),
     REG_DISP(UnmapNotify, unmap, debugGeneric),
@@ -100,14 +187,6 @@ static Disp disps[] = {
  */
 static Client *pending = NULL;
 
-static void debug(void (*fn)(XEvent *), XEvent *ev, char const *evName) {
-  if (!debug_events) {
-    return;
-  }
-  fprintf(stderr, "%s: ", evName);
-  fn(ev);
-}
-
 extern void dispatch(XEvent *ev) {
   for (Disp *p = disps; p < disps + sizeof(disps) / sizeof(disps[0]); p++) {
     if (p->type == ev->type) {
@@ -121,36 +200,6 @@ extern void dispatch(XEvent *ev) {
   if (!shapeEvent(ev)) {
     fprintf(stderr, "%s: unknown event %d\n", argv0, ev->type);
   }
-}
-
-static void debugGeneric(XEvent *ev) {
-  fprintf(stderr, "window 0x%lx\n", ev->xany.window);
-}
-
-static void debugConfigureNotify(XEvent *ev) {
-  XConfigureEvent *xc = &(ev->xconfigure);
-  fprintf(stderr,
-          "ev window 0x%lx, window 0x%lx; pos %d, %d; size %d, %d\n",
-          xc->event, xc->window, xc->x, xc->y, xc->width, xc->height);
-}
-
-static char const *debugPropertyState(int state) {
-  switch (state) {
-  case PropertyNewValue:
-    return "PropertyNewValue";
-  case PropertyDelete:
-    return "PropertyDelete";
-  default:
-    "WeirdPropertyState";
-  }
-}
-
-static void debugPropertyNotify(XEvent *ev) {
-    XPropertyEvent *xp = &(ev->xproperty);
-    fprintf(stderr,
-            "window 0x%lx, atom %ld (%s); state %s\n",
-            xp->window, xp->atom, ewmh_atom_name(xp->atom),
-            debugPropertyState(xp->state));
 }
 
 static void expose(XEvent *ev) {
