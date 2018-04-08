@@ -74,17 +74,20 @@ int menu_whichitem(int x, int y) {
 }
 
 static void getMenuDimensions(int *width, int *height, int *length) {
-  int i = 0; // Menu item.
+  *length = 0;
   int w = 0; // Widest string so far.
-  for (menuitem *m = hidden_menu; m != 0; m = m->next, i++) {
-    int tw = titleWidth(popup_font_set, m->client) + 4;
+  for (Client *c = client_head(); c; c = c->next) {
+    if (!c->framed) {
+      continue;
+    }
+    (*length)++;
+    int tw = titleWidth(popup_font_set, c) + 4;
     if (tw > w) {
       w = tw;
     }
   }
   *width = w + border;
   *height = popupHeight();
-  *length = i;
 }
 
 void menuhit(XButtonEvent *e) {
@@ -159,44 +162,54 @@ void hide(Client *c) {
 }
 
 void unhide(int n, int map) {
-  /* Find the nth client. */
+  // Find the nth client, first by checking those which are hidden (they appear
+  // at the top of the menu), and then checking the unhidden windows (which
+  // appear below the dotted line).
   if (n < 0) {
     return;
   }
-
+  
   menuitem *prev = 0;
   menuitem *m = hidden_menu;
-  while (n-- > 0 && m != 0) {
+  while (n > 0 && m != 0) {
     prev = m;
     m = m->next;
+    n--;
   }
+  Client *c = NULL;
+  if (m != 0) {
+    c = m->client;
 
-  if (m == 0) {
-    return;
-  }
-  Client *c = m->client;
+    /* Remove the item from the menu, and dispose of it. */
+    if (prev == 0) {
+      hidden_menu = m->next;
+    } else {
+      prev->next = m->next;
+    }
+    free(m);
 
-  /* Remove the item from the menu, and dispose of it. */
-  if (prev == 0) {
-    hidden_menu = m->next;
+    c->hidden = False;
   } else {
-    prev->next = m->next;
+    // It's not a hidden item, so try to find it in the list of non-hidden
+    // clients.
+    for (c = client_head(); c; c = c->next) {
+      if (!c->framed || c->hidden) {
+        continue;
+      }
+      if (n-- == 0) {
+        break;
+      }
+    }
   }
-  free(m);
 
-  c->hidden = False;
-
-  /* Unhide it. */
-  if (map) {
+  // If we found a client, unhide it.
+  if (map && c) {
     XMapWindow(dpy, c->parent);
     XMapWindow(dpy, c->window);
     Client_Raise(c);
     Client_SetState(c, NormalState);
-
-    if (focus_mode == focus_click) {
-      /* it feels right that the unhidden window gets focus*/
-      Client_Focus(c, CurrentTime);
-    }
+    // It feels right that the unhidden window gets focus always.
+    Client_Focus(c, CurrentTime);
   }
 }
 
@@ -215,6 +228,31 @@ void unhidec(Client *c, int map) {
   }
 }
 
+static void draw_menu_item(Client *c, int i, int width, int height,
+                           int length) {
+  int tx = (width - titleWidth(popup_font_set, c)) / 2;
+  int ty = i * height + ascent(popup_font_set_ext);
+  char *name;
+  int namelen;
+
+  if (c->menu_name == NULL) {
+    name = c->name;
+    namelen = c->namelen;
+  } else {
+    name = c->menu_name;
+    namelen = c->menu_namelen;
+  }
+
+#ifdef X_HAVE_UTF8_STRING
+  if (c->name_utf8 == True)
+    Xutf8DrawString(dpy, c->screen->popup, popup_font_set,
+                    current_screen->menu_gc, tx, ty, name, namelen);
+  else
+#endif
+    XmbDrawString(dpy, c->screen->popup, popup_font_set,
+                  current_screen->menu_gc, tx, ty, name, namelen);
+}
+
 void menu_expose(void) {
   int width;  /* Width of each item. */
   int height; /* Height of each item. */
@@ -224,27 +262,21 @@ void menu_expose(void) {
   /* Redraw the labels. */
   int i = 0;
   for (menuitem *m = hidden_menu; m != 0; m = m->next, i++) {
-    int tx = (width - titleWidth(popup_font_set, m->client)) / 2;
-    int ty = i * height + ascent(popup_font_set_ext);
-    char *name;
-    int namelen;
+    draw_menu_item(m->client, i, width, height, length);
+  }
 
-    if (m->client->menu_name == NULL) {
-      name = m->client->name;
-      namelen = m->client->namelen;
-    } else {
-      name = m->client->menu_name;
-      namelen = m->client->menu_namelen;
+  // Draw a dashed line between the hidden and non-hidden items.
+  XSetLineAttributes(dpy, current_screen->menu_gc, 1, LineOnOffDash, CapButt,
+                     JoinMiter);
+  XDrawLine(dpy, current_screen->popup, current_screen->menu_gc, 0, height * i,
+            width, height * i);
+
+  // Draw the labels for non-hidden items.
+  for (Client *c = client_head(); c; c = c->next) {
+    if (!c->framed || c->hidden) {
+      continue;
     }
-
-#ifdef X_HAVE_UTF8_STRING
-    if (m->client->name_utf8 == True)
-      Xutf8DrawString(dpy, m->client->screen->popup, popup_font_set,
-                      current_screen->menu_gc, tx, ty, name, namelen);
-    else
-#endif
-      XmbDrawString(dpy, m->client->screen->popup, popup_font_set,
-                    current_screen->menu_gc, tx, ty, name, namelen);
+    draw_menu_item(c, i++, width, height, length);
   }
 
   /* Highlight current item if there is one. */
