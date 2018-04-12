@@ -91,10 +91,6 @@ static void getMenuDimensions(int *width, int *height, int *length) {
 }
 
 void menuhit(XButtonEvent *e) {
-  if (hidden_menu == 0) {
-    return;
-  }
-
   Client_ResetAllCursors();
   current_screen = getScreenFromRoot(e->root);
 
@@ -102,6 +98,9 @@ void menuhit(XButtonEvent *e) {
   int height; /* Height of each menu item. */
   int length; /* Number of menu items. */
   getMenuDimensions(&width, &height, &length);
+  if (length == 0) {
+    return;
+  }
 
   /*
    * Arrange for centre of first menu item to be under pointer,
