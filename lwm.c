@@ -217,7 +217,7 @@ extern int main(int argc, char *argv[]) {
   }
   // Someone hit us with a SIGHUP: better exec ourselves to force a config
   // reload and cope with changing screen sizes.
-  execv(argv0, argv);
+  execvp(argv0, argv);
 }
 
 void sendConfigureNotify(Client *c) {
