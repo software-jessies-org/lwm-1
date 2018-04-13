@@ -253,6 +253,7 @@ extern Bool shape;
 extern int shape_event;
 extern Bool debug_events;
 extern char *argv0;
+extern Bool forceRestart;
 extern void shell(ScreenInfo *, int, int, int);
 extern void sendConfigureNotify(Client *);
 extern int titleHeight(void);

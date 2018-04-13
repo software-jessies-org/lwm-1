@@ -72,6 +72,7 @@ Atom _mozilla_url;
  */
 Atom motif_wm_hints;
 
+Bool forceRestart;
 char *argv0;
 
 static void initScreens(void);
@@ -193,7 +194,7 @@ extern int main(int argc, char *argv[]) {
   if (ice_fd > dpy_fd) {
     max_fd = ice_fd + 1;
   }
-  for (;;) {
+  while (!forceRestart) {
     fd_set readfds;
 
     FD_ZERO(&readfds);
@@ -214,6 +215,9 @@ extern int main(int argc, char *argv[]) {
       }
     }
   }
+  // Someone hit us with a SIGHUP: better exec ourselves to force a config
+  // reload and cope with changing screen sizes.
+  execv(argv0, argv);
 }
 
 void sendConfigureNotify(Client *c) {

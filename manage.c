@@ -17,6 +17,7 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
 
+#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -440,7 +441,9 @@ void Terminate(int signal) {
 
   session_end();
 
-  if (signal) {
+  if (signal == SIGHUP) {
+    forceRestart = True;
+  } else if (signal) {
     exit(EXIT_FAILURE);
   } else {
     exit(EXIT_SUCCESS);
