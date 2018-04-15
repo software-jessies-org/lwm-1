@@ -399,32 +399,43 @@ void Client_MakeSane(Client *c, Edge edge, int *x, int *y, int *dx, int *dy) {
     }
   }
 
-  /*
-   * Introduce a resistance to the workarea edge, so that windows may
-   * be "thrown" to the edge of the workarea without precise mousing,
-   * as requested by MAD.
-   */
-  if (*x<(int)c->screen->strut.left && * x>((int)c->screen->strut.left -
-                                            EDGE_RESIST)) {
-    *x = (int)c->screen->strut.left;
-  }
-  if ((*x + c->size.width) >
-          (int)(c->screen->display_width - c->screen->strut.right) &&
-      (*x + c->size.width) < (int)(c->screen->display_width -
-                                   c->screen->strut.right + EDGE_RESIST)) {
-    *x = (int)(c->screen->display_width - c->screen->strut.right -
-               c->size.width);
-  }
-  if ((*y - titleHeight()) < (int)c->screen->strut.top &&
-      (*y - titleHeight()) > ((int)c->screen->strut.top - EDGE_RESIST)) {
-    *y = (int)c->screen->strut.top + titleHeight();
-  }
-  if ((*y + c->size.height) >
-          (int)(c->screen->display_height - c->screen->strut.bottom) &&
-      (*y + c->size.height) < (int)(c->screen->display_height -
-                                    c->screen->strut.bottom + EDGE_RESIST)) {
-    *y = (int)(c->screen->display_height - c->screen->strut.bottom -
-               c->size.height);
+  // If the edge resistance code is used for window sizes, we get funny effects
+  // during some resize events.
+  // For example if a window is very close to the bottom-right corner of the
+  // screen and is made smaller suddenly using the top-left corner, the bottom-
+  // right corner of the window moves slightly up and to the left, such that it
+  // is effectively being resized from two directions. This is wrong and
+  // annoying.
+  // Edge resistance is only useful for moves anyway, so simply disable the code
+  // for resizes to avoid the bug.
+  if (edge == ENone) {
+    /*
+     * Introduce a resistance to the workarea edge, so that windows may
+     * be "thrown" to the edge of the workarea without precise mousing,
+     * as requested by MAD.
+     */
+    if (*x<(int)c->screen->strut.left && * x>((int)c->screen->strut.left -
+                                              EDGE_RESIST)) {
+      *x = (int)c->screen->strut.left;
+    }
+    if ((*x + c->size.width) >
+            (int)(c->screen->display_width - c->screen->strut.right) &&
+        (*x + c->size.width) < (int)(c->screen->display_width -
+                                     c->screen->strut.right + EDGE_RESIST)) {
+      *x = (int)(c->screen->display_width - c->screen->strut.right -
+                 c->size.width);
+    }
+    if ((*y - titleHeight()) < (int)c->screen->strut.top &&
+        (*y - titleHeight()) > ((int)c->screen->strut.top - EDGE_RESIST)) {
+      *y = (int)c->screen->strut.top + titleHeight();
+    }
+    if ((*y + c->size.height) >
+            (int)(c->screen->display_height - c->screen->strut.bottom) &&
+        (*y + c->size.height) < (int)(c->screen->display_height -
+                                      c->screen->strut.bottom + EDGE_RESIST)) {
+      *y = (int)(c->screen->display_height - c->screen->strut.bottom -
+                 c->size.height);
+    }
   }
 
   /*
