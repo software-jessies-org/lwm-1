@@ -367,3 +367,9 @@ extern void ewmh_set_client_list(ScreenInfo *screen);
 extern void ewmh_get_strut(Client *c);
 extern void ewmh_set_strut(ScreenInfo *screen);
 extern char const *ewmh_atom_name(Atom at);
+
+// geometry.c
+extern Bool isLeftEdge(Edge e);
+extern Bool isRightEdge(Edge e);
+extern Bool isTopEdge(Edge e);
+extern Bool isBottomEdge(Edge e);

@@ -633,7 +633,7 @@ static void clientmessage(XEvent *ev) {
     }
     XMapWindow(dpy, c->parent);
     Client_Raise(c);
-    /* FIXME: we're ignorning x_root, y_root and button! */
+    /* FIXME: we're ignoring x_root, y_root and button! */
     switch (direction) {
     case DSizeTopLeft:
       edge = ETopLeft;
@@ -877,38 +877,22 @@ void reshaping_motionnotify(XEvent *ev) {
     Client_SizeFeedback();
 
     /* Vertical. */
-    switch (interacting_edge) {
-    case ETop:
-    case ETopLeft:
-    case ETopRight:
+    if (isTopEdge(interacting_edge)) {
       pointer_y += titleHeight();
       ndy += (current->size.y - pointer_y);
       ny = pointer_y;
-      break;
-    case EBottom:
-    case EBottomLeft:
-    case EBottomRight:
+    }
+    if (isBottomEdge(interacting_edge)) {
       ndy = pointer_y - current->size.y;
-      break;
-    default:
-      break;
     }
 
     /* Horizontal. */
-    switch (interacting_edge) {
-    case ERight:
-    case ETopRight:
-    case EBottomRight:
+    if (isRightEdge(interacting_edge)) {
       ndx = pointer_x - current->size.x;
-      break;
-    case ELeft:
-    case ETopLeft:
-    case EBottomLeft:
+    }
+    if (isLeftEdge(interacting_edge)) {
       ndx += (current->size.x - pointer_x);
       nx = pointer_x;
-      break;
-    default:
-      break;
     }
 
     Client_MakeSane(current, interacting_edge, &nx, &ny, &ndx, &ndy);

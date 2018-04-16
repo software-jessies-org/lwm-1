@@ -327,19 +327,11 @@ void Client_MakeSane(Client *c, Edge edge, int *x, int *y, int *dx, int *dy) {
       int apparent_dx = *dx - 2 * border - c->size.base_width;
       int x_fix = apparent_dx % c->size.width_inc;
 
-      switch (edge) {
-      case ELeft:
-      case ETopLeft:
-      case EBottomLeft:
+      if (isLeftEdge(edge)) {
         *x += x_fix;
-      /*FALLTHROUGH*/
-      case ERight:
-      case ETopRight:
-      case EBottomRight:
+      }
+      if (isLeftEdge(edge) || isRightEdge(edge)) {
         *dx -= x_fix;
-        break;
-      default:
-        break;
       }
     }
 
@@ -347,19 +339,11 @@ void Client_MakeSane(Client *c, Edge edge, int *x, int *y, int *dx, int *dy) {
       int apparent_dy = *dy - 2 * border - c->size.base_height;
       int y_fix = apparent_dy % c->size.height_inc;
 
-      switch (edge) {
-      case ETop:
-      case ETopLeft:
-      case ETopRight:
+      if (isTopEdge(edge)) {
         *y += y_fix;
-      /*FALLTHROUGH*/
-      case EBottom:
-      case EBottomLeft:
-      case EBottomRight:
+      }
+      if (isTopEdge(edge) || isBottomEdge(edge)) {
         *dy -= y_fix;
-        break;
-      default:
-        break;
       }
     }
 
