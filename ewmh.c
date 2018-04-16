@@ -434,6 +434,9 @@ void ewmh_set_strut(ScreenInfo *screen) {
     }
     Edge backup = interacting_edge;
     interacting_edge = ENone;
+    // Note: the only reason this doesn't crash (due to the last two args being
+    // 0) is that dx and dy are only used when edge != ENone.
+    // You have been warned.
     Client_MakeSane(c, ENone, &x, &y, 0, 0);
     interacting_edge = backup;
     if (c->framed == True) {
@@ -446,7 +449,7 @@ void ewmh_set_strut(ScreenInfo *screen) {
 }
 
 /*
- * get _NET_WM_STRUT and if it is available recalulate the screens
+ * get _NET_WM_STRUT and if it is available recalculate the screens
  * reserved areas. the EWMH spec isn't clear about what we should do
  * about hidden windows. It seems silly to reserve space for an invisible
  * window, but the spec allows it. Ho Hum...		jfc
