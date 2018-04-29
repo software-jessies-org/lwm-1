@@ -53,7 +53,6 @@ XFontSetExtents *popup_font_set_ext = NULL;
 
 Bool shape;      /* Does server have Shape Window extension? */
 int shape_event; /* ShapeEvent event type. */
-Bool debug_events;  // Set when run with the --debug-events flag.
 
 /* Atoms we're interested in. See the ICCCM for more information. */
 Atom wm_state;
@@ -66,6 +65,33 @@ Atom compound_text;
 
 /** Netscape uses this to give information about the URL it's displaying. */
 Atom _mozilla_url;
+
+
+// Debugging support.
+static void setDebugArg(char ch) {
+  switch (ch) {
+  case 'c':
+    debug_configure_notify = True;
+    break;
+  case 'e':
+    debug_all_events = True;
+    break;
+  case 'f':
+    debug_focus = True;
+    break;
+  case 'p':
+    debug_property_notify = True;
+    break;
+  default:
+    fprintf(stderr, "Unrecognised debug option: '%c'\n", ch);
+  }
+}
+
+Bool debug_configure_notify;  // -d=c
+Bool debug_all_events;        // -d=e
+Bool debug_focus;             // -d=f
+Bool debug_property_notify;   // -d=p
+
 
 /*
  * if we're really short of a clue we might look at motif hints, and
@@ -86,8 +112,10 @@ static void rrNotify(XEvent *ev);
 extern int main(int argc, char *argv[]) {
   argv0 = argv[0];
   for (int i = 1; i < argc; i++) {
-    if (!strcmp(argv[i], "--debug-events")) {
-      debug_events = True;
+    if (!strncmp(argv[i], "-d=", 3)) {
+      for (int j = 3; argv[i][j]; j++) {
+        setDebugArg(argv[i][j]);
+      }
     }
   }
 

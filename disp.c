@@ -38,7 +38,7 @@ struct Disp {
   int type;
   char const *const name;
   void (*handler)(XEvent *);
-  void (*debug)(XEvent *);
+  void (*debug)(XEvent *, char const *);
 };
 
 static void expose(XEvent *);
@@ -114,35 +114,37 @@ static char const *debugFocusDetail(int v) {
 #undef CASE_STR
 #undef WEIRD
 
-static void debug(void (*fn)(XEvent *), XEvent *ev, char const *evName) {
-  if (!debug_events) {
-    return;
+static void debugGeneric(XEvent *ev, char const *evName) {
+  if (debug_all_events) {
+    fprintf(stderr, "%s: window 0x%lx\n", evName, ev->xany.window);
   }
-  fprintf(stderr, "%s: ", evName);
-  fn(ev);
 }
 
-static void debugGeneric(XEvent *ev) {
-  fprintf(stderr, "window 0x%lx\n", ev->xany.window);
+static void debugConfigureNotify(XEvent *ev, char const *evName) {
+  if (debug_all_events || debug_configure_notify) {
+    XConfigureEvent *xc = &(ev->xconfigure);
+    fprintf(stderr,
+            "%s: ev window 0x%lx, window 0x%lx; pos %d, %d; size %d, %d\n",
+            evName, xc->event, xc->window, xc->x, xc->y, xc->width, xc->height);
+  }
 }
 
-static void debugConfigureNotify(XEvent *ev) {
-  XConfigureEvent *xc = &(ev->xconfigure);
-  fprintf(stderr, "ev window 0x%lx, window 0x%lx; pos %d, %d; size %d, %d\n",
-          xc->event, xc->window, xc->x, xc->y, xc->width, xc->height);
+static void debugPropertyNotify(XEvent *ev, char const *evName) {
+  if (debug_all_events || debug_property_notify) {
+    XPropertyEvent *xp = &(ev->xproperty);
+    fprintf(stderr, "%s: window 0x%lx, atom %ld (%s); state %s\n", evName,
+            xp->window, xp->atom, ewmh_atom_name(xp->atom),
+            debugPropertyState(xp->state));
+  }
 }
 
-static void debugPropertyNotify(XEvent *ev) {
-  XPropertyEvent *xp = &(ev->xproperty);
-  fprintf(stderr, "window 0x%lx, atom %ld (%s); state %s\n", xp->window,
-          xp->atom, ewmh_atom_name(xp->atom), debugPropertyState(xp->state));
-}
-
-static void debugFocusChange(XEvent *ev) {
-  XFocusChangeEvent *xf = &(ev->xfocus);
-  fprintf(stderr, "%s, window 0x%lx, mode=%s, detail=%s\n",
-          debugFocusType(xf->type), xf->window, debugFocusMode(xf->mode),
-          debugFocusDetail(xf->detail));
+static void debugFocusChange(XEvent *ev, char const *evName) {
+  if (debug_all_events || debug_focus) {
+    XFocusChangeEvent *xf = &(ev->xfocus);
+    fprintf(stderr, "%s: %s, window 0x%lx, mode=%s, detail=%s\n", evName,
+            debugFocusType(xf->type), xf->window, debugFocusMode(xf->mode),
+            debugFocusDetail(xf->detail));
+  }
 }
 
 //
@@ -190,7 +192,7 @@ static Client *pending = NULL;
 extern void dispatch(XEvent *ev) {
   for (Disp *p = disps; p < disps + sizeof(disps) / sizeof(disps[0]); p++) {
     if (p->type == ev->type) {
-      debug(p->debug, ev, p->name);
+      p->debug(ev, p->name);
       if (p->handler) {
         p->handler(ev);
       }
@@ -758,6 +760,7 @@ static void focuschange(XEvent *ev) {
   Window focus_window;
   int revert_to;
   XGetInputFocus(dpy, &focus_window, &revert_to);
+  fprintf(stderr, "Got focus window 0x%lx; revert to 0x%x\n", focus_window, revert_to);
   if (focus_window == PointerRoot || focus_window == None) {
     if (current) {
       Client_Focus(NULL, CurrentTime);

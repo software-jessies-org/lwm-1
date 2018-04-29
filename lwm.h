@@ -251,7 +251,6 @@ extern Atom wm_colormaps;
 extern Atom compound_text;
 extern Bool shape;
 extern int shape_event;
-extern Bool debug_events;
 extern char *argv0;
 extern Bool forceRestart;
 extern void shell(ScreenInfo *, int, int, int);
@@ -263,6 +262,12 @@ extern int popupWidth(char *string, int string_length);
 extern int ascent(XFontSetExtents *font_set_ext);
 extern ScreenInfo *getScreenFromRoot(Window);
 extern void scanWindowTree(int);
+
+// Debugging support (in lwm.c).
+extern Bool debug_configure_notify;  // -d=c
+extern Bool debug_all_events;        // -d=e
+extern Bool debug_focus;             // -d=f
+extern Bool debug_property_notify;   // -d=p
 
 /* client.c */
 extern Client *client_head(void);
