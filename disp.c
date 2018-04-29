@@ -867,9 +867,16 @@ void reshaping_motionnotify(XEvent *ev) {
     return;
   }
 
-  int pointer_x;
-  int pointer_y;
-  getMousePosition(&pointer_x, &pointer_y);
+  MousePos mp = getMousePosition();
+  // We can sometimes get into a funny situation whereby we randomly start
+  // dragging a window about. To avoid this, ensure that if we see the
+  // mouse buttons aren't being held, we drop out of reshaping mode
+  // immediately.
+  if ((mp.modMask & MOVING_BUTTON_MASK) == 0) {
+    mode = wm_idle;
+    fprintf(stderr, "Flipped out of weird dragging mode.\n");
+    return;
+  }
 
   if (interacting_edge != ENone) {
     nx = ox = current->size.x;
@@ -881,21 +888,21 @@ void reshaping_motionnotify(XEvent *ev) {
 
     /* Vertical. */
     if (isTopEdge(interacting_edge)) {
-      pointer_y += titleHeight();
-      ndy += (current->size.y - pointer_y);
-      ny = pointer_y;
+      mp.y += titleHeight();
+      ndy += (current->size.y - mp.y);
+      ny = mp.y;
     }
     if (isBottomEdge(interacting_edge)) {
-      ndy = pointer_y - current->size.y;
+      ndy = mp.y - current->size.y;
     }
 
     /* Horizontal. */
     if (isRightEdge(interacting_edge)) {
-      ndx = pointer_x - current->size.x;
+      ndx = mp.x - current->size.x;
     }
     if (isLeftEdge(interacting_edge)) {
-      ndx += (current->size.x - pointer_x);
-      nx = pointer_x;
+      ndx += (current->size.x - mp.x);
+      nx = mp.x;
     }
 
     Client_MakeSane(current, interacting_edge, &nx, &ny, &ndx, &ndy);
@@ -912,8 +919,8 @@ void reshaping_motionnotify(XEvent *ev) {
                         current->size.height - 2 * border);
     }
   } else {
-    nx = pointer_x + start_x;
-    ny = pointer_y + start_y;
+    nx = mp.x + start_x;
+    ny = mp.y + start_y;
 
     Client_MakeSane(current, interacting_edge, &nx, &ny, 0, 0);
     if (current->framed == True) {

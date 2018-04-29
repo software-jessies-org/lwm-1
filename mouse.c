@@ -40,14 +40,17 @@ static menuitem *hidden_menu = 0;
 
 static void getMenuDimensions(int *, int *, int *);
 
-void getMousePosition(int *x, int *y) {
+MousePos getMousePosition() {
   Window root, child;
+  MousePos res;
+  memset(&res, 0, sizeof(res));
   int t1, t2;
-  unsigned int b;
 
   /* It doesn't matter which root window we give this call. */
-  XQueryPointer(dpy, screens[0].root, &root, &child, x, y, &t1, &t2, &b);
+  XQueryPointer(dpy, screens[0].root, &root, &child, &res.x, &res.y, &t1, &t2,
+                &res.modMask);
   current_screen = getScreenFromRoot(root);
+  return res;
 }
 
 int menu_whichitem(int x, int y) {

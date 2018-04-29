@@ -454,9 +454,8 @@ void Client_SizeFeedback(void) {
   popup_width += popup_width / 10;
 
   /* Put the popup in the right place to report on the window's size. */
-  int x, y;
-  getMousePosition(&x, &y);
-  XMoveResizeWindow(dpy, current_screen->popup, x + 8, y + 8, popup_width,
+  const MousePos mp = getMousePosition();
+  XMoveResizeWindow(dpy, current_screen->popup, mp.x + 8, mp.y + 8, popup_width,
                     popupHeight() + 1);
   XMapRaised(dpy, current_screen->popup);
 
@@ -504,10 +503,9 @@ static void Client_OpaquePrimitive(Client *c, Edge edge) {
     return;
   }
   /* Find out where we've got hold of the window. */
-  int ox, oy;
-  getMousePosition(&ox, &oy);
-  ox = c->size.x - ox;
-  oy = c->size.y - oy;
+  MousePos mp = getMousePosition();
+  const int sx = c->size.x - mp.x;
+  const int sy = c->size.y - mp.y;
 
   Cursor cursor = getEdgeCursor(edge);
   XChangeActivePointerGrab(dpy, ButtonMask | PointerMotionHintMask |
@@ -519,8 +517,8 @@ static void Client_OpaquePrimitive(Client *c, Edge edge) {
    * dispatching thing.
    */
   interacting_edge = edge;
-  start_x = ox;
-  start_y = oy;
+  start_x = sx;
+  start_y = sy;
   mode = wm_reshaping;
   ewmh_set_client_list(c->screen);
 }
