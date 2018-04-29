@@ -30,6 +30,11 @@
 #define MOVE_BUTTON Button2
 #define RESHAPE_BUTTON Button1
 
+// MOVING_BUTTON_MASK describes the bits which are set in the mouse statis mask
+// value while either of the mouse buttons we can use for dragging/reshaping
+// is down.
+#define MOVING_BUTTON_MASK (Button1Mask | Button2Mask)
+
 #define EDGE_RESIST 32
 
 /* --- End of administrator-configurable defaults. --- */
@@ -319,7 +324,15 @@ extern void getTransientFor(Client *);
 extern void Terminate(int);
 
 /* mouse.c */
-extern void getMousePosition(int *, int *);
+typedef struct {
+  int x;
+  int y;
+  // For mask values, see:
+  // https://tronche.com/gui/x/xlib/events/keyboard-pointer/keyboard-pointer.html
+  int modMask;
+} MousePos;
+
+extern MousePos getMousePosition();
 extern void hide(Client *);
 extern void unhidec(Client *, int);
 extern int menu_whichitem(int, int);
