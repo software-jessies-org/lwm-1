@@ -760,7 +760,6 @@ static void focuschange(XEvent *ev) {
   Window focus_window;
   int revert_to;
   XGetInputFocus(dpy, &focus_window, &revert_to);
-  fprintf(stderr, "Got focus window 0x%lx; revert to 0x%x\n", focus_window, revert_to);
   if (focus_window == PointerRoot || focus_window == None) {
     if (current) {
       Client_Focus(NULL, CurrentTime);
