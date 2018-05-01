@@ -149,8 +149,7 @@ typedef struct {
 /**
 * Screen information.
 */
-typedef struct ScreenInfo ScreenInfo;
-struct ScreenInfo {
+typedef struct ScreenInfo {
   Window root;
   Window popup;
   Window ewmh_compat;
@@ -176,7 +175,7 @@ struct ScreenInfo {
   Bool ewmh_set_client_list; /* hack to prevent recursion */
 
   char *display_spec;
-};
+} ScreenInfo;
 
 typedef struct Client Client;
 struct Client {
