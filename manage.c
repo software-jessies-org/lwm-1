@@ -309,7 +309,7 @@ void manage(Client *c, int mapped) {
     c->hidden = False;
     XMapWindow(dpy, c->parent);
     XMapWindow(dpy, c->window);
-    setactive(c, (focus_mode == focus_click) ? 1 : 0, 0L);
+    setactive(c, 1, 0L);
     Client_SetState(c, NormalState);
   }
 
