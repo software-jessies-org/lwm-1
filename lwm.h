@@ -212,6 +212,10 @@ struct Client {
   EWMHWindowType wtype;
   EWMHWindowState wstate;
   EWMHStrut strut; /* reserved areas */
+  
+  // Holds a generated description, for debugging purposes, up to the given max
+  // length. Call 'Client_Describe' to populate this and return.
+  char *debug_desc;
 
   /* Colourmap scum. */
   Colormap cmap;
@@ -309,6 +313,7 @@ extern void Client_ExitFullScreen(Client *c);
 extern void Client_Focus(Client *c, Time time);
 extern void Client_ResetAllCursors(void);
 extern void Client_Name(Client *c, const char *name, Bool is_utf8);
+extern const char* Client_Describe(Client *c);
 extern int hidden(Client *);
 extern int withdrawn(Client *);
 extern int normal(Client *);

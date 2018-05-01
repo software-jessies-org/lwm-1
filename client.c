@@ -286,6 +286,7 @@ void Client_Remove(Client *c) {
   ScreenInfo *screen = c->screen;
   free(c->name);
   free(c->menu_name);
+  free(c->debug_desc);
   free(c);
 
   ewmh_set_client_list(screen);
@@ -718,10 +719,16 @@ extern void Client_Focus(Client *c, Time time) {
     setactive(current, 0, 0L);
     XDeleteProperty(dpy, current->screen->root, ewmh_atom[_NET_ACTIVE_WINDOW]);
   }
-
-  if (!c && current) {
+  
+  // If c != NULL, and we have a current window, store current as being the
+  // last_focused window, so that later we can restore focus to it if c closes.
+  if (c && current) {
     last_focus = current;
-  } else {
+  }
+  // If c == NULL, then we should instead try to restore focus to last_focus,
+  // if it is not itself NULL.
+  if (!c && last_focus) {
+    c = last_focus;
     last_focus = NULL;
   }
   current = c;
@@ -773,4 +780,21 @@ extern void Client_Name(Client *c, const char *name, Bool is_utf8) {
       break;
     }
   } while (tx > (c->screen->display_width - (c->screen->display_width / 10)));
+}
+
+static const char* nullName = "(null)";
+#define MAX_CLIENT_NAME 256
+extern const char* Client_Describe(Client *c) {
+  if (!c) {
+    return nullName;
+  }
+  if (!c->debug_desc) {
+    c->debug_desc = malloc(MAX_CLIENT_NAME);
+  }
+  const char* hidden = c->hidden ? "hidden" : "shown";
+  const char* name = c->name ? c->name : "no name";
+  snprintf(c->debug_desc, MAX_CLIENT_NAME, "0x%lx ('%s'), %s; %dx%d+%d,%d",
+           c->window, name, hidden, c->size.width, c->size.height, c->size.x,
+           c->size.y);
+  return c->debug_desc;
 }
