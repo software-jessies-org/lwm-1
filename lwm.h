@@ -272,7 +272,19 @@ extern void scanWindowTree(int);
 extern Bool debug_configure_notify;  // -d=c
 extern Bool debug_all_events;        // -d=e
 extern Bool debug_focus;             // -d=f
+extern Bool debug_map;               // -d=m
 extern Bool debug_property_notify;   // -d=p
+extern Bool printDebugPrefix(char const* filename, int line);
+
+#define DBG_IF(cond, fmt, ...)                                                 \
+    do {                                                                       \
+      if (cond && printDebugPrefix(__FILE__, __LINE__)) {                      \
+        fprintf(stderr, fmt, ##__VA_ARGS__);                                   \
+        fputc('\n', stderr);                                                   \
+      }                                                                        \
+    } while (0)
+
+#define DBG(fmt, ...) DBG_IF(1, fmt, ##__VA_ARGS__)
 
 /* client.c */
 extern Client *client_head(void);

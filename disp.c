@@ -116,34 +116,41 @@ static char const *debugFocusDetail(int v) {
 
 static void debugGeneric(XEvent *ev, char const *evName) {
   if (debug_all_events) {
-    fprintf(stderr, "%s: window 0x%lx\n", evName, ev->xany.window);
+    DBG("%s: window 0x%lx", evName, ev->xany.window);
   }
 }
 
 static void debugConfigureNotify(XEvent *ev, char const *evName) {
   if (debug_all_events || debug_configure_notify) {
     XConfigureEvent *xc = &(ev->xconfigure);
-    fprintf(stderr,
-            "%s: ev window 0x%lx, window 0x%lx; pos %d, %d; size %d, %d\n",
-            evName, xc->event, xc->window, xc->x, xc->y, xc->width, xc->height);
+    DBG("%s: ev window 0x%lx, window 0x%lx; pos %d, %d; size %d, %d",
+        evName, xc->event, xc->window, xc->x, xc->y, xc->width, xc->height);
   }
 }
 
 static void debugPropertyNotify(XEvent *ev, char const *evName) {
   if (debug_all_events || debug_property_notify) {
     XPropertyEvent *xp = &(ev->xproperty);
-    fprintf(stderr, "%s: window 0x%lx, atom %ld (%s); state %s\n", evName,
-            xp->window, xp->atom, ewmh_atom_name(xp->atom),
-            debugPropertyState(xp->state));
+    DBG("%s: window 0x%lx, atom %ld (%s); state %s", evName,
+        xp->window, xp->atom, ewmh_atom_name(xp->atom),
+        debugPropertyState(xp->state));
   }
 }
 
 static void debugFocusChange(XEvent *ev, char const *evName) {
   if (debug_all_events || debug_focus) {
     XFocusChangeEvent *xf = &(ev->xfocus);
-    fprintf(stderr, "%s: %s, window 0x%lx, mode=%s, detail=%s\n", evName,
-            debugFocusType(xf->type), xf->window, debugFocusMode(xf->mode),
-            debugFocusDetail(xf->detail));
+    DBG("%s: %s, window 0x%lx, mode=%s, detail=%s", evName,
+        debugFocusType(xf->type), xf->window, debugFocusMode(xf->mode),
+        debugFocusDetail(xf->detail));
+  }
+}
+
+static void debugMapRequest(XEvent *ev, char const *evName) {
+  if (debug_all_events || debug_map) {
+    XMapRequestEvent *e = &ev->xmaprequest;
+    DBG("%s: window 0x%lx, parent 0x%lx, send=%d, serial=%lu", evName,
+        e->window, e->parent, e->send_event, e->serial);
   }
 }
 
@@ -160,7 +167,7 @@ static Disp disps[] = {
     REG_DISP(ButtonRelease, buttonrelease, debugGeneric),
     REG_DISP(FocusIn, focuschange, debugFocusChange),
     REG_DISP(FocusOut, focuschange, debugFocusChange),
-    REG_DISP(MapRequest, maprequest, debugGeneric),
+    REG_DISP(MapRequest, maprequest, debugMapRequest),
     REG_DISP(ConfigureRequest, configurereq, debugGeneric),
     REG_DISP(UnmapNotify, unmap, debugGeneric),
     REG_DISP(DestroyNotify, destroy, debugGeneric),
@@ -200,7 +207,7 @@ extern void dispatch(XEvent *ev) {
     }
   }
   if (!shapeEvent(ev)) {
-    fprintf(stderr, "%s: unknown event %d\n", argv0, ev->type);
+    DBG("%s: unknown event %d", argv0, ev->type);
   }
 }
 
@@ -387,14 +394,16 @@ static void circulaterequest(XEvent *ev) {
 static void maprequest(XEvent *ev) {
   XMapRequestEvent *e = &ev->xmaprequest;
   Client *c = Client_Get(e->window);
-
+  DBG_IF(debug_map, "in maprequest, client %p", c);
+  
   if (c == 0 || c->window != e->window) {
     for (int screen = 0; screen < screen_count; screen++) {
       scanWindowTree(screen);
     }
     c = Client_Get(e->window);
+    DBG_IF(debug_map, "in maprequest, after scan client is %p", c);
     if (c == 0 || c->window != e->window) {
-      fprintf(stderr, "MapRequest for non-existent window!\n");
+      DBG("MapRequest for non-existent window!");
       return;
     }
   }
@@ -403,7 +412,9 @@ static void maprequest(XEvent *ev) {
 
   switch (c->state) {
   case WithdrawnState:
+    DBG_IF(debug_map, "in maprequest, WithdrawnState");
     if (getScreenFromRoot(c->parent) != 0) {
+      DBG_IF(debug_map, "in maprequest, taking over management of window.");
       manage(c, 0);
       break;
     }
@@ -416,6 +427,7 @@ static void maprequest(XEvent *ev) {
     XAddToSaveSet(dpy, c->window);
   /*FALLTHROUGH*/
   case NormalState:
+    DBG_IF(debug_map, "in maprequest, NormalState");
     XMapWindow(dpy, c->parent);
     XMapWindow(dpy, c->window);
     Client_Raise(c);
@@ -873,7 +885,7 @@ void reshaping_motionnotify(XEvent *ev) {
   // immediately.
   if ((mp.modMask & MOVING_BUTTON_MASK) == 0) {
     mode = wm_idle;
-    fprintf(stderr, "Flipped out of weird dragging mode.\n");
+    DBG("Flipped out of weird dragging mode.");
     return;
   }
 

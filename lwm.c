@@ -79,6 +79,9 @@ static void setDebugArg(char ch) {
   case 'f':
     debug_focus = True;
     break;
+  case 'm':
+    debug_map = True;
+    break;
   case 'p':
     debug_property_notify = True;
     break;
@@ -90,8 +93,18 @@ static void setDebugArg(char ch) {
 Bool debug_configure_notify;  // -d=c
 Bool debug_all_events;        // -d=e
 Bool debug_focus;             // -d=f
+Bool debug_map;               // -d=m
 Bool debug_property_notify;   // -d=p
 
+Bool printDebugPrefix(char const* file, int line) {
+  char buf[16];
+  time_t t;
+  time(&t);
+  struct tm tm = *localtime(&t);
+  strftime(buf, sizeof(buf), "%H:%M:%S", &tm);
+  fprintf(stderr, "%s %s:%d : ", buf, file, line);
+  return True;
+}
 
 /*
  * if we're really short of a clue we might look at motif hints, and
