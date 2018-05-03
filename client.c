@@ -45,7 +45,7 @@ static void sendClientMessage(Window, Atom, long, long);
 Client *client_head(void) { return clients; }
 
 static void focusChildrenOf(Window parent) {
-  unsigned int nwins;
+  unsigned int nwins = 0;
   Window dw1;
   Window dw2;
   Window *wins = 0;
@@ -258,7 +258,7 @@ void Client_Remove(Client *c) {
         Window dw1;
         Window dw2;
         Window *wins = 0;
-        unsigned int nwins;
+        unsigned int nwins = 0;
 
         XQueryTree(dpy, c->screen->root, &dw1, &dw2, &wins, &nwins);
         while (nwins) {

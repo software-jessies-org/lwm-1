@@ -564,7 +564,7 @@ void ewmh_set_client_list(ScreenInfo *screen) {
     Window dw2;
     Window *wins = 0;
     unsigned int win;
-    unsigned int nwins;
+    unsigned int nwins = 0;
 
     client_list = malloc(sizeof(Window) * no_clients);
     int i = no_clients - 1; /* array starts with oldest */

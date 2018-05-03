@@ -430,7 +430,7 @@ void sendConfigureNotify(Client *c) {
 }
 
 extern void scanWindowTree(int screen) {
-  unsigned int nwins;
+  unsigned int nwins = 0;
   Window dw1;
   Window dw2;
   Window *wins = 0;
