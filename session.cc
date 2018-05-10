@@ -38,7 +38,7 @@ typedef struct {
 
 int ice_fd = -1;
 static IceConn ice_conn;
-static void *smc_conn = NULL;
+static SmcConn smc_conn = NULL;
 static int session_argc;
 static char **session_argv;
 static char *client_id = NULL;
@@ -77,25 +77,25 @@ static void session_save_yourself(SmcConn smc_conn, SmPointer client_data,
   char pid_s[32];
   char priority = 20;
 
-  program.p.name = SmProgram;
-  program.p.type = SmARRAY8;
+  program.p.name = (char*) SmProgram;
+  program.p.type = (char*) SmARRAY8;
   program.p.num_vals = 1;
   program.p.vals = &program.v;
-  program.v.value = "lwm";
+  program.v.value = (char*) "lwm";
   program.v.length = 3;
   props[prop_program] = &program.p;
 
   pw = getpwuid(getuid());
-  user_id.p.name = SmUserID;
-  user_id.p.type = SmARRAY8;
+  user_id.p.name = (char*) SmUserID;
+  user_id.p.type = (char*) SmARRAY8;
   user_id.p.num_vals = 1;
   user_id.p.vals = &user_id.v;
   user_id.v.value = pw ? pw->pw_name : NULL;
   user_id.v.length = pw ? strlen(pw->pw_name) : 0;
   props[prop_user_id] = &user_id.p;
 
-  restart_style_hint.p.name = SmRestartStyleHint;
-  restart_style_hint.p.type = SmCARD8;
+  restart_style_hint.p.name = (char*) SmRestartStyleHint;
+  restart_style_hint.p.type = (char*) SmCARD8;
   restart_style_hint.p.num_vals = 1;
   restart_style_hint.p.vals = &restart_style_hint.v;
   restart_style_hint.v.value = &hint;
@@ -103,24 +103,24 @@ static void session_save_yourself(SmcConn smc_conn, SmPointer client_data,
   props[prop_restart_style_hint] = &restart_style_hint.p;
 
   snprintf(pid_s, sizeof(pid_s), "%d", getpid());
-  pid.p.name = SmProcessID;
-  pid.p.type = SmARRAY8;
+  pid.p.name = (char*) SmProcessID;
+  pid.p.type = (char*) SmARRAY8;
   pid.p.num_vals = 1;
   pid.p.vals = &pid.v;
   pid.v.value = pid_s;
   pid.v.length = strlen(pid_s);
   props[prop_pid] = &pid.p;
 
-  gsm_priority.p.name = "_GSM_Priority";
-  gsm_priority.p.type = SmCARD8;
+  gsm_priority.p.name = (char*) "_GSM_Priority";
+  gsm_priority.p.type = (char*) SmCARD8;
   gsm_priority.p.num_vals = 1;
   gsm_priority.p.vals = &gsm_priority.v;
   gsm_priority.v.value = &priority;
   gsm_priority.v.length = 1;
   props[prop_gsm_priority] = &gsm_priority.p;
 
-  clone_command.name = SmCloneCommand;
-  clone_command.type = SmLISTofARRAY8;
+  clone_command.name = (char*) SmCloneCommand;
+  clone_command.type = (char*) SmLISTofARRAY8;
   clone_command.num_vals = session_argc;
   clone_command.vals =
       (SmPropValue *)malloc(sizeof(SmPropValue) * session_argc);
@@ -130,8 +130,8 @@ static void session_save_yourself(SmcConn smc_conn, SmPointer client_data,
   }
   props[prop_clone_command] = &clone_command;
 
-  restart_command.name = SmRestartCommand;
-  restart_command.type = SmLISTofARRAY8;
+  restart_command.name = (char*) SmRestartCommand;
+  restart_command.type = (char*) SmLISTofARRAY8;
   restart_command.num_vals = session_argc + 2;
   restart_command.vals =
       (SmPropValue *)malloc(sizeof(SmPropValue) * (session_argc + 2));
@@ -140,7 +140,7 @@ static void session_save_yourself(SmcConn smc_conn, SmPointer client_data,
     restart_command.vals[i].value = session_argv[i];
     restart_command.vals[i].length = strlen(session_argv[i]);
   }
-  restart_command.vals[i].value = "-s";
+  restart_command.vals[i].value = (char*) "-s";
   restart_command.vals[i].length = 2;
   i++;
   restart_command.vals[i].value = client_id;

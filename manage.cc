@@ -281,7 +281,7 @@ void manage(Client *c, int mapped) {
    * As pointed out by Adrian Colley, we can't change the window
    * border width at all for InputOnly windows.
    */
-  if (current_attr.class != InputOnly) {
+  if (current_attr.c_class != InputOnly) {
     XSetWindowBorderWidth(dpy, c->window, 0);
   }
 

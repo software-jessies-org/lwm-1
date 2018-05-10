@@ -1,6 +1,4 @@
-extern "C" {
 #include "xlib.h"
-}
 
 WindowTree QueryWindow(Display *dpy, Window w) {
   WindowTree res;

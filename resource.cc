@@ -41,7 +41,7 @@ int border;            /* User's choice of border size. */
 FocusMode focus_mode;  /* User's choice of focus mode (default enter) */
 
 char *sdup(char *p) {
-  char *s = malloc(strlen(p) + 1);
+  char *s = (char*) malloc(strlen(p) + 1);
   if (s == 0) {
     panic("malloc failed.");
   }

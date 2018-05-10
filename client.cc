@@ -181,7 +181,7 @@ Client *Client_Add(Window w, Window root) {
     }
   }
 
-  c = calloc(1, sizeof *c);
+  c = (Client*) calloc(1, sizeof *c);
   c->window = w;
   c->parent = root;
   c->state = WithdrawnState;
@@ -769,7 +769,7 @@ extern const char* Client_Describe(Client *c) {
     return nullName;
   }
   if (!c->debug_desc) {
-    c->debug_desc = malloc(MAX_CLIENT_NAME);
+    c->debug_desc = (char*) malloc(MAX_CLIENT_NAME);
   }
   const char* hidden = c->hidden ? "hidden" : "shown";
   const char* name = c->name ? c->name : "no name";

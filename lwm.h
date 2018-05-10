@@ -236,7 +236,7 @@ enum { Pdelete = 1, Ptakefocus = 2 };
  */
 #define ButtonMask (ButtonPressMask | ButtonReleaseMask)
 
-/* lwm.c */
+/* lwm.cc */
 extern Mode mode;
 extern int start_x;
 extern int start_y;
@@ -271,7 +271,7 @@ extern int ascent(XFontSetExtents *font_set_ext);
 extern ScreenInfo *getScreenFromRoot(Window);
 extern void scanWindowTree(int);
 
-// Debugging support (in lwm.c).
+// Debugging support (in lwm.cc).
 extern Bool debug_configure_notify;  // -d=c
 extern Bool debug_all_events;        // -d=e
 extern Bool debug_focus;             // -d=f
@@ -289,7 +289,7 @@ extern Bool printDebugPrefix(char const* filename, int line);
 
 #define DBG(fmt, ...) DBG_IF(1, fmt, ##__VA_ARGS__)
 
-/* client.c */
+/* client.cc */
 extern Client *client_head(void);
 extern Edge interacting_edge;
 extern Client *Client_Get(Window);
@@ -320,20 +320,20 @@ extern int normal(Client *);
 extern void update_client_list(ScreenInfo *screen);
 extern Client *current;
 
-/* cursor.c */
+/* cursor.cc */
 extern Cursor getEdgeCursor(Edge edge);
 extern void initialiseCursors(int);
 
-/* disp.c */
+/* disp.cc */
 extern void dispatch(XEvent *);
 extern void reshaping_motionnotify(XEvent *);
 
-/* error.c */
+/* error.cc */
 extern int ignore_badwindow;
 extern int errorHandler(Display *, XErrorEvent *);
-extern void panic(char *);
+extern void panic(const char *);
 
-/* manage.c */
+/* manage.cc */
 extern void getWindowName(Client *);
 extern void getNormalHints(Client *);
 extern Bool motifWouldDecorate(Client *);
@@ -344,13 +344,13 @@ extern void getColourmaps(Client *);
 extern void getTransientFor(Client *);
 extern void Terminate(int);
 
-/* mouse.c */
+/* mouse.cc */
 typedef struct {
   int x;
   int y;
   // For mask values, see:
   // https://tronche.com/gui/x/xlib/events/keyboard-pointer/keyboard-pointer.html
-  int modMask;
+  unsigned int modMask;
 } MousePos;
 
 extern MousePos getMousePosition();
@@ -363,13 +363,13 @@ extern void menu_expose(void);
 extern void menu_motionnotify(XEvent *);
 extern void menu_buttonrelease(XEvent *);
 
-/* shape.c */
+/* shape.cc */
 extern int shapeEvent(XEvent *);
 extern int serverSupportsShapes(void);
 extern int isShaped(Window);
 extern void setShape(Client *);
 
-/* resource.c */
+/* resource.cc */
 extern const char *font_name;
 extern const char *popup_font_name;
 extern const char *btn1_command;
@@ -379,13 +379,13 @@ extern FocusMode focus_mode;
 extern char *sdup(char *);
 extern void parseResources(void);
 
-/* session.c */
+/* session.cc */
 extern int ice_fd;
 extern void session_init(int argc, char *argv[]);
 extern void session_process(void);
 extern void session_end(void);
 
-/* ewmh.c */
+/* ewmh.cc */
 extern Atom ewmh_atom[];
 extern void ewmh_init(void);
 extern void ewmh_init_screens(void);
@@ -402,7 +402,7 @@ extern void ewmh_get_strut(Client *c);
 extern void ewmh_set_strut(ScreenInfo *screen);
 extern char const *ewmh_atom_name(Atom at);
 
-// geometry.c
+// geometry.cc
 extern Bool isLeftEdge(Edge e);
 extern Bool isRightEdge(Edge e);
 extern Bool isTopEdge(Edge e);

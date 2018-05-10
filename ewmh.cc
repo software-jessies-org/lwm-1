@@ -122,7 +122,8 @@ void ewmh_init_screens(void) {
     screens[i].ewmh_compat =
         XCreateSimpleWindow(dpy, screens[i].root, -200, -200, 1, 1, 0, 0, 0);
     XChangeProperty(dpy, screens[i].ewmh_compat, ewmh_atom[_NET_WM_NAME],
-                    utf8_string, 8, PropModeReplace, "lwm", 3);
+                    utf8_string, 8, PropModeReplace,
+                    (const unsigned char*) "lwm", 3);
 
     /* set root window properties */
     XChangeProperty(dpy, screens[i].root, ewmh_atom[_NET_SUPPORTED], XA_ATOM,
@@ -561,7 +562,7 @@ void ewmh_set_client_list(ScreenInfo *screen) {
   Window *client_list = NULL;
   Window *stacked_client_list = NULL;
   if (no_clients > 0) {
-    client_list = malloc(sizeof(Window) * no_clients);
+    client_list = (Window*) malloc(sizeof(Window) * no_clients);
     int i = no_clients - 1; /* array starts with oldest */
     for (Client *c = client_head(); c; c = c->next) {
       if (valid_for_client_list(screen, c) == True) {
@@ -573,7 +574,7 @@ void ewmh_set_client_list(ScreenInfo *screen) {
       }
     }
 
-    stacked_client_list = malloc(sizeof(Window) * no_clients);
+    stacked_client_list = (Window*) malloc(sizeof(Window) * no_clients);
     
     WindowTree wt = QueryWindow(dpy, screen->root);
     int ci = 0;

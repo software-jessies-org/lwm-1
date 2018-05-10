@@ -29,7 +29,7 @@
 
 int ignore_badwindow;
 
-void panic(char *s) {
+void panic(const char *s) {
   fprintf(stderr, "%s: %s\n", argv0, s);
   exit(EXIT_FAILURE);
 }

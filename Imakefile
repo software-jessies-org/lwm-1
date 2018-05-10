@@ -21,8 +21,7 @@ LOCAL_LIBRARIES = $(XLIB) $(SMLIB) $(XRANDRLIB) -lICE
 DEFINES = -DSHAPE
 
 HEADERS = lwm.h ewmh.h
-SRCS = lwm.c manage.c mouse.c client.c cursor.c error.c disp.c shape.c resource.c session.c ewmh.c geometry.c xlib.cc
-OBJS = ${SRCS:.c=.o}
+SRCS = lwm.cc manage.cc mouse.cc client.cc cursor.cc error.cc disp.cc shape.cc resource.cc session.cc ewmh.cc geometry.cc xlib.cc
 OBJS = ${SRCS:.cc=.o}
 
 ComplexProgramTarget(lwm)

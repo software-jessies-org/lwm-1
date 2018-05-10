@@ -638,7 +638,7 @@ static void clientmessage(XEvent *ev) {
   }
   if (e->message_type == ewmh_atom[_NET_WM_MOVERESIZE] && e->format == 32) {
     Edge edge = E_LAST;
-    EWMHDirection direction = e->data.l[2];
+    EWMHDirection direction = (EWMHDirection) e->data.l[2];
 
     /* before we can do any resizing, make the window visible */
     if (hidden(c)) {
@@ -704,7 +704,7 @@ static void clientmessage(XEvent *ev) {
 
 static void colormap(XEvent *ev) {
   XColormapEvent *e = &ev->xcolormap;
-  if (e->new) {
+  if (e->c_new) {
     Client *c = Client_Get(e->window);
     if (c) {
       c->cmap = e->colormap;
