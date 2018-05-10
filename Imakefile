@@ -19,6 +19,10 @@ INCLUDES = -I$(TOP)
 DEPLIBS = $(DEPXLIB) $(DEPSMLIB)
 LOCAL_LIBRARIES = $(XLIB) $(SMLIB) $(XRANDRLIB) -lICE
 DEFINES = -DSHAPE
+CXX=g++
+CC=g++
+CXXFLAGS='-std=c++14'
+LDFLAGS='-lstdc++14'
 
 HEADERS = lwm.h ewmh.h
 SRCS = lwm.cc manage.cc mouse.cc client.cc cursor.cc error.cc disp.cc shape.cc resource.cc session.cc ewmh.cc geometry.cc xlib.cc

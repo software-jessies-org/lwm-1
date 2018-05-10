@@ -46,15 +46,14 @@ static void sendClientMessage(Window, Atom, long, long);
 Client *client_head(void) { return clients; }
 
 static void focusChildrenOf(Window parent) {
-  WindowTree wtree = QueryWindow(dpy, parent);
-  for (int i = 0; i < wtree.num_children; i++) {
+  WindowTree wtree = WindowTree::Query(dpy, parent);
+  for (Window win : wtree.children) {
     XWindowAttributes attr;
-    XGetWindowAttributes(dpy, wtree.children[i], &attr);
+    XGetWindowAttributes(dpy, win, &attr);
     if (attr.all_event_masks & FocusChangeMask) {
-      XSetInputFocus(dpy, wtree.children[i], RevertToPointerRoot, CurrentTime);
+      XSetInputFocus(dpy, win, RevertToPointerRoot, CurrentTime);
     }
   }
-  FreeQueryWindow(&wtree);
 }
 
 void setactive(Client *c, int on, long timestamp) {
@@ -140,10 +139,8 @@ void Client_DrawBorder(Client *c, int active) {
 
 // Returns the parent window of w, or NULL if we hit the root or on error.
 static Window getParentWindow(Window w) {
-  WindowTree wt = QueryWindow(dpy, w);
-  const Window res = (wt.parent == wt.root) ? 0 : wt.parent;
-  FreeQueryWindow(&wt);
-  return res;
+  WindowTree wt = WindowTree::Query(dpy, w);
+  return (wt.parent == wt.root) ? 0 : wt.parent;
 }
 
 Client *Client_Get(Window w) {
@@ -242,13 +239,12 @@ void Client_Remove(Client *c) {
         focus = Client_Get(c->trans);
       }
       if (!focus) {
-        WindowTree wt = QueryWindow(dpy, c->screen->root);
-        for (int i = wt.num_children - 1; i >= 0; i--) {
+        WindowTree wt = WindowTree::Query(dpy, c->screen->root);
+        for (int i = wt.children.size() - 1; i >= 0; i--) {
           if (focus = Client_Get(wt.children[i])) {
             break;
           }
         }
-        FreeQueryWindow(&wt);
       }
     }
     Client_Focus(focus, CurrentTime);

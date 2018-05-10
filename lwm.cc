@@ -431,9 +431,8 @@ void sendConfigureNotify(Client *c) {
 }
 
 extern void scanWindowTree(int screen) {
-  WindowTree wt = QueryWindow(dpy, screens[screen].root);
-  for (int i = 0; i < wt.num_children; i++) {
-    const Window win = wt.children[i];
+  WindowTree wt = WindowTree::Query(dpy, screens[screen].root);
+  for (const Window win : wt.children) {
     XWindowAttributes attr;
     XGetWindowAttributes(dpy, win, &attr);
     if (attr.override_redirect || win == screens[screen].popup) {
@@ -453,7 +452,6 @@ extern void scanWindowTree(int screen) {
       }
     }
   }
-  FreeQueryWindow(&wt);
 }
 
 /*ARGSUSED*/

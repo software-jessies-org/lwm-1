@@ -576,10 +576,10 @@ void ewmh_set_client_list(ScreenInfo *screen) {
 
     stacked_client_list = (Window*) malloc(sizeof(Window) * no_clients);
     
-    WindowTree wt = QueryWindow(dpy, screen->root);
+    WindowTree wt = WindowTree::Query(dpy, screen->root);
     int ci = 0;
-    for (int i = 0; i < wt.num_children; i++) {
-      Client *c = Client_Get(wt.children[i]);
+    for (Window win : wt.children) {
+      Client *c = Client_Get(win);
       if (!c) {
         continue;
       }
@@ -591,7 +591,6 @@ void ewmh_set_client_list(ScreenInfo *screen) {
         }
       }
     }
-    FreeQueryWindow(&wt);
   }
   XChangeProperty(dpy, screen->root, ewmh_atom[_NET_CLIENT_LIST], XA_WINDOW, 32,
                   PropModeReplace, (unsigned char *)client_list, no_clients);
