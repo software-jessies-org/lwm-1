@@ -31,6 +31,7 @@
 
 #include "ewmh.h"
 #include "lwm.h"
+#include "xlib.h"
 
 Client *current;
 Client *last_focus = NULL;
@@ -45,21 +46,15 @@ static void sendClientMessage(Window, Atom, long, long);
 Client *client_head(void) { return clients; }
 
 static void focusChildrenOf(Window parent) {
-  unsigned int nwins = 0;
-  Window dw1;
-  Window dw2;
-  Window *wins = 0;
-  XQueryTree(dpy, parent, &dw1, &dw2, &wins, &nwins);
-  for (int i = 0; i < nwins; i++) {
+  WindowTree wtree = QueryWindow(dpy, parent);
+  for (int i = 0; i < wtree.num_children; i++) {
     XWindowAttributes attr;
-    XGetWindowAttributes(dpy, wins[i], &attr);
+    XGetWindowAttributes(dpy, wtree.children[i], &attr);
     if (attr.all_event_masks & FocusChangeMask) {
-      XSetInputFocus(dpy, wins[i], RevertToPointerRoot, CurrentTime);
+      XSetInputFocus(dpy, wtree.children[i], RevertToPointerRoot, CurrentTime);
     }
   }
-  if (wins) {
-    XFree(wins);
-  }
+  FreeQueryWindow(&wtree);
 }
 
 void setactive(Client *c, int on, long timestamp) {
@@ -145,18 +140,10 @@ void Client_DrawBorder(Client *c, int active) {
 
 // Returns the parent window of w, or NULL if we hit the root or on error.
 static Window getParentWindow(Window w) {
-  Window *children = NULL;
-  int nChildren = 0;
-  Window root = 0;
-  Window parent = 0;
-  XQueryTree(dpy, w, &root, &parent, &children, &nChildren);
-  if (children) {
-    XFree(children);
-  }
-  if (parent == root) {
-    return 0;
-  }
-  return parent;
+  WindowTree wt = QueryWindow(dpy, w);
+  const Window res = (wt.parent == wt.root) ? 0 : wt.parent;
+  FreeQueryWindow(&wt);
+  return res;
 }
 
 Client *Client_Get(Window w) {
@@ -255,20 +242,13 @@ void Client_Remove(Client *c) {
         focus = Client_Get(c->trans);
       }
       if (!focus) {
-        Window dw1;
-        Window dw2;
-        Window *wins = 0;
-        unsigned int nwins = 0;
-
-        XQueryTree(dpy, c->screen->root, &dw1, &dw2, &wins, &nwins);
-        while (nwins) {
-          focus = Client_Get(wins[nwins - 1]);
-          if (focus)
+        WindowTree wt = QueryWindow(dpy, c->screen->root);
+        for (int i = wt.num_children - 1; i >= 0; i--) {
+          if (focus = Client_Get(wt.children[i])) {
             break;
-          nwins--;
+          }
         }
-        if (wins)
-          XFree(wins);
+        FreeQueryWindow(&wt);
       }
     }
     Client_Focus(focus, CurrentTime);

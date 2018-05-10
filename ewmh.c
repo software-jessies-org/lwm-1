@@ -28,6 +28,7 @@
 
 #include "ewmh.h"
 #include "lwm.h"
+#include "xlib.h"
 
 // The following two arrays are co-indexed. The ewmh_atom_names is used to look
 // up the name of a given Atom value, for debugging.
@@ -560,12 +561,6 @@ void ewmh_set_client_list(ScreenInfo *screen) {
   Window *client_list = NULL;
   Window *stacked_client_list = NULL;
   if (no_clients > 0) {
-    Window dw1;
-    Window dw2;
-    Window *wins = 0;
-    unsigned int win;
-    unsigned int nwins = 0;
-
     client_list = malloc(sizeof(Window) * no_clients);
     int i = no_clients - 1; /* array starts with oldest */
     for (Client *c = client_head(); c; c = c->next) {
@@ -579,24 +574,23 @@ void ewmh_set_client_list(ScreenInfo *screen) {
     }
 
     stacked_client_list = malloc(sizeof(Window) * no_clients);
-    i = 0;
-    XQueryTree(dpy, screen->root, &dw1, &dw2, &wins, &nwins);
-    for (win = 0; win < nwins; win++) {
-      Client *c = Client_Get(wins[win]);
+    
+    WindowTree wt = QueryWindow(dpy, screen->root);
+    int ci = 0;
+    for (int i = 0; i < wt.num_children; i++) {
+      Client *c = Client_Get(wt.children[i]);
       if (!c) {
         continue;
       }
       if (valid_for_client_list(screen, c) == True) {
-        stacked_client_list[i] = c->window;
-        i++;
-        if (i >= no_clients) {
+        stacked_client_list[ci] = c->window;
+        ci++;
+        if (ci >= no_clients) {
           break;
         }
       }
     }
-    if (nwins > 0) {
-      XFree(wins);
-    }
+    FreeQueryWindow(&wt);
   }
   XChangeProperty(dpy, screen->root, ewmh_atom[_NET_CLIENT_LIST], XA_WINDOW, 32,
                   PropModeReplace, (unsigned char *)client_list, no_clients);

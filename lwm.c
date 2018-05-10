@@ -36,6 +36,7 @@
 #include <X11/extensions/Xrandr.h>
 
 #include "lwm.h"
+#include "xlib.h"
 
 Mode mode;   /* The window manager's mode. (See "lwm.h".) */
 int start_x; /* The X position where the mode changed. */
@@ -430,20 +431,16 @@ void sendConfigureNotify(Client *c) {
 }
 
 extern void scanWindowTree(int screen) {
-  unsigned int nwins = 0;
-  Window dw1;
-  Window dw2;
-  Window *wins = 0;
-  XWindowAttributes attr;
-
-  XQueryTree(dpy, screens[screen].root, &dw1, &dw2, &wins, &nwins);
-  for (int i = 0; i < nwins; i++) {
-    XGetWindowAttributes(dpy, wins[i], &attr);
-    if (attr.override_redirect || wins[i] == screens[screen].popup) {
+  WindowTree wt = QueryWindow(dpy, screens[screen].root);
+  for (int i = 0; i < wt.num_children; i++) {
+    const Window win = wt.children[i];
+    XWindowAttributes attr;
+    XGetWindowAttributes(dpy, win, &attr);
+    if (attr.override_redirect || win == screens[screen].popup) {
       continue;
     }
-    Client *c = Client_Add(wins[i], screens[screen].root);
-    if (c != 0 && c->window == wins[i]) {
+    Client *c = Client_Add(win, screens[screen].root);
+    if (c != 0 && c->window == win) {
       c->screen = &screens[screen];
       c->size.x = attr.x;
       c->size.y = attr.y;
@@ -456,9 +453,7 @@ extern void scanWindowTree(int screen) {
       }
     }
   }
-  if (wins) {
-    XFree(wins); /* wins==0 should be impossible; paranoia. */
-  }
+  FreeQueryWindow(&wt);
 }
 
 /*ARGSUSED*/
