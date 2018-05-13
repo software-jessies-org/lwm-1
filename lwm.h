@@ -374,8 +374,6 @@ Resources *resources();
 bool clickToFocus();
 int borderWidth();
 
-extern char *sdup(char *);
-
 /* session.cc */
 extern int ice_fd;
 extern void session_init(int argc, char *argv[]);

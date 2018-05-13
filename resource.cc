@@ -35,14 +35,6 @@
 
 static Resources* resource_cache;
 
-char *sdup(char *p) {
-  char *s = (char*) malloc(strlen(p) + 1);
-  if (s == 0) {
-    panic("malloc failed.");
-  }
-  return strcpy(s, p);
-}
-
 static void setResource(XrmDatabase *db, const char *name, const char *cls,
                         std::string* target) {
   char *type;
