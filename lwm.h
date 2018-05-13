@@ -128,11 +128,11 @@ enum EWMHWindowType {
 * Client.hidden.
 */
 struct EWMHWindowState {
-  Bool skip_taskbar;
-  Bool skip_pager;
-  Bool fullscreen;
-  Bool above;
-  Bool below;
+  bool skip_taskbar;
+  bool skip_pager;
+  bool fullscreen;
+  bool above;
+  bool below;
 };
 
 /**
@@ -172,7 +172,7 @@ struct ScreenInfo {
 
   Cursor cursor_map[E_LAST];
 
-  Bool ewmh_set_client_list; /* hack to prevent recursion */
+  bool ewmh_set_client_list; /* hack to prevent recursion */
 
   char *display_spec;
 };
@@ -182,7 +182,7 @@ struct Client {
   Window parent; /* Window manager frame. */
   Window trans;  /* Window that client is a transient for. */
 
-  Bool framed; /* True is lwm is maintaining a frame */
+  bool framed; /* true is lwm is maintaining a frame */
 
   Client *next; /* Next window in client list. */
 
@@ -192,17 +192,17 @@ struct Client {
   XSizeHints return_size; /* Client's old geometry information. */
   int state;              /* Window state. See ICCCM and <X11/Xutil.h> */
 
-  Bool hidden; /* True if this client is hidden. */
+  bool hidden; /* true if this client is hidden. */
   IState internal_state;
   int proto;
 
-  int accepts_focus; /* Does this window want keyboard events? */
+  bool accepts_focus; /* Does this window want keyboard events? */
 
   char *name; /* Name used for title in frame. */
   int namelen;
   char *menu_name; /* Name used in root popup */
   int menu_namelen;
-  Bool name_utf8;
+  bool name_utf8;
 
   ScreenInfo *screen;
 
@@ -256,10 +256,10 @@ extern Atom wm_delete;
 extern Atom wm_take_focus;
 extern Atom wm_colormaps;
 extern Atom compound_text;
-extern Bool shape;
+extern bool shape;
 extern int shape_event;
 extern char *argv0;
-extern Bool forceRestart;
+extern bool forceRestart;
 extern void shell(ScreenInfo *, int, int, int);
 extern void sendConfigureNotify(Client *);
 extern int titleHeight(void);
@@ -271,12 +271,12 @@ extern ScreenInfo *getScreenFromRoot(Window);
 extern void scanWindowTree(int);
 
 // Debugging support (in lwm.cc).
-extern Bool debug_configure_notify;  // -d=c
-extern Bool debug_all_events;        // -d=e
-extern Bool debug_focus;             // -d=f
-extern Bool debug_map;               // -d=m
-extern Bool debug_property_notify;   // -d=p
-extern Bool printDebugPrefix(char const* filename, int line);
+extern bool debug_configure_notify;  // -d=c
+extern bool debug_all_events;        // -d=e
+extern bool debug_focus;             // -d=f
+extern bool debug_map;               // -d=m
+extern bool debug_property_notify;   // -d=p
+extern bool printDebugPrefix(char const* filename, int line);
 
 #define DBG_IF(cond, fmt, ...)                                                 \
     do {                                                                       \
@@ -311,7 +311,7 @@ extern void Client_EnterFullScreen(Client *c);
 extern void Client_ExitFullScreen(Client *c);
 extern void Client_Focus(Client *c, Time time);
 extern void Client_ResetAllCursors(void);
-extern void Client_Name(Client *c, const char *name, Bool is_utf8);
+extern void Client_Name(Client *c, const char *name, bool is_utf8);
 extern const char* Client_Describe(Client *c);
 extern int hidden(Client *);
 extern int withdrawn(Client *);
@@ -335,7 +335,7 @@ extern void panic(const char *);
 /* manage.cc */
 extern void getWindowName(Client *);
 extern void getNormalHints(Client *);
-extern Bool motifWouldDecorate(Client *);
+extern bool motifWouldDecorate(Client *);
 extern void manage(Client *, int);
 extern void withdraw(Client *);
 extern void cmapfocus(Client *);
@@ -389,8 +389,8 @@ extern Atom ewmh_atom[];
 extern void ewmh_init(void);
 extern void ewmh_init_screens(void);
 extern EWMHWindowType ewmh_get_window_type(Window w);
-extern Bool ewmh_get_window_name(Client *c);
-extern Bool ewmh_hasframe(Client *c);
+extern bool ewmh_get_window_name(Client *c);
+extern bool ewmh_hasframe(Client *c);
 extern void ewmh_set_state(Client *c);
 extern void ewmh_get_state(Client *c);
 extern void ewmh_change_state(Client *c, unsigned long action,
@@ -402,7 +402,7 @@ extern void ewmh_set_strut(ScreenInfo *screen);
 extern char const *ewmh_atom_name(Atom at);
 
 // geometry.cc
-extern Bool isLeftEdge(Edge e);
-extern Bool isRightEdge(Edge e);
-extern Bool isTopEdge(Edge e);
-extern Bool isBottomEdge(Edge e);
+extern bool isLeftEdge(Edge e);
+extern bool isRightEdge(Edge e);
+extern bool isTopEdge(Edge e);
+extern bool isBottomEdge(Edge e);

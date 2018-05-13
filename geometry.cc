@@ -8,16 +8,16 @@
 
 #include "lwm.h"
 
-Bool isLeftEdge(Edge e) {
+bool isLeftEdge(Edge e) {
   return e == ETopLeft || e == ELeft || e == EBottomLeft;
 }
 
-Bool isRightEdge(Edge e) {
+bool isRightEdge(Edge e) {
   return e == ETopRight || e == ERight || e == EBottomRight;
 }
 
-Bool isTopEdge(Edge e) { return e == ETopLeft || e == ETop || e == ETopRight; }
+bool isTopEdge(Edge e) { return e == ETopLeft || e == ETop || e == ETopRight; }
 
-Bool isBottomEdge(Edge e) {
+bool isBottomEdge(Edge e) {
   return e == EBottomLeft || e == EBottom || e == EBottomRight;
 }

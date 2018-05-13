@@ -66,7 +66,7 @@ void manage(Client *c, int mapped) {
     c->framed = ewmh_hasframe(c);
   }
   if (isShaped(c->window)) {
-    c->framed = False;
+    c->framed = false;
   }
 
   /* get the EWMH strut - if there is one */
@@ -122,7 +122,7 @@ void manage(Client *c, int mapped) {
   }
   if (c->proto | Ptakefocus) {
     /* WM_TAKE_FOCUS overrides normal hints */
-    c->accepts_focus = True;
+    c->accepts_focus = true;
   }
 
   int state;
@@ -150,7 +150,7 @@ void manage(Client *c, int mapped) {
      */
     c->size.width = w;
     c->size.height = h;
-    if (c->framed == True) {
+    if (c->framed) {
       c->size.width += 2 * border;
       c->size.height += 2 * border;
     }
@@ -181,7 +181,7 @@ void manage(Client *c, int mapped) {
       /* It's a "dialogue box". Trust it. */
       c->size.x = x;
       c->size.y = y;
-    } else if ((c->size.flags & USPosition) || c->framed == False ||
+    } else if ((c->size.flags & USPosition) || !c->framed ||
                mode == wm_initialising) {
       /* Use the specified window position. */
       c->size.x = x;
@@ -258,7 +258,7 @@ void manage(Client *c, int mapped) {
    * Do all the reparenting and stuff.
    */
 
-  if (c->framed == True) {
+  if (c->framed) {
     c->parent = XCreateSimpleWindow(dpy, c->screen->root, c->size.x,
                                     c->size.y - titleHeight(), c->size.width,
                                     c->size.height + titleHeight(), 1,
@@ -293,7 +293,7 @@ void manage(Client *c, int mapped) {
   XChangeWindowAttributes(dpy, c->window,
                           CWEventMask | CWWinGravity | CWDontPropagate, &attr);
 
-  if (c->framed == True) {
+  if (c->framed) {
     XReparentWindow(dpy, c->window, c->parent, border, border + titleHeight());
   } else {
     XReparentWindow(dpy, c->window, c->parent, c->size.x, c->size.y);
@@ -306,14 +306,14 @@ void manage(Client *c, int mapped) {
     hide(c);
   } else {
     /* Map the new window in the relevant state. */
-    c->hidden = False;
+    c->hidden = false;
     XMapWindow(dpy, c->parent);
     XMapWindow(dpy, c->window);
     setactive(c, 1, 0L);
     Client_SetState(c, NormalState);
   }
 
-  if (c->wstate.fullscreen == True) {
+  if (c->wstate.fullscreen) {
     Client_EnterFullScreen(c);
   }
 
@@ -323,8 +323,8 @@ void manage(Client *c, int mapped) {
 }
 
 static void applyGravity(Client *c) {
-  if (c->framed == False) {
-    return; /* only required for framed windows*/
+  if (!c->framed) {
+    return; // Only required for framed windows.
   }
   if (c->size.flags & PWinGravity) {
     switch (c->size.win_gravity) {
@@ -363,7 +363,7 @@ void withdraw(Client *c) {
    * whether the relevant window still exists.
    */
   ignore_badwindow = 1;
-  XSync(dpy, False);
+  XSync(dpy, false);
   ignore_badwindow = 0;
 }
 
@@ -442,7 +442,7 @@ void Terminate(int signal) {
   session_end();
 
   if (signal == SIGHUP) {
-    forceRestart = True;
+    forceRestart = true;
   } else if (signal) {
     exit(EXIT_FAILURE);
   } else {
@@ -460,7 +460,7 @@ static int getProperty(Window w, Atom a, Atom type, long len,
   /*
    * len is in 32-bit multiples.
    */
-  int status = XGetWindowProperty(dpy, w, a, 0L, len, False, type, &real_type,
+  int status = XGetWindowProperty(dpy, w, a, 0L, len, false, type, &real_type,
                                   &format, &n, &extra, p);
   if (status != Success || *p == 0) {
     return -1;
@@ -479,19 +479,19 @@ void getWindowName(Client *c) {
     return;
   }
   int was_nameless = (c->name == 0);
-  if (ewmh_get_window_name(c) == False) {
+  if (!ewmh_get_window_name(c)) {
     char *name;
     Atom actual_type;
     int format;
     unsigned long n;
     unsigned long extra;
-    if (XGetWindowProperty(dpy, c->window, _mozilla_url, 0L, 100L, False,
+    if (XGetWindowProperty(dpy, c->window, _mozilla_url, 0L, 100L, false,
                            AnyPropertyType, &actual_type, &format, &n, &extra,
                            (unsigned char **)&name) == Success &&
         name && *name != '\0' && n != 0) {
-      Client_Name(c, name, False);
+      Client_Name(c, name, false);
       XFree(name);
-    } else if (XGetWindowProperty(dpy, c->window, XA_WM_NAME, 0L, 100L, False,
+    } else if (XGetWindowProperty(dpy, c->window, XA_WM_NAME, 0L, 100L, false,
                                   AnyPropertyType, &actual_type, &format, &n,
                                   &extra, (unsigned char **)&name) == Success &&
                name && *name != '\0' && n != 0) {
@@ -501,9 +501,9 @@ void getWindowName(Client *c) {
       */
       if (actual_type == compound_text &&
           memcmp(name, "\x1b\x28\x42", 3) == 0) {
-        Client_Name(c, name + 3, False);
+        Client_Name(c, name + 3, false);
       } else {
-        Client_Name(c, name, False);
+        Client_Name(c, name, false);
       }
       XFree(name);
     }
@@ -529,7 +529,7 @@ void getNormalHints(Client *c) {
     c->size.flags = 0;
   }
 
-  if (c->framed == True) {
+  if (c->framed) {
     /*
     * Correct the minimum allowable size of this client to take
     * account of the window border.
@@ -597,9 +597,9 @@ static int getWindowState(Window w, int *state) {
   return 1;
 }
 
-extern Bool motifWouldDecorate(Client *c) {
+extern bool motifWouldDecorate(Client *c) {
   unsigned long *p = 0;
-  Bool ret = True; /* if all else fails - decorate */
+  bool ret = true; /* if all else fails - decorate */
 
   if (getProperty(c->window, motif_wm_hints, motif_wm_hints, 5L,
                   (unsigned char **)&p) <= 0) {
@@ -607,7 +607,7 @@ extern Bool motifWouldDecorate(Client *c) {
   }
   if ((p[0] & MWM_HINTS_DECORATIONS) &&
       !(p[2] & (MWM_DECOR_BORDER | MWM_DECOR_ALL))) {
-    ret = False;
+    ret = false;
   }
   XFree(p);
   return ret;

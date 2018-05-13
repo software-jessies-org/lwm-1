@@ -40,7 +40,7 @@ void ewmh_init(void) {
   // Build half a million EWMH atoms.
 #define SET_ATOM(x)                                          \
     do {                                                     \
-      ewmh_atom[x] = XInternAtom(dpy, #x, False);            \
+      ewmh_atom[x] = XInternAtom(dpy, #x, false);            \
       ewmh_atom_names[x] = #x;                               \
     } while (0)
   SET_ATOM(_NET_SUPPORTED);
@@ -103,7 +103,7 @@ void ewmh_init(void) {
   SET_ATOM(_NET_WM_ACTION_CHANGE_DESKTOP);
   SET_ATOM(_NET_WM_ACTION_CLOSE);
 #undef SET_ATOM
-  utf8_string = XInternAtom(dpy, "UTF8_STRING", False);
+  utf8_string = XInternAtom(dpy, "UTF8_STRING", false);
 }
 
 char const *ewmh_atom_name(Atom at) {
@@ -118,7 +118,7 @@ char const *ewmh_atom_name(Atom at) {
 void ewmh_init_screens(void) {
   // Announce EWMH compatibility on all screens.
   for (int i = 0; i < screen_count; i++) {
-    screens[i].ewmh_set_client_list = False;
+    screens[i].ewmh_set_client_list = false;
     screens[i].ewmh_compat =
         XCreateSimpleWindow(dpy, screens[i].root, -200, -200, 1, 1, 0, 0, 0);
     XChangeProperty(dpy, screens[i].ewmh_compat, ewmh_atom[_NET_WM_NAME],
@@ -165,7 +165,7 @@ EWMHWindowType ewmh_get_window_type(Window w) {
   unsigned long n;
   unsigned long extra;
   int i = XGetWindowProperty(dpy, w, ewmh_atom[_NET_WM_WINDOW_TYPE], 0, 100,
-                             False, XA_ATOM, &rt, &fmt, &n, &extra,
+                             false, XA_ATOM, &rt, &fmt, &n, &extra,
                              (unsigned char **)&type);
   if (i != Success || type == NULL) {
     return WTypeNone;
@@ -209,7 +209,7 @@ EWMHWindowType ewmh_get_window_type(Window w) {
   return ret;
 }
 
-Bool ewmh_get_window_name(Client *c) {
+bool ewmh_get_window_name(Client *c) {
 #ifdef X_HAVE_UTF8_STRING
   Atom rt;
   char *name;
@@ -217,28 +217,28 @@ Bool ewmh_get_window_name(Client *c) {
   unsigned long n;
   unsigned long extra;
   int i = XGetWindowProperty(dpy, c->window, ewmh_atom[_NET_WM_NAME], 0, 100,
-                             False, utf8_string, &rt, &fmt, &n, &extra,
+                             false, utf8_string, &rt, &fmt, &n, &extra,
                              (unsigned char **)&name);
   if (i != Success || name == NULL) {
-    return False;
+    return false;
   }
-  Client_Name(c, name, True);
+  Client_Name(c, name, true);
   XFree(name);
-  return True;
+  return true;
 #else
-  return False;
+  return false;
 #endif
 }
 
-Bool ewmh_hasframe(Client *c) {
+bool ewmh_hasframe(Client *c) {
   switch (c->wtype) {
   case WTypeDesktop:
   case WTypeDock:
   case WTypeMenu:
   case WTypeSplash:
-    return False;
+    return false;
   default:
-    return True;
+    return true;
   }
 }
 
@@ -252,45 +252,45 @@ void ewmh_get_state(Client *c) {
   unsigned long n;
   unsigned long extra;
   int i = XGetWindowProperty(dpy, c->window, ewmh_atom[_NET_WM_STATE], 0, 100,
-                             False, XA_ATOM, &rt, &fmt, &n, &extra,
+                             false, XA_ATOM, &rt, &fmt, &n, &extra,
                              (unsigned char **)&state);
   if (i != Success || state == NULL) {
     return;
   }
-  c->wstate.skip_taskbar = False;
-  c->wstate.skip_pager = False;
-  c->wstate.fullscreen = False;
-  c->wstate.above = False;
-  c->wstate.below = False;
+  c->wstate.skip_taskbar = false;
+  c->wstate.skip_pager = false;
+  c->wstate.fullscreen = false;
+  c->wstate.above = false;
+  c->wstate.below = false;
   for (; n; n--) {
     if (state[n - 1] == ewmh_atom[_NET_WM_STATE_SKIP_TASKBAR]) {
-      c->wstate.skip_taskbar = True;
+      c->wstate.skip_taskbar = true;
     }
     if (state[n - 1] == ewmh_atom[_NET_WM_STATE_SKIP_PAGER]) {
-      c->wstate.skip_pager = True;
+      c->wstate.skip_pager = true;
     }
     if (state[n - 1] == ewmh_atom[_NET_WM_STATE_FULLSCREEN]) {
-      c->wstate.fullscreen = True;
+      c->wstate.fullscreen = true;
     }
     if (state[n - 1] == ewmh_atom[_NET_WM_STATE_ABOVE]) {
-      c->wstate.above = True;
+      c->wstate.above = true;
     }
     if (state[n - 1] == ewmh_atom[_NET_WM_STATE_BELOW]) {
-      c->wstate.below = True;
+      c->wstate.below = true;
     }
   }
   XFree(state);
 }
 
-static Bool new_state(unsigned long action, Bool current) {
+static bool new_state(unsigned long action, bool current) {
   enum Action { remove, add, toggle };
   switch (action) {
   case remove:
-    return False;
+    return false;
   case add:
-    return True;
+    return true;
   case toggle:
-    return (current == True) ? False : True;
+    return !current;
   }
   fprintf(stderr, "%s: bad action in _NET_WM_STATE (%d)\n", argv0, (int)action);
   return current;
@@ -309,13 +309,13 @@ void ewmh_change_state(Client *c, unsigned long action, unsigned long atom) {
     c->wstate.skip_pager = new_state(action, c->wstate.skip_pager);
   }
   if (*a == ewmh_atom[_NET_WM_STATE_FULLSCREEN]) {
-    Bool was_fullscreen = c->wstate.fullscreen;
+    bool was_fullscreen = c->wstate.fullscreen;
 
     c->wstate.fullscreen = new_state(action, c->wstate.fullscreen);
-    if (was_fullscreen == False && c->wstate.fullscreen == True) {
+    if (!was_fullscreen && c->wstate.fullscreen) {
       Client_EnterFullScreen(c);
     }
-    if (was_fullscreen == True && c->wstate.fullscreen == False) {
+    if (was_fullscreen && !c->wstate.fullscreen) {
       Client_ExitFullScreen(c);
     }
   }
@@ -339,22 +339,22 @@ void ewmh_set_state(Client *c) {
   Atom a[MAX_ATOMS];
   int atoms = 0;
   if (c->state != WithdrawnState) {
-    if (c->hidden == True) {
+    if (c->hidden) {
       a[atoms++] = ewmh_atom[_NET_WM_STATE_HIDDEN];
     }
-    if (c->wstate.skip_taskbar == True) {
+    if (c->wstate.skip_taskbar) {
       a[atoms++] = ewmh_atom[_NET_WM_STATE_SKIP_TASKBAR];
     }
-    if (c->wstate.skip_pager == True) {
+    if (c->wstate.skip_pager) {
       a[atoms++] = ewmh_atom[_NET_WM_STATE_SKIP_PAGER];
     }
-    if (c->wstate.fullscreen == True) {
+    if (c->wstate.fullscreen) {
       a[atoms++] = ewmh_atom[_NET_WM_STATE_FULLSCREEN];
     }
-    if (c->wstate.above == True) {
+    if (c->wstate.above) {
       a[atoms++] = ewmh_atom[_NET_WM_STATE_ABOVE];
     }
-    if (c->wstate.below == True) {
+    if (c->wstate.below) {
       a[atoms++] = ewmh_atom[_NET_WM_STATE_BELOW];
     }
   }
@@ -431,7 +431,7 @@ void ewmh_set_strut(ScreenInfo *screen) {
     int x = c->size.x;
     int y = c->size.y;
 
-    if (c->wstate.fullscreen == True) {
+    if (c->wstate.fullscreen) {
       continue;
     }
     Edge backup = interacting_edge;
@@ -441,7 +441,7 @@ void ewmh_set_strut(ScreenInfo *screen) {
     // You have been warned.
     Client_MakeSane(c, ENone, &x, &y, 0, 0);
     interacting_edge = backup;
-    if (c->framed == True) {
+    if (c->framed) {
       XMoveWindow(dpy, c->parent, c->size.x, c->size.y - titleHeight());
     } else {
       XMoveWindow(dpy, c->parent, c->size.x, c->size.y);
@@ -466,7 +466,7 @@ void ewmh_get_strut(Client *c) {
   unsigned long n;
   unsigned long extra;
   int i = XGetWindowProperty(dpy, c->window, ewmh_atom[_NET_WM_STRUT], 0, 5,
-                             False, XA_CARDINAL, &rt, &fmt, &n, &extra,
+                             false, XA_CARDINAL, &rt, &fmt, &n, &extra,
                              (unsigned char **)&strut);
   if (i != Success || strut == NULL || n < 4) {
     return;
@@ -489,7 +489,7 @@ static void fix_stack(ScreenInfo *screen) {
 
   /* first lower clients with _NET_WM_STATE_BELOW */
   for (Client *c = client_head(); c; c = c->next) {
-    if (c->wstate.below == False) {
+    if (!c->wstate.below) {
       continue;
     }
     Client_Lower(c);
@@ -508,8 +508,7 @@ static void fix_stack(ScreenInfo *screen) {
    * (unless marked with _NET_WM_STATE_BELOW)
    */
   for (Client *c = client_head(); c; c = c->next) {
-    if (!(c->wstate.above == True ||
-          (c->wtype == WTypeDock && c->wstate.below == False))) {
+    if (!(c->wstate.above || (c->wtype == WTypeDock && !c->wstate.below))) {
       continue;
     }
     Client_Raise(c);
@@ -523,21 +522,18 @@ static void fix_stack(ScreenInfo *screen) {
    * fullscreens, which is not desirable.
    */
   for (Client *c = client_head(); c; c = c->next) {
-    if (c->wstate.fullscreen == False) {
+    if (!c->wstate.fullscreen) {
       continue;
     }
     Client_Raise(c);
   }
 }
 
-static Bool valid_for_client_list(ScreenInfo *screen, Client *c) {
+static bool valid_for_client_list(ScreenInfo *screen, Client *c) {
   if (c->screen != screen) {
-    return False;
+    return false;
   }
-  if (c->state == WithdrawnState) {
-    return False;
-  }
-  return True;
+  return c->state != WithdrawnState;
 }
 
 /*
@@ -548,14 +544,14 @@ static Bool valid_for_client_list(ScreenInfo *screen, Client *c) {
 * are hidden or unhidden.
 */
 void ewmh_set_client_list(ScreenInfo *screen) {
-  if (screen == NULL || screen->ewmh_set_client_list == True) {
+  if (screen == NULL || screen->ewmh_set_client_list) {
     return;
   }
-  screen->ewmh_set_client_list = True;
+  screen->ewmh_set_client_list = true;
   fix_stack(screen);
   int no_clients = 0;
   for (Client *c = client_head(); c; c = c->next) {
-    if (valid_for_client_list(screen, c) == True) {
+    if (valid_for_client_list(screen, c)) {
       no_clients++;
     }
   }
@@ -565,7 +561,7 @@ void ewmh_set_client_list(ScreenInfo *screen) {
     client_list = (Window*) malloc(sizeof(Window) * no_clients);
     int i = no_clients - 1; /* array starts with oldest */
     for (Client *c = client_head(); c; c = c->next) {
-      if (valid_for_client_list(screen, c) == True) {
+      if (valid_for_client_list(screen, c)) {
         client_list[i] = c->window;
         i--;
         if (i < 0) {
@@ -583,7 +579,7 @@ void ewmh_set_client_list(ScreenInfo *screen) {
       if (!c) {
         continue;
       }
-      if (valid_for_client_list(screen, c) == True) {
+      if (valid_for_client_list(screen, c)) {
         stacked_client_list[ci] = c->window;
         ci++;
         if (ci >= no_clients) {
@@ -599,5 +595,5 @@ void ewmh_set_client_list(ScreenInfo *screen) {
                   (unsigned char *)stacked_client_list, no_clients);
   free(client_list);
   free(stacked_client_list);
-  screen->ewmh_set_client_list = False;
+  screen->ewmh_set_client_list = false;
 }

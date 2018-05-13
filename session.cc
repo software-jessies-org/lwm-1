@@ -152,7 +152,7 @@ static void session_save_yourself(SmcConn smc_conn, SmPointer client_data,
   free(clone_command.vals);
   free(restart_command.vals);
 
-  SmcSaveYourselfDone(smc_conn, True);
+  SmcSaveYourselfDone(smc_conn, true);
 }
 
 void session_end(void) {

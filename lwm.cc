@@ -52,7 +52,7 @@ XFontSetExtents *font_set_ext = NULL;
 XFontSet popup_font_set = NULL; /* Font set for popups */
 XFontSetExtents *popup_font_set_ext = NULL;
 
-Bool shape;      /* Does server have Shape Window extension? */
+bool shape;      /* Does server have Shape Window extension? */
 int shape_event; /* ShapeEvent event type. */
 
 /* Atoms we're interested in. See the ICCCM for more information. */
@@ -72,39 +72,39 @@ Atom _mozilla_url;
 static void setDebugArg(char ch) {
   switch (ch) {
   case 'c':
-    debug_configure_notify = True;
+    debug_configure_notify = true;
     break;
   case 'e':
-    debug_all_events = True;
+    debug_all_events = true;
     break;
   case 'f':
-    debug_focus = True;
+    debug_focus = true;
     break;
   case 'm':
-    debug_map = True;
+    debug_map = true;
     break;
   case 'p':
-    debug_property_notify = True;
+    debug_property_notify = true;
     break;
   default:
     fprintf(stderr, "Unrecognised debug option: '%c'\n", ch);
   }
 }
 
-Bool debug_configure_notify;  // -d=c
-Bool debug_all_events;        // -d=e
-Bool debug_focus;             // -d=f
-Bool debug_map;               // -d=m
-Bool debug_property_notify;   // -d=p
+bool debug_configure_notify;  // -d=c
+bool debug_all_events;        // -d=e
+bool debug_focus;             // -d=f
+bool debug_map;               // -d=m
+bool debug_property_notify;   // -d=p
 
-Bool printDebugPrefix(char const* file, int line) {
+bool printDebugPrefix(char const* file, int line) {
   char buf[16];
   time_t t;
   time(&t);
   struct tm tm = *localtime(&t);
   strftime(buf, sizeof(buf), "%H:%M:%S", &tm);
   fprintf(stderr, "%s %s:%d : ", buf, file, line);
-  return True;
+  return true;
 }
 
 /*
@@ -113,7 +113,7 @@ Bool printDebugPrefix(char const* file, int line) {
  */
 Atom motif_wm_hints;
 
-Bool forceRestart;
+bool forceRestart;
 char *argv0;
 
 static void initScreens(void);
@@ -165,17 +165,17 @@ extern int main(int argc, char *argv[]) {
   sigaction(SIGCHLD, &sa, 0);
 
   /* Internalize useful atoms. */
-  wm_state = XInternAtom(dpy, "WM_STATE", False);
-  wm_change_state = XInternAtom(dpy, "WM_CHANGE_STATE", False);
-  wm_protocols = XInternAtom(dpy, "WM_PROTOCOLS", False);
-  wm_delete = XInternAtom(dpy, "WM_DELETE_WINDOW", False);
-  wm_take_focus = XInternAtom(dpy, "WM_TAKE_FOCUS", False);
-  wm_colormaps = XInternAtom(dpy, "WM_COLORMAP_WINDOWS", False);
-  compound_text = XInternAtom(dpy, "COMPOUND_TEXT", False);
+  wm_state = XInternAtom(dpy, "WM_STATE", false);
+  wm_change_state = XInternAtom(dpy, "WM_CHANGE_STATE", false);
+  wm_protocols = XInternAtom(dpy, "WM_PROTOCOLS", false);
+  wm_delete = XInternAtom(dpy, "WM_DELETE_WINDOW", false);
+  wm_take_focus = XInternAtom(dpy, "WM_TAKE_FOCUS", false);
+  wm_colormaps = XInternAtom(dpy, "WM_COLORMAP_WINDOWS", false);
+  compound_text = XInternAtom(dpy, "COMPOUND_TEXT", false);
 
-  _mozilla_url = XInternAtom(dpy, "_MOZILLA_URL", False);
+  _mozilla_url = XInternAtom(dpy, "_MOZILLA_URL", false);
 
-  motif_wm_hints = XInternAtom(dpy, "_MOTIF_WM_HINTS", False);
+  motif_wm_hints = XInternAtom(dpy, "_MOTIF_WM_HINTS", false);
   
   ewmh_init();
 
@@ -225,7 +225,7 @@ extern int main(int argc, char *argv[]) {
   
   // Do we need to support XRandR?
   int rr_event_base, rr_error_base;
-  Bool have_rr = XRRQueryExtension(dpy, &rr_event_base, &rr_error_base);
+  bool have_rr = XRRQueryExtension(dpy, &rr_event_base, &rr_error_base);
   if (have_rr) {
     for (int i = 0; i < screen_count; i++) {
       XRRSelectInput(dpy, screens[i].root, RRScreenChangeNotifyMask);
@@ -308,8 +308,8 @@ static void moveOrChangeSize(int olds, int news, int *pos, int *size, int inc) {
   // dimension.
   int nearDist = *pos;                 // Distance from left edge of screen.
   int farDist = olds - (*pos + *size); // Distance from right edge of screen.
-  Bool nearClose = (nearDist * 20 < olds); // Very close to left edge?
-  Bool farClose = (farDist * 20 < olds);   // Very close to right edge?
+  bool nearClose = (nearDist * 20 < olds); // Very close to left edge?
+  bool farClose = (farDist * 20 < olds);   // Very close to right edge?
 
   if (nearClose && farClose) {
     // Window is full width; scale it up or down keeping the left and right
@@ -399,7 +399,7 @@ void sendConfigureNotify(Client *c) {
   ce.type = ConfigureNotify;
   ce.event = c->window;
   ce.window = c->window;
-  if (c->framed == True) {
+  if (c->framed) {
     ce.x = c->size.x + border;
     ce.y = c->size.y + border;
     ce.width = c->size.width - 2 * border;
@@ -414,7 +414,7 @@ void sendConfigureNotify(Client *c) {
   }
   ce.above = None;
   ce.override_redirect = 0;
-  XSendEvent(dpy, c->window, False, StructureNotifyMask, (XEvent *)&ce);
+  XSendEvent(dpy, c->window, false, StructureNotifyMask, (XEvent *)&ce);
 }
 
 extern void scanWindowTree(int screen) {
@@ -505,7 +505,7 @@ extern int titleWidth(XFontSet font_set, Client *c) {
   XRectangle ink;
   XRectangle logical;
 #ifdef X_HAVE_UTF8_STRING
-  if (c->name_utf8 == True)
+  if (c->name_utf8)
     Xutf8TextExtents(font_set, name, namelen, &ink, &logical);
   else
 #endif
@@ -622,7 +622,7 @@ static void initScreen(int screen) {
                           &attr);
 
   /* Make sure all our communication to the server got through. */
-  XSync(dpy, False);
+  XSync(dpy, false);
 }
 
 /**

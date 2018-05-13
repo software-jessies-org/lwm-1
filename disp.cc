@@ -417,7 +417,7 @@ static void maprequest(XEvent *ev) {
       manage(c, 0);
       break;
     }
-    if (c->framed == True) {
+    if (c->framed) {
       XReparentWindow(dpy, c->window, c->parent, border,
                       border + titleHeight());
     } else {
@@ -493,19 +493,19 @@ static void configurereq(XEvent *ev) {
     }
     if (e->value_mask & CWY) {
       c->size.y = e->y;
-      if (c->framed == True) {
+      if (c->framed) {
         c->size.y += titleHeight();
       }
     }
     if (e->value_mask & CWWidth) {
       c->size.width = e->width;
-      if (c->framed == True) {
+      if (c->framed) {
         c->size.width += 2 * border;
       }
     }
     if (e->value_mask & CWHeight) {
       c->size.height = e->height;
-      if (c->framed == True) {
+      if (c->framed) {
         c->size.height += 2 * border;
       }
     }
@@ -516,12 +516,12 @@ static void configurereq(XEvent *ev) {
     if (getScreenFromRoot(c->parent) == 0) {
       wc.x = c->size.x;
       wc.y = c->size.y;
-      if (c->framed == True) {
+      if (c->framed) {
         wc.y -= titleHeight();
       }
       wc.width = c->size.width;
       wc.height = c->size.height;
-      if (c->framed == True) {
+      if (c->framed) {
         wc.height += titleHeight();
       }
       wc.border_width = 1;
@@ -532,7 +532,7 @@ static void configurereq(XEvent *ev) {
       sendConfigureNotify(c);
     }
   }
-  if (c && (c->internal_state == INormal) && (c->framed == True)) {
+  if (c && (c->internal_state == INormal) && c->framed) {
     wc.x = border;
     wc.y = border;
   } else {
@@ -550,7 +550,7 @@ static void configurereq(XEvent *ev) {
   XConfigureWindow(dpy, e->window, e->value_mask, &wc);
 
   if (c) {
-    if (c->framed == True) {
+    if (c->framed) {
       XMoveResizeWindow(dpy, c->parent, c->size.x, c->size.y - titleHeight(),
                         c->size.width, c->size.height + titleHeight());
       XMoveWindow(dpy, c->window, border, border + titleHeight());
@@ -740,12 +740,12 @@ static void property(XEvent *ev) {
   } else if (e->atom == ewmh_atom[_NET_WM_STATE]) {
     // Received notice that client wants to change its state
     //  update internal wstate tracking
-    Bool wasFullscreen = c->wstate.fullscreen;
+    bool wasFullscreen = c->wstate.fullscreen;
     ewmh_get_state(c);
     // make any changes requested
-    if (c->wstate.fullscreen == True && wasFullscreen == False) {
+    if (c->wstate.fullscreen && !wasFullscreen) {
       Client_EnterFullScreen(c);
-    } else if (c->wstate.fullscreen == False && wasFullscreen == True) {
+    } else if (!c->wstate.fullscreen && wasFullscreen) {
       Client_ExitFullScreen(c);
     }
   }
@@ -789,7 +789,7 @@ static void enter(XEvent *ev) {
     return;
   }
 
-  if (c->framed == True) {
+  if (c->framed) {
     XSetWindowAttributes attr;
 
     attr.cursor = c->screen->root_cursor;
@@ -933,7 +933,7 @@ void reshaping_motionnotify(XEvent *ev) {
     ny = mp.y + start_y;
 
     Client_MakeSane(current, interacting_edge, &nx, &ny, 0, 0);
-    if (current->framed == True) {
+    if (current->framed) {
       XMoveWindow(dpy, current->parent, current->size.x,
                   current->size.y - titleHeight());
     } else {

@@ -52,7 +52,7 @@ static const char *getResource(XrmDatabase *db, const char *name,
                                const char *cls, const char *const dflt) {
   char *type;
   XrmValue value;
-  if (XrmGetResource(*db, name, cls, &type, &value) == True) {
+  if (XrmGetResource(*db, name, cls, &type, &value)) {
     if (strcmp(type, "String") == 0) {
       return sdup((char *)value.addr);
     }

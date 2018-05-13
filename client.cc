@@ -94,7 +94,7 @@ void setactive(Client *c, int on, long timestamp) {
   }
 
   if (!on && focus_mode == focus_click) {
-    XGrabButton(dpy, AnyButton, AnyModifier, c->window, False,
+    XGrabButton(dpy, AnyButton, AnyModifier, c->window, false,
                 ButtonPressMask | ButtonReleaseMask, GrabModeAsync,
                 GrabModeSync, None, None);
   }
@@ -107,8 +107,8 @@ void setactive(Client *c, int on, long timestamp) {
 void Client_DrawBorder(Client *c, int active) {
   const int quarter = (border + titleHeight()) / 4;
     
-  if (c->parent == c->screen->root || c->parent == 0 || c->framed == False ||
-      c->wstate.fullscreen == True) {
+  if (c->parent == c->screen->root || c->parent == 0 || !c->framed ||
+      c->wstate.fullscreen) {
     return;
   }
 
@@ -125,7 +125,7 @@ void Client_DrawBorder(Client *c, int active) {
   /* Draw window title. */
   if (c->name != 0) {
 #ifdef X_HAVE_UTF8_STRING
-    if (c->name_utf8 == True)
+    if (c->name_utf8)
       Xutf8DrawString(dpy, c->parent, font_set, c->screen->gc,
                       border + 2 + (3 * quarter), 2 + ascent(font_set_ext),
                       c->name, c->namelen);
@@ -186,7 +186,7 @@ Client *Client_Add(Window w, Window root) {
   c->cmap = None;
   c->cursor = ENone;
   c->wtype = WTypeNone;
-  c->accepts_focus = 1;
+  c->accepts_focus = true;
   c->next = clients;
 
   /* Add to head of list of clients. */
@@ -270,18 +270,18 @@ void Client_Remove(Client *c) {
 }
 
 void Client_MakeSane(Client *c, Edge edge, int *x, int *y, int *dx, int *dy) {
-  Bool horizontal_ok = True;
-  Bool vertical_ok = True;
+  bool horizontal_ok = true;
+  bool vertical_ok = true;
 
   if (edge != ENone) {
     /*
      * Make sure we're not making the window too small.
      */
     if (*dx < c->size.min_width) {
-      horizontal_ok = False;
+      horizontal_ok = false;
     }
     if (*dy < c->size.min_height) {
-      vertical_ok = False;
+      vertical_ok = false;
     }
 
     /*
@@ -289,10 +289,10 @@ void Client_MakeSane(Client *c, Edge edge, int *x, int *y, int *dx, int *dy) {
      */
     if (c->size.flags & PMaxSize) {
       if (*dx > c->size.max_width) {
-        horizontal_ok = False;
+        horizontal_ok = false;
       }
       if (*dy > c->size.max_height) {
-        vertical_ok = False;
+        vertical_ok = false;
       }
     }
 
@@ -328,10 +328,10 @@ void Client_MakeSane(Client *c, Edge edge, int *x, int *y, int *dx, int *dy) {
      * Check that we may change the client horizontally and vertically.
      */
     if (c->size.width_inc == 0) {
-      horizontal_ok = False;
+      horizontal_ok = false;
     }
     if (c->size.height_inc == 0) {
-      vertical_ok = False;
+      vertical_ok = false;
     }
   }
 
@@ -440,7 +440,7 @@ void Client_SizeFeedback(void) {
   * Ensure that the popup contents get redrawn. Eventually, the function
   * size_expose will get called to do the actual redraw.
   */
-  XClearArea(dpy, current_screen->popup, 0, 0, 0, 0, True);
+  XClearArea(dpy, current_screen->popup, 0, 0, 0, 0, true);
 }
 
 void size_expose(void) {
@@ -522,7 +522,7 @@ void Client_Raise(Client *c) {
 
   for (Client *trans = clients; trans != NULL; trans = trans->next) {
     if (trans->trans != c->window &&
-        !(c->framed == True && trans->trans == c->parent)) {
+        !(c->framed && trans->trans == c->parent)) {
       continue;
     }
     if (trans->framed) {
@@ -569,12 +569,12 @@ static void sendClientMessage(Window w, Atom a, long data0, long data1) {
   ev.xclient.data.l[0] = data0;
   ev.xclient.data.l[1] = data1;
   const long mask = (getScreenFromRoot(w) != 0) ? SubstructureRedirectMask : 0L;
-  XSendEvent(dpy, w, False, mask, &ev);
+  XSendEvent(dpy, w, false, mask, &ev);
 }
 
 extern void Client_ResetAllCursors(void) {
   for (Client *c = clients; c; c = c->next) {
-    if (c->framed != True) {
+    if (!c->framed) {
       continue;
     }
     XSetWindowAttributes attr;
@@ -668,7 +668,7 @@ extern void Client_ExitFullScreen(Client *c) {
   XWindowChanges fs;
 
   memcpy(&c->size, &c->return_size, sizeof(XSizeHints));
-  if (c->framed == True) {
+  if (c->framed) {
     fs.x = c->size.x;
     fs.y = c->size.y - titleHeight();
     fs.width = c->size.width;
@@ -720,7 +720,7 @@ extern void Client_Focus(Client *c, Time time) {
   }
 }
 
-extern void Client_Name(Client *c, const char *name, Bool is_utf8) {
+extern void Client_Name(Client *c, const char *name, bool is_utf8) {
   static const char dots[] = " [...] ";
 
   free(c->name);

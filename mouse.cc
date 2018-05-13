@@ -153,7 +153,7 @@ void hide(Client *c) {
   XUnmapWindow(dpy, c->parent);
   XUnmapWindow(dpy, c->window);
 
-  c->hidden = True;
+  c->hidden = true;
 
   /* If the window was the current window, it isn't any more... */
   if (c == current) {
@@ -189,7 +189,7 @@ void unhide(int n, int map) {
     }
     free(m);
 
-    c->hidden = False;
+    c->hidden = false;
   } else {
     // It's not a hidden item, so try to find it in the list of non-hidden
     // clients.
@@ -245,7 +245,7 @@ static void draw_menu_item(Client *c, int i, int width, int height,
   }
 
 #ifdef X_HAVE_UTF8_STRING
-  if (c->name_utf8 == True)
+  if (c->name_utf8)
     Xutf8DrawString(dpy, c->screen->popup, popup_font_set,
                     current_screen->menu_gc, tx, ty, name, namelen);
   else
