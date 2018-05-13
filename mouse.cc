@@ -30,7 +30,6 @@
 
 static int current_item; /* Last known selected menu item. -1 if none. */
 
-typedef struct menuitem menuitem;
 struct menuitem {
   Client *client;
   menuitem *next;

@@ -33,12 +33,12 @@
 /*
  * Dispatcher for main event loop.
  */
-typedef struct {
+struct Disp {
   int type;
   char const *const name;
   void (*handler)(XEvent *);
   void (*debug)(XEvent *, char const *);
-} Disp;
+};
 
 static void expose(XEvent *);
 static void buttonpress(XEvent *);

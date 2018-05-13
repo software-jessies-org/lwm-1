@@ -23,7 +23,7 @@
  * ewmh_atom array.
  */
 
-typedef enum {
+enum EWMHAtom {
   /* root window properties */
   _NET_SUPPORTED,
   _NET_CLIENT_LIST,
@@ -90,4 +90,4 @@ typedef enum {
   _NET_WM_ACTION_CHANGE_DESKTOP,
   _NET_WM_ACTION_CLOSE,
   EWMH_ATOM_LAST
-} EWMHAtom;
+};

@@ -51,31 +51,31 @@
  * OK, so I lied: there's a sixth mode so that we can tell when wm's still
  * initialising.
  */
-typedef enum {
+enum Mode {
   wm_initialising,
   wm_idle,
   wm_reshaping,
   wm_menu_up,
   wm_closing_window,
   wm_hiding_window
-} Mode;
+};
 
 /** Window internal state. Yuck. */
-typedef enum { IPendingReparenting, INormal } IState;
+enum IState { IPendingReparenting, INormal };
 
 /**
 * Focus mode, may me (and defaults to) enter where entering a window gives
 * that window input focus, or click where a window must be explicitly clicked
 * to give it the focus.
 */
-typedef enum { focus_enter, focus_click } FocusMode;
+enum FocusMode { focus_enter, focus_click };
 
 /**
 * Window edge, used in resizing. The `edge' ENone is used to signify a
 * window move rather than a resize. The code is sufficiently similar that
 * this isn't a special case to be treated separately.
 */
-typedef enum {
+enum Edge {
   ETopLeft,
   ETop,
   ETopRight,
@@ -86,12 +86,12 @@ typedef enum {
   EBottom,
   EBottomRight,
   E_LAST
-} Edge;
+};
 
 /**
 * EWMH direction for _NET_WM_MOVERESIZE
 */
-typedef enum {
+enum EWMHDirection {
   DSizeTopLeft,
   DSizeTop,
   DSizeTopRight,
@@ -103,14 +103,14 @@ typedef enum {
   DMove,
   DSizeKeyboard,
   DMoveKeyboard
-} EWMHDirection;
+};
 
 /**
 * EWMH window type. See section 5.6 of the EWMH specification (1.2).
 * WTypeNone indicates that no EWMH window type as been set and MOTIF
 * hints should be used instead.
 */
-typedef enum {
+enum EWMHWindowType {
   WTypeDesktop,
   WTypeDock,
   WTypeToolbar,
@@ -120,36 +120,36 @@ typedef enum {
   WTypeDialog,
   WTypeNormal,
   WTypeNone
-} EWMHWindowType;
+};
 
 /**
 * EWMH window state, See section 5.7 of the EWMH specification (1.2).
 * lwm does not support all states. _NET_WM_STATE_HIDDEN is taken from
 * Client.hidden.
 */
-typedef struct {
+struct EWMHWindowState {
   Bool skip_taskbar;
   Bool skip_pager;
   Bool fullscreen;
   Bool above;
   Bool below;
-} EWMHWindowState;
+};
 
 /**
 * EWMH "strut", or area on each edge of the screen reserved for docking
 * bars/panels.
 */
-typedef struct {
+struct EWMHStrut {
   unsigned int left;
   unsigned int right;
   unsigned int top;
   unsigned int bottom;
-} EWMHStrut;
+};
 
 /**
 * Screen information.
 */
-typedef struct ScreenInfo {
+struct ScreenInfo {
   Window root;
   Window popup;
   Window ewmh_compat;
@@ -175,9 +175,8 @@ typedef struct ScreenInfo {
   Bool ewmh_set_client_list; /* hack to prevent recursion */
 
   char *display_spec;
-} ScreenInfo;
+};
 
-typedef struct Client Client;
 struct Client {
   Window window; /* Client's window. */
   Window parent; /* Window manager frame. */
@@ -345,13 +344,13 @@ extern void getTransientFor(Client *);
 extern void Terminate(int);
 
 /* mouse.cc */
-typedef struct {
+struct MousePos {
   int x;
   int y;
   // For mask values, see:
   // https://tronche.com/gui/x/xlib/events/keyboard-pointer/keyboard-pointer.html
   unsigned int modMask;
-} MousePos;
+};
 
 extern MousePos getMousePosition();
 extern void hide(Client *);

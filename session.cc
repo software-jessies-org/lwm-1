@@ -31,10 +31,10 @@
 
 #include "lwm.h"
 
-typedef struct {
+struct SmProperty {
   SmProp p;
   SmPropValue v;
-} SmProperty;
+};
 
 int ice_fd = -1;
 static IceConn ice_conn;

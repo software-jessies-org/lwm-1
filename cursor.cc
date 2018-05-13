@@ -26,10 +26,10 @@
 
 #include "lwm.h"
 
-typedef struct CursorMapping {
+struct CursorMapping {
   Edge edge;
   int font_char;
-} CursorMapping;
+};
 
 static CursorMapping cursor_map[] = {
     {ETopLeft, XC_top_left_corner},
