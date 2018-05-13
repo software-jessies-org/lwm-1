@@ -151,8 +151,8 @@ void manage(Client *c, int mapped) {
     c->size.width = w;
     c->size.height = h;
     if (c->framed) {
-      c->size.width += 2 * border;
-      c->size.height += 2 * border;
+      c->size.width += 2 * borderWidth();
+      c->size.height += 2 * borderWidth();
     }
 
     /*
@@ -270,8 +270,8 @@ void manage(Client *c, int mapped) {
                       PointerMotionMask;
     XChangeWindowAttributes(dpy, c->parent, CWEventMask, &attr);
 
-    XResizeWindow(dpy, c->window, c->size.width - 2 * border,
-                  c->size.height - 2 * border);
+    XResizeWindow(dpy, c->window, c->size.width - 2 * borderWidth(),
+                  c->size.height - 2 * borderWidth());
   }
 
   /*
@@ -294,7 +294,7 @@ void manage(Client *c, int mapped) {
                           CWEventMask | CWWinGravity | CWDontPropagate, &attr);
 
   if (c->framed) {
-    XReparentWindow(dpy, c->window, c->parent, border, border + titleHeight());
+    XReparentWindow(dpy, c->window, c->parent, borderWidth(), borderWidth() + titleHeight());
   } else {
     XReparentWindow(dpy, c->window, c->parent, c->size.x, c->size.y);
   }
@@ -329,14 +329,14 @@ static void applyGravity(Client *c) {
   if (c->size.flags & PWinGravity) {
     switch (c->size.win_gravity) {
     case NorthEastGravity:
-      c->size.x -= 2 * border;
+        c->size.x -= 2 * borderWidth();
       break;
     case SouthWestGravity:
-      c->size.y -= 2 * border;
+        c->size.y -= 2 * borderWidth();
       break;
     case SouthEastGravity:
-      c->size.x -= 2 * border;
-      c->size.y -= 2 * border;
+        c->size.x -= 2 * borderWidth();
+        c->size.y -= 2 * borderWidth();
       break;
     }
   }
@@ -535,15 +535,15 @@ void getNormalHints(Client *c) {
     * account of the window border.
     */
     if (c->size.flags & PMinSize) {
-      c->size.min_width += 2 * border;
-      c->size.min_height += 2 * border;
+      c->size.min_width += 2 * borderWidth();
+      c->size.min_height += 2 * borderWidth();
     } else {
       c->size.flags |= PMinSize;
-      c->size.min_width = 2 * (2 * border);
+      c->size.min_width = 2 * (2 * borderWidth());
       if (c->accepts_focus) {
-        c->size.min_height = 2 * (2 * border);
+        c->size.min_height = 2 * (2 * borderWidth());
       } else {
-        c->size.min_height = 2 * (2 * border);
+        c->size.min_height = 2 * (2 * borderWidth());
       }
     }
 
@@ -552,8 +552,8 @@ void getNormalHints(Client *c) {
     * account of the window border.
     */
     if (c->size.flags & PMaxSize) {
-      c->size.max_width += 2 * border;
-      c->size.max_height += 2 * border;
+      c->size.max_width += 2 * borderWidth();
+      c->size.max_height += 2 * borderWidth();
     }
   }
 

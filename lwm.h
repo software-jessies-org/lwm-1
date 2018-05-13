@@ -17,6 +17,8 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
 
+#include <string>
+
 /* --- Administrator-configurable defaults. --- */
 
 #define DEFAULT_TITLE_FONT                                                     \
@@ -62,13 +64,6 @@ enum Mode {
 
 /** Window internal state. Yuck. */
 enum IState { IPendingReparenting, INormal };
-
-/**
-* Focus mode, may me (and defaults to) enter where entering a window gives
-* that window input focus, or click where a window must be explicitly clicked
-* to give it the focus.
-*/
-enum FocusMode { focus_enter, focus_click };
 
 /**
 * Window edge, used in resizing. The `edge' ENone is used to signify a
@@ -369,14 +364,24 @@ extern int isShaped(Window);
 extern void setShape(Client *);
 
 /* resource.cc */
-extern const char *font_name;
-extern const char *popup_font_name;
-extern const char *btn1_command;
-extern const char *btn2_command;
-extern int border;
-extern FocusMode focus_mode;
+struct Resources {
+  std::string font_name;
+  std::string popup_font_name;
+  std::string btn1_command;
+  std::string btn2_command;
+  int border;
+  bool click_to_focus;
+};
+
+// Parses, or returns a cached copy, of the resources.
+Resources *resources();
+
+// Handy accessors which parse resources if necessary, and return the relevant
+// bit of config info.
+bool clickToFocus();
+int borderWidth();
+
 extern char *sdup(char *);
-extern void parseResources(void);
 
 /* session.cc */
 extern int ice_fd;

@@ -66,7 +66,7 @@ void setactive(Client *c, int on, long timestamp) {
   if (!inhibit) {
     XMoveResizeWindow(dpy, c->parent, c->size.x, c->size.y - titleHeight(),
                       c->size.width, c->size.height + titleHeight());
-    XMoveWindow(dpy, c->window, border, border + titleHeight());
+    XMoveWindow(dpy, c->window, borderWidth(), borderWidth() + titleHeight());
     sendConfigureNotify(c);
   }
 
@@ -82,7 +82,7 @@ void setactive(Client *c, int on, long timestamp) {
     if (c->proto & Ptakefocus) {
       sendClientMessage(c->window, wm_protocols, wm_take_focus, timestamp);
     }
-    if (focus_mode == focus_click) {
+    if (clickToFocus()) {
       XUngrabButton(dpy, AnyButton, AnyModifier, c->window);
     }
     cmapfocus(c);
@@ -93,7 +93,7 @@ void setactive(Client *c, int on, long timestamp) {
     XSetInputFocus(dpy, None, RevertToPointerRoot, CurrentTime);
   }
 
-  if (!on && focus_mode == focus_click) {
+  if (!on && clickToFocus()) {
     XGrabButton(dpy, AnyButton, AnyModifier, c->window, false,
                 ButtonPressMask | ButtonReleaseMask, GrabModeAsync,
                 GrabModeSync, None, None);
@@ -105,7 +105,7 @@ void setactive(Client *c, int on, long timestamp) {
 }
 
 void Client_DrawBorder(Client *c, int active) {
-  const int quarter = (border + titleHeight()) / 4;
+  const int quarter = (borderWidth() + titleHeight()) / 4;
     
   if (c->parent == c->screen->root || c->parent == 0 || !c->framed ||
       c->wstate.fullscreen) {
@@ -117,7 +117,7 @@ void Client_DrawBorder(Client *c, int active) {
   XClearWindow(dpy, c->parent);
 
   /* Draw the ``box''. */
-  if (active || focus_mode == focus_click) {
+  if (active || clickToFocus()) {
     XDrawRectangle(dpy, c->parent, c->screen->gc, quarter + 2, quarter,
                    2 * quarter, 2 * quarter);
   }
@@ -127,12 +127,12 @@ void Client_DrawBorder(Client *c, int active) {
 #ifdef X_HAVE_UTF8_STRING
     if (c->name_utf8)
       Xutf8DrawString(dpy, c->parent, font_set, c->screen->gc,
-                      border + 2 + (3 * quarter), 2 + ascent(font_set_ext),
+                      borderWidth() + 2 + (3 * quarter), 2 + ascent(font_set_ext),
                       c->name, c->namelen);
     else
 #endif
       XmbDrawString(dpy, c->parent, font_set, c->screen->gc,
-                    border + 2 + (3 * quarter), 2 + ascent(font_set_ext),
+                    borderWidth() + 2 + (3 * quarter), 2 + ascent(font_set_ext),
                     c->name, c->namelen);
   }
 }
@@ -232,7 +232,7 @@ void Client_Remove(Client *c) {
       XUnmapWindow(dpy, current_screen->popup);
       mode = wm_idle;
     }
-    if (focus_mode == focus_click) {
+    if (clickToFocus()) {
       /* Try and find the window that this was a transient
        * for, else focus on the top client. */
       if (c->trans != None) {
@@ -272,7 +272,7 @@ void Client_Remove(Client *c) {
 void Client_MakeSane(Client *c, Edge edge, int *x, int *y, int *dx, int *dy) {
   bool horizontal_ok = true;
   bool vertical_ok = true;
-
+  
   if (edge != ENone) {
     /*
      * Make sure we're not making the window too small.
@@ -301,7 +301,7 @@ void Client_MakeSane(Client *c, Edge edge, int *x, int *y, int *dx, int *dy) {
      * the width & height increments (not including the base size).
      */
     if (c->size.width_inc > 1) {
-      int apparent_dx = *dx - 2 * border - c->size.base_width;
+      int apparent_dx = *dx - 2 * borderWidth() - c->size.base_width;
       int x_fix = apparent_dx % c->size.width_inc;
 
       if (isLeftEdge(edge)) {
@@ -313,7 +313,7 @@ void Client_MakeSane(Client *c, Edge edge, int *x, int *y, int *dx, int *dy) {
     }
 
     if (c->size.height_inc > 1) {
-      int apparent_dy = *dy - 2 * border - c->size.base_height;
+      int apparent_dy = *dy - 2 * borderWidth() - c->size.base_height;
       int y_fix = apparent_dy % c->size.height_inc;
 
       if (isTopEdge(edge)) {
@@ -344,19 +344,19 @@ void Client_MakeSane(Client *c, Edge edge, int *x, int *y, int *dx, int *dy) {
    */
   if (c->strut.left == 0 && c->strut.right == 0 && c->strut.top == 0 &&
       c->strut.bottom == 0) {
-    if ((int)(*y + border) >=
+    if ((int)(*y + borderWidth()) >=
         (int)(c->screen->display_height - c->screen->strut.bottom)) {
-      *y = c->screen->display_height - c->screen->strut.bottom - border;
+      *y = c->screen->display_height - c->screen->strut.bottom - borderWidth();
     }
-    if ((int)(*y + c->size.height - border) <= (int)c->screen->strut.top) {
-      *y = c->screen->strut.top + border - c->size.height;
+    if ((int)(*y + c->size.height - borderWidth()) <= (int)c->screen->strut.top) {
+      *y = c->screen->strut.top + borderWidth() - c->size.height;
     }
-    if ((int)(*x + border) >=
+    if ((int)(*x + borderWidth()) >=
         (int)(c->screen->display_width - c->screen->strut.right)) {
-      *x = c->screen->display_width - c->screen->strut.right - border;
+      *x = c->screen->display_width - c->screen->strut.right - borderWidth();
     }
-    if ((int)(*x + c->size.width - border) <= (int)c->screen->strut.left) {
-      *x = c->screen->strut.left + border - c->size.width;
+    if ((int)(*x + c->size.width - borderWidth()) <= (int)c->screen->strut.left) {
+      *x = c->screen->strut.left + borderWidth() - c->size.width;
     }
   }
 
@@ -444,8 +444,8 @@ void Client_SizeFeedback(void) {
 }
 
 void size_expose(void) {
-  int width = current->size.width - 2 * border;
-  int height = current->size.height - 2 * border;
+  int width = current->size.width - 2 * borderWidth();
+  int height = current->size.height - 2 * borderWidth();
 
   /* This dance ensures that we report 80x24 for an xterm even when
    * it has a scrollbar. */
@@ -642,14 +642,14 @@ extern void Client_EnterFullScreen(Client *c) {
 
   memcpy(&c->return_size, &c->size, sizeof(XSizeHints));
   if (c->framed) {
-    c->size.x = fs.x = -border;
-    c->size.y = fs.y = -border;
-    c->size.width = fs.width = c->screen->display_width + 2 * border;
-    c->size.height = fs.height = c->screen->display_height + 2 * border;
+    c->size.x = fs.x = -borderWidth();
+    c->size.y = fs.y = -borderWidth();
+    c->size.width = fs.width = c->screen->display_width + 2 * borderWidth();
+    c->size.height = fs.height = c->screen->display_height + 2 * borderWidth();
     XConfigureWindow(dpy, c->parent, CWX | CWY | CWWidth | CWHeight, &fs);
 
-    fs.x = border;
-    fs.y = border;
+    fs.x = borderWidth();
+    fs.y = borderWidth();
     fs.width = c->screen->display_width;
     fs.height = c->screen->display_height;
     XConfigureWindow(dpy, c->window, CWX | CWY | CWWidth | CWHeight, &fs);
@@ -675,10 +675,10 @@ extern void Client_ExitFullScreen(Client *c) {
     fs.height = c->size.height + titleHeight();
     XConfigureWindow(dpy, c->parent, CWX | CWY | CWWidth | CWHeight, &fs);
 
-    fs.x = border;
-    fs.y = border + titleHeight();
-    fs.width = c->size.width - (2 * border);
-    fs.height = c->size.height - (2 * border);
+    fs.x = borderWidth();
+    fs.y = borderWidth() + titleHeight();
+    fs.width = c->size.width - (2 * borderWidth());
+    fs.height = c->size.height - (2 * borderWidth());
     XConfigureWindow(dpy, c->window, CWX | CWY | CWWidth | CWHeight, &fs);
   } else {
     fs.x = c->size.x;
@@ -715,7 +715,7 @@ extern void Client_Focus(Client *c, Time time) {
                     (unsigned char *)&current->window, 1);
   }
 
-  if (focus_mode == focus_click) {
+  if (clickToFocus()) {
     Client_Raise(c);
   }
 }

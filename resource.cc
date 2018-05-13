@@ -33,12 +33,7 @@
 
 #include "lwm.h"
 
-const char *font_name;       /* User's choice of titlebar font. */
-const char *popup_font_name; /* User's choice of menu font. */
-const char *btn1_command;    /* User's choice of button 1 command. */
-const char *btn2_command;    /* User's choice of button 2 command. */
-int border;            /* User's choice of border size. */
-FocusMode focus_mode;  /* User's choice of focus mode (default enter) */
+static Resources* resource_cache;
 
 char *sdup(char *p) {
   char *s = (char*) malloc(strlen(p) + 1);
@@ -48,51 +43,70 @@ char *sdup(char *p) {
   return strcpy(s, p);
 }
 
-static const char *getResource(XrmDatabase *db, const char *name,
-                               const char *cls, const char *const dflt) {
+static void setResource(XrmDatabase *db, const char *name, const char *cls,
+                        std::string* target) {
   char *type;
   XrmValue value;
   if (XrmGetResource(*db, name, cls, &type, &value)) {
-    if (strcmp(type, "String") == 0) {
-      return sdup((char *)value.addr);
+    if (!strcmp(type, "String")) {
+      *target = std::string(value.addr, value.size);
     }
   }
-  return dflt;
 }
 
-extern void parseResources(void) {
-  // Set our fall-back defaults.
-  font_name = DEFAULT_TITLE_FONT;
-  popup_font_name = DEFAULT_POPUP_FONT;
-  border = DEFAULT_BORDER;
-  btn1_command = 0;
-  btn2_command = DEFAULT_TERMINAL;
-  focus_mode = focus_enter;
+static std::string getResource(XrmDatabase *db, const char *name,
+                               const char *cls) {
+  std::string res;
+  setResource(db, name, cls, &res);
+  return res;
+}
+
+Resources* parseResources() {
+  Resources* res = new Resources();
+  res->font_name = DEFAULT_TITLE_FONT;
+  res->popup_font_name = DEFAULT_POPUP_FONT;
+  res->border = DEFAULT_BORDER;
+  res->btn2_command = DEFAULT_TERMINAL;
+  res->click_to_focus = false;
 
   char *resource_manager = XResourceManagerString(dpy);
-  if (resource_manager == 0) {
-    return;
+  if (!resource_manager) {
+    return res;
   }
-
   XrmInitialize();
   XrmDatabase db = XrmGetStringDatabase(resource_manager);
-  if (db == 0) {
-    return;
+  if (!db) {
+    return res;
   }
-  
+
   // Simple string resources.
-  font_name = getResource(&db, "lwm.titleFont", "Font", DEFAULT_TITLE_FONT);
-  popup_font_name = getResource(&db, "lwm.popupFont", "Font", DEFAULT_POPUP_FONT);
-  btn1_command = getResource(&db, "lwm.button1", "Command", NULL);
-  btn2_command = getResource(&db, "lwm.button2", "Command", DEFAULT_TERMINAL);
-  
+  setResource(&db, "lwm.titleFont", "Font", &(res->font_name));
+  setResource(&db, "lwm.popupFont", "Font", &(res->popup_font_name));
+  setResource(&db, "lwm.button1", "Command", &(res->btn1_command));
+  setResource(&db, "lwm.button2", "Command", &(res->btn2_command));
+
   // Resources that require some interpretation.
-  const char* focus = getResource(&db, "lwm.focus", "FocusMode", "enter");
-  if (!strcmp(focus, "click")) {
-    focus_mode = focus_click;
+  if (getResource(&db, "lwm.focus", "FocusMode") == "click") {
+    res->click_to_focus = true;
   }
-  const char* brdr = getResource(&db, "lwm.border", "Border", NULL);
-  if (brdr) {
-    border = (int)strtol(brdr, (char **)0, 0);
+  const std::string brdr = getResource(&db, "lwm.border", "Border");
+  if (brdr != "") {
+    res->border = (int)strtol(brdr.c_str(), (char **)0, 0);
   }
+  return res;
+}
+
+Resources* resources() {
+  if (!resource_cache) {
+    resource_cache = parseResources();
+  }
+  return resource_cache;
+}
+
+bool clickToFocus() {
+  return resources()->click_to_focus;
+}
+
+int borderWidth() {
+  return resources()->border;
 }

@@ -88,7 +88,7 @@ static void getMenuDimensions(int *width, int *height, int *length) {
       w = tw;
     }
   }
-  *width = w + border;
+  *width = w + borderWidth();
   *height = popupHeight();
 }
 

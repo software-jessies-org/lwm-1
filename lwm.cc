@@ -143,8 +143,6 @@ extern int main(int argc, char *argv[]) {
     panic("can't open display.");
   }
 
-  parseResources();
-
   /* Set up an error handler. */
   XSetErrorHandler(errorHandler);
 
@@ -188,8 +186,9 @@ extern int main(int argc, char *argv[]) {
   char **missing;
   char *def;
   int missing_count;
-
-  font_set = XCreateFontSet(dpy, font_name, &missing, &missing_count, &def);
+  
+  font_set = XCreateFontSet(dpy, resources()->font_name.c_str(), &missing,
+                            &missing_count, &def);
   if (font_set == NULL) {
     font_set = XCreateFontSet(dpy, "fixed", &missing, &missing_count, &def);
   }
@@ -203,8 +202,8 @@ extern int main(int argc, char *argv[]) {
   }
   font_set_ext = XExtentsOfFontSet(font_set);
 
-  popup_font_set =
-      XCreateFontSet(dpy, popup_font_name, &missing, &missing_count, &def);
+  popup_font_set = XCreateFontSet(dpy, resources()->popup_font_name.c_str(),
+                                  &missing, &missing_count, &def);
   if (popup_font_set == NULL) {
     popup_font_set =
         XCreateFontSet(dpy, "fixed", &missing, &missing_count, &def);
@@ -386,9 +385,10 @@ static void rrScreenChangeNotify(XEvent *ev) {
           sendConfigureNotify(c);
         }
       } else {
-        XMoveResizeWindow(dpy, c->window, border, border + titleHeight(),
-                          c->size.width - 2 * border,
-                          c->size.height - 2 * border);
+        XMoveResizeWindow(dpy, c->window, borderWidth(),
+                          borderWidth() + titleHeight(),
+                          c->size.width - 2 * borderWidth(),
+                          c->size.height - 2 * borderWidth());
       }
     }
   }
@@ -400,10 +400,10 @@ void sendConfigureNotify(Client *c) {
   ce.event = c->window;
   ce.window = c->window;
   if (c->framed) {
-    ce.x = c->size.x + border;
-    ce.y = c->size.y + border;
-    ce.width = c->size.width - 2 * border;
-    ce.height = c->size.height - 2 * border;
+    ce.x = c->size.x + borderWidth();
+    ce.y = c->size.y + borderWidth();
+    ce.width = c->size.width - 2 * borderWidth();
+    ce.height = c->size.height - 2 * borderWidth();
     ce.border_width = c->border;
   } else {
     ce.x = c->size.x;
@@ -443,14 +443,13 @@ extern void scanWindowTree(int screen) {
 
 /*ARGSUSED*/
 extern void shell(ScreenInfo *screen, int button, int x, int y) {
-  /* Get the command we're to execute. Give up if there isn't one. */
-  const char *command = NULL;
+  std::string command;
   if (button == Button1) {
-    command = btn1_command;
+    command = resources()->btn1_command;
   } else if (button == Button2) {
-    command = btn2_command;
+    command = resources()->btn2_command;
   }
-  if (!command) {
+  if (command == "") {
     return;
   }
 
@@ -466,7 +465,8 @@ extern void shell(ScreenInfo *screen, int button, int x, int y) {
       putenv(screen->display_spec);
     }
     execl(sh, sh, "-c", command, NULL);
-    fprintf(stderr, "%s: can't exec \"%s -c %s\"\n", argv0, sh, command);
+    fprintf(stderr, "%s: can't exec \"%s -c %s\"\n", argv0, sh,
+            command.c_str());
     execlp("xterm", "xterm", NULL);
     exit(EXIT_FAILURE);
   case -1: /* Error. */

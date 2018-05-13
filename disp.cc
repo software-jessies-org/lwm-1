@@ -258,7 +258,7 @@ static void buttonpress(XEvent *ev) {
   XButtonEvent *e = &ev->xbutton;
   Client *c = Client_Get(e->window);
 
-  if (c && c != current && focus_mode == focus_click) {
+  if (c && c != current && clickToFocus()) {
     /* Click is not on current window,
      * and in click-to-focus mode, so change focus
      */
@@ -274,7 +274,7 @@ static void buttonpress(XEvent *ev) {
     /* Click went to our frame around a client. */
 
     /* The ``box''. */
-    int quarter = (border + titleHeight()) / 4;
+    int quarter = (borderWidth() + titleHeight()) / 4;
     if (e->x > (quarter + 2) && e->x < (3 + 3 * quarter) && e->y > quarter &&
         e->y <= 3 * quarter) {
       /*Client_Close(c);*/
@@ -298,7 +298,7 @@ static void buttonpress(XEvent *ev) {
       Client_Raise(c);
 
       /* Lasciate ogni speranza voi ch'entrate...  */
-
+      const int border = borderWidth();
       if (e->x <= border && e->y <= border) {
         Client_ReshapeEdge(c, ETopLeft);
       } else if (e->x >= (c->size.width - border) && e->y <= border) {
@@ -349,7 +349,7 @@ static void buttonrelease(XEvent *ev) {
     XUnmapWindow(dpy, current_screen->popup);
   } else if (mode == wm_closing_window) {
     /* was the button released within the window's box?*/
-    int quarter = (border + titleHeight()) / 4;
+    int quarter = (borderWidth() + titleHeight()) / 4;
     if (pending != NULL && (e->window == pending->parent) &&
         (e->x > (quarter + 2) && e->x < (3 + 3 * quarter) && e->y > quarter &&
          e->y <= 3 * quarter)) {
@@ -418,8 +418,8 @@ static void maprequest(XEvent *ev) {
       break;
     }
     if (c->framed) {
-      XReparentWindow(dpy, c->window, c->parent, border,
-                      border + titleHeight());
+      XReparentWindow(dpy, c->window, c->parent, borderWidth(),
+                      borderWidth() + titleHeight());
     } else {
       XReparentWindow(dpy, c->window, c->parent, c->size.x, c->size.y);
     }
@@ -500,13 +500,13 @@ static void configurereq(XEvent *ev) {
     if (e->value_mask & CWWidth) {
       c->size.width = e->width;
       if (c->framed) {
-        c->size.width += 2 * border;
+        c->size.width += 2 * borderWidth();
       }
     }
     if (e->value_mask & CWHeight) {
       c->size.height = e->height;
       if (c->framed) {
-        c->size.height += 2 * border;
+        c->size.height += 2 * borderWidth();
       }
     }
     if (e->value_mask & CWBorderWidth) {
@@ -533,8 +533,8 @@ static void configurereq(XEvent *ev) {
     }
   }
   if (c && (c->internal_state == INormal) && c->framed) {
-    wc.x = border;
-    wc.y = border;
+    wc.x = borderWidth();
+    wc.y = borderWidth();
   } else {
     wc.x = e->x;
     wc.y = e->y;
@@ -553,7 +553,7 @@ static void configurereq(XEvent *ev) {
     if (c->framed) {
       XMoveResizeWindow(dpy, c->parent, c->size.x, c->size.y - titleHeight(),
                         c->size.width, c->size.height + titleHeight());
-      XMoveWindow(dpy, c->window, border, border + titleHeight());
+      XMoveWindow(dpy, c->window, borderWidth(), borderWidth() + titleHeight());
     } else {
       XMoveResizeWindow(dpy, c->window, c->size.x, c->size.y, c->size.width,
                         c->size.height);
@@ -602,7 +602,7 @@ static void clientmessage(XEvent *ev) {
     }
     XMapWindow(dpy, c->parent);
     Client_Raise(c);
-    if (c != current && focus_mode == focus_click) {
+    if (c != current && clickToFocus()) {
       Client_Focus(c, CurrentTime);
     }
     return;
@@ -796,7 +796,7 @@ static void enter(XEvent *ev) {
     XChangeWindowAttributes(dpy, c->parent, CWCursor, &attr);
     c->cursor = ENone;
   }
-  if (c != current && !c->hidden && focus_mode == focus_enter) {
+  if (c != current && !c->hidden && !clickToFocus()) {
     /* Entering a new window in enter focus mode, so take focus */
     Client_Focus(c, ev->xcrossing.time);
   }
@@ -815,6 +815,7 @@ static void motionnotify(XEvent *ev) {
     if (c && (e->window == c->parent) && (e->subwindow != c->window) &&
         mode == wm_idle) {
       /* mouse moved in a frame we manage - check cursor */
+      const int border = borderWidth();
       int quarter = (border + titleHeight()) / 4;
       if (e->x > (quarter + 2) && e->x < (3 + 3 * quarter) && e->y > quarter &&
           e->y <= 3 * quarter) {
@@ -924,6 +925,7 @@ void reshaping_motionnotify(XEvent *ev) {
         sendConfigureNotify(current);
       }
     } else {
+      const int border = borderWidth();
       XMoveResizeWindow(dpy, current->window, border, border + titleHeight(),
                         current->size.width - 2 * border,
                         current->size.height - 2 * border);
