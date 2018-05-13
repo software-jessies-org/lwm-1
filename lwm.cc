@@ -67,7 +67,6 @@ Atom compound_text;
 /** Netscape uses this to give information about the URL it's displaying. */
 Atom _mozilla_url;
 
-
 // Debugging support.
 static void setDebugArg(char ch) {
   switch (ch) {
@@ -91,13 +90,13 @@ static void setDebugArg(char ch) {
   }
 }
 
-bool debug_configure_notify;  // -d=c
-bool debug_all_events;        // -d=e
-bool debug_focus;             // -d=f
-bool debug_map;               // -d=m
-bool debug_property_notify;   // -d=p
+bool debug_configure_notify; // -d=c
+bool debug_all_events;       // -d=e
+bool debug_focus;            // -d=f
+bool debug_map;              // -d=m
+bool debug_property_notify;  // -d=p
 
-bool printDebugPrefix(char const* file, int line) {
+bool printDebugPrefix(char const *file, int line) {
   char buf[16];
   time_t t;
   time(&t);
@@ -174,7 +173,7 @@ extern int main(int argc, char *argv[]) {
   _mozilla_url = XInternAtom(dpy, "_MOZILLA_URL", false);
 
   motif_wm_hints = XInternAtom(dpy, "_MOTIF_WM_HINTS", false);
-  
+
   ewmh_init();
 
   /*
@@ -186,7 +185,7 @@ extern int main(int argc, char *argv[]) {
   char **missing;
   char *def;
   int missing_count;
-  
+
   font_set = XCreateFontSet(dpy, resources()->font_name.c_str(), &missing,
                             &missing_count, &def);
   if (font_set == NULL) {
@@ -221,7 +220,7 @@ extern int main(int argc, char *argv[]) {
   initScreens();
   ewmh_init_screens();
   session_init(argc, argv);
-  
+
   // Do we need to support XRandR?
   int rr_event_base, rr_error_base;
   bool have_rr = XRRQueryExtension(dpy, &rr_event_base, &rr_error_base);
@@ -230,7 +229,7 @@ extern int main(int argc, char *argv[]) {
       XRRSelectInput(dpy, screens[i].root, RRScreenChangeNotifyMask);
     }
   }
-  
+
   /* See if the server has the Shape Window extension. */
   shape = serverSupportsShapes();
 
@@ -354,11 +353,12 @@ static void rrScreenChangeNotify(XEvent *ev) {
     // seem to always return the original size, while the change notify event
     // has the updated size.
     if (oScrWidth == nScrWidth && oScrHeight == nScrHeight) {
-      return;  // Don't process the same event multiple times.
+      return; // Don't process the same event multiple times.
     }
     screens[i].display_width = nScrWidth;
     screens[i].display_height = nScrHeight;
-    // Now, go through the windows and adjust their sizes and locations to conform to the new screen layout.
+    // Now, go through the windows and adjust their sizes and locations to
+    // conform to the new screen layout.
     for (Client *c = client_head(); c; c = c->next) {
       int x = c->size.x;
       int y = c->size.y;
@@ -449,7 +449,7 @@ extern void shell(ScreenInfo *screen, int button, int x, int y) {
   } else if (button == Button2) {
     command = resources()->btn2_command;
   }
-  if (command == "") {
+  if (command.empty()) {
     return;
   }
 
@@ -464,7 +464,7 @@ extern void shell(ScreenInfo *screen, int button, int x, int y) {
     if (screen && screen->display_spec != 0) {
       putenv(screen->display_spec);
     }
-    execl(sh, sh, "-c", command, NULL);
+    execl(sh, sh, "-c", command.c_str(), NULL);
     fprintf(stderr, "%s: can't exec \"%s -c %s\"\n", argv0, sh,
             command.c_str());
     execlp("xterm", "xterm", NULL);
@@ -489,27 +489,15 @@ extern int titleWidth(XFontSet font_set, Client *c) {
   if (c == NULL) {
     return 0;
   }
-  char *name;
-  int namelen;
-
-  if (c->menu_name == NULL) {
-    name = c->name;
-    namelen = c->namelen;
-  } else {
-    name = c->menu_name;
-    namelen = c->menu_namelen;
-  }
-  if (name == NULL) {
-    return 0;
-  }
+  const std::string &name = (c->menu_name == "") ? c->name : c->menu_name;
   XRectangle ink;
   XRectangle logical;
 #ifdef X_HAVE_UTF8_STRING
   if (c->name_utf8)
-    Xutf8TextExtents(font_set, name, namelen, &ink, &logical);
+    Xutf8TextExtents(font_set, name.c_str(), name.size(), &ink, &logical);
   else
 #endif
-    XmbTextExtents(font_set, name, namelen, &ink, &logical);
+    XmbTextExtents(font_set, name.c_str(), name.size(), &ink, &logical);
 
   return logical.width;
 }

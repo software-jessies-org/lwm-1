@@ -192,11 +192,9 @@ struct Client {
   int proto;
 
   bool accepts_focus; /* Does this window want keyboard events? */
-
-  char *name; /* Name used for title in frame. */
-  int namelen;
-  char *menu_name; /* Name used in root popup */
-  int menu_namelen;
+  
+  std::string name;  // Name used for title in frame.
+  std::string menu_name; // Name used in root popup.
   bool name_utf8;
 
   ScreenInfo *screen;
@@ -207,10 +205,6 @@ struct Client {
   EWMHWindowState wstate;
   EWMHStrut strut; /* reserved areas */
   
-  // Holds a generated description, for debugging purposes, up to the given max
-  // length. Call 'Client_Describe' to populate this and return.
-  char *debug_desc;
-
   /* Colourmap scum. */
   Colormap cmap;
   int ncmapwins;
@@ -307,7 +301,6 @@ extern void Client_ExitFullScreen(Client *c);
 extern void Client_Focus(Client *c, Time time);
 extern void Client_ResetAllCursors(void);
 extern void Client_Name(Client *c, const char *name, bool is_utf8);
-extern const char* Client_Describe(Client *c);
 extern int hidden(Client *);
 extern int withdrawn(Client *);
 extern int normal(Client *);

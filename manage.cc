@@ -475,10 +475,10 @@ static int getProperty(Window w, Atom a, Atom type, long len,
 }
 
 void getWindowName(Client *c) {
-  if (c == 0) {
+  if (!c) {
     return;
   }
-  int was_nameless = (c->name == 0);
+  int was_nameless = (c->name == "");
   if (!ewmh_get_window_name(c)) {
     char *name;
     Atom actual_type;

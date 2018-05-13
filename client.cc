@@ -123,17 +123,17 @@ void Client_DrawBorder(Client *c, int active) {
   }
 
   /* Draw window title. */
-  if (c->name != 0) {
+  if (!c->name.empty()) {
 #ifdef X_HAVE_UTF8_STRING
     if (c->name_utf8)
       Xutf8DrawString(dpy, c->parent, font_set, c->screen->gc,
                       borderWidth() + 2 + (3 * quarter), 2 + ascent(font_set_ext),
-                      c->name, c->namelen);
+                      c->name.c_str(), c->name.size());
     else
 #endif
       XmbDrawString(dpy, c->parent, font_set, c->screen->gc,
                     borderWidth() + 2 + (3 * quarter), 2 + ascent(font_set_ext),
-                    c->name, c->namelen);
+                    c->name.c_str(), c->name.size());
   }
 }
 
@@ -260,9 +260,6 @@ void Client_Remove(Client *c) {
   }
 
   ScreenInfo *screen = c->screen;
-  free(c->name);
-  free(c->menu_name);
-  free(c->debug_desc);
   free(c);
 
   ewmh_set_client_list(screen);
@@ -721,56 +718,19 @@ extern void Client_Focus(Client *c, Time time) {
 }
 
 extern void Client_Name(Client *c, const char *name, bool is_utf8) {
-  static const char dots[] = " [...] ";
-
-  free(c->name);
-  c->name = sdup((char *)name);
-  c->namelen = strlen(c->name);
+  static const char dots[] = "...";
+  c->name = std::string(name);
   c->name_utf8 = is_utf8;
-
-  free(c->menu_name);
-  c->menu_name = 0;
-  int tx = titleWidth(popup_font_set, c);
-  if (tx <= (c->screen->display_width - (c->screen->display_width / 10))) {
-    return;
-  }
-
-  /* the menu entry for this client will not fit on the display
-   * (minus 10% for safety), so produced a truncated version...
-   */
-  int cut = 5;
-  do {
-    free(c->menu_name);
-    c->menu_name = 0;
-    if (cut >= (strlen(c->name) / 2)) {
+  
+  // Check if the menu_name will fit in the display, minus 10% for safety.
+  // If not, try truncating until it fits.
+  for (int cut = 0; cut < c->name.size(); cut++) {
+    const int len = c->name.size() - cut;
+    // TODO: Fix this for UTF8.
+    c->menu_name = cut ? c->name.substr(0, len) + dots : c->name;
+    int tx = titleWidth(popup_font_set, c);
+    if (tx <= (c->screen->display_width * 9 / 10)) {
       break;
     }
-    c->menu_name = sdup(c->name);
-    /* FIXME: this is not UTF-8 safe! */
-    sprintf(&c->menu_name[(strlen(c->name) / 2) - cut], dots);
-    strcat(c->menu_name, &c->name[(strlen(c->name) / 2) + cut]);
-    c->menu_namelen = strlen(c->menu_name);
-    cut++;
-    tx = titleWidth(popup_font_set, c);
-    if (!tx) {
-      break;
-    }
-  } while (tx > (c->screen->display_width - (c->screen->display_width / 10)));
-}
-
-static const char* nullName = "(null)";
-#define MAX_CLIENT_NAME 256
-extern const char* Client_Describe(Client *c) {
-  if (!c) {
-    return nullName;
   }
-  if (!c->debug_desc) {
-    c->debug_desc = (char*) malloc(MAX_CLIENT_NAME);
-  }
-  const char* hidden = c->hidden ? "hidden" : "shown";
-  const char* name = c->name ? c->name : "no name";
-  snprintf(c->debug_desc, MAX_CLIENT_NAME, "0x%lx ('%s'), %s; %dx%d+%d,%d",
-           c->window, name, hidden, c->size.width, c->size.height, c->size.x,
-           c->size.y);
-  return c->debug_desc;
 }

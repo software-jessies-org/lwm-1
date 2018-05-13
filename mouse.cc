@@ -233,25 +233,16 @@ static void draw_menu_item(Client *c, int i, int width, int height,
                            int length) {
   int tx = (width - titleWidth(popup_font_set, c)) / 2;
   int ty = i * height + ascent(popup_font_set_ext);
-  char *name;
-  int namelen;
-
-  if (c->menu_name == NULL) {
-    name = c->name;
-    namelen = c->namelen;
-  } else {
-    name = c->menu_name;
-    namelen = c->menu_namelen;
-  }
+  const std::string& name = c->menu_name.empty() ? c->name : c->menu_name;
 
 #ifdef X_HAVE_UTF8_STRING
   if (c->name_utf8)
     Xutf8DrawString(dpy, c->screen->popup, popup_font_set,
-                    current_screen->menu_gc, tx, ty, name, namelen);
+                    current_screen->menu_gc, tx, ty, name.c_str(), name.size());
   else
 #endif
     XmbDrawString(dpy, c->screen->popup, popup_font_set,
-                  current_screen->menu_gc, tx, ty, name, namelen);
+                  current_screen->menu_gc, tx, ty, name.c_str(), name.size());
 }
 
 void menu_expose(void) {
