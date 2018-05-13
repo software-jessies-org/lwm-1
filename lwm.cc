@@ -281,16 +281,6 @@ extern int main(int argc, char *argv[]) {
   execvp(argv0, argv);
 }
 
-// scaleSize scales *size so that it occupies the same proportion of 'news' as
-// it did 'olds' (these are new and old screen sizes in the same dimension),
-// with the caveat that any change will be made in multiples of inc.
-static int scaleSize(int olds, int news, int size, int inc) {
-  int add = ((size * news) / olds) - size;
-  // 'add' can, of course, be negative. That's fine.
-  add -= (add % inc);
-  return size + add;
-}
-
 // moveOrChangeSize takes in an old and new size (olds, news) describing the
 // change in one screen dimension (width or height). It takes pos, which is the
 // corresponding left or top location on that dimension, and size which is the
@@ -327,14 +317,11 @@ static void moveOrChangeSize(int olds, int news, int *pos, int *size, int inc) {
     *size += ((news - olds) / inc) * inc;
   } else {
     // If we're not scaling the window because it's full-screen, then we need to
-    // check its size to ensure it doesn't exceed the new screen size, and scale
-    // it down appropriately if it does. The general rule we'll apply is that if
-    // the screen is shrinking, and the new window size is 90% of the screen
-    // size
-    // or larger, then we'll scale it proportionally.
+    // check its size to ensure it doesn't exceed the new screen size. If we'd
+    // be using up more than 90% of the new size, we clip the size to 90%.
     if (news < olds && (*size * 10 / 9) > news) {
-      // Too big; scale down.
-      *size = scaleSize(olds, news, *size, inc);
+      *size = news * 9 / 10;
+      *size -= (*size % inc);
     }
     // The window size is going to be alright now, but how we move the window
     // depends on its original position. If it was close to the left or right
