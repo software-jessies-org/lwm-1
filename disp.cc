@@ -885,6 +885,11 @@ void reshaping_motionnotify(XEvent *ev) {
   // immediately.
   if ((mp.modMask & MOVING_BUTTON_MASK) == 0) {
     mode = wm_idle;
+    // If we escape from the weird dragging mode and we were resizing, we should
+    // ensure the little white window that shows the current being-dragged
+    // window's size is closed. Otherwise it gets left there in the middle of
+    // the screen, looking foolish.
+    XUnmapWindow(dpy, current_screen->popup);
     DBG("Flipped out of weird dragging mode.");
     return;
   }
