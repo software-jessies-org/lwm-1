@@ -45,25 +45,24 @@ static CursorMapping cursor_map[] = {
     {ENone, 0},
 };
 
-extern void initialiseCursors(int screen) {
+extern void initialiseCursors() {
   XColor red, white, exact;
-  Colormap cmp = DefaultColormap(dpy, screen);
+  Colormap cmp = DefaultColormap(dpy, 0);  // 0 = screen index 0.
 
   XAllocNamedColor(dpy, cmp, "red", &red, &exact);
   XAllocNamedColor(dpy, cmp, "white", &white, &exact);
 
-  screens[screen].root_cursor = XCreateFontCursor(dpy, XC_left_ptr);
-  XRecolorCursor(dpy, screens[screen].root_cursor, &red, &white);
+  screen->root_cursor = XCreateFontCursor(dpy, XC_left_ptr);
+  XRecolorCursor(dpy, screen->root_cursor, &red, &white);
 
-  screens[screen].box_cursor = XCreateFontCursor(dpy, XC_draped_box);
-  XRecolorCursor(dpy, screens[screen].box_cursor, &red, &white);
+  screen->box_cursor = XCreateFontCursor(dpy, XC_draped_box);
+  XRecolorCursor(dpy, screen->box_cursor, &red, &white);
 
   for (int i = 0; cursor_map[i].font_char != 0; i++) {
     Edge e = cursor_map[i].edge;
-    screens[screen].cursor_map[e] =
-        XCreateFontCursor(dpy, cursor_map[i].font_char);
-    XRecolorCursor(dpy, screens[screen].cursor_map[e], &red, &white);
+    screen->cursor_map[e] = XCreateFontCursor(dpy, cursor_map[i].font_char);
+    XRecolorCursor(dpy, screen->cursor_map[e], &red, &white);
   }
 }
 
-extern Cursor getEdgeCursor(Edge edge) { return screens[0].cursor_map[edge]; }
+extern Cursor getEdgeCursor(Edge edge) { return screen->cursor_map[edge]; }

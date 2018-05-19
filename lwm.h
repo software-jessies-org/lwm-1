@@ -168,8 +168,6 @@ struct ScreenInfo {
   Cursor cursor_map[E_LAST];
 
   bool ewmh_set_client_list; /* hack to prevent recursion */
-
-  char *display_spec;
 };
 
 struct Client {
@@ -229,9 +227,7 @@ extern Mode mode;
 extern int start_x;
 extern int start_y;
 extern Display *dpy;
-extern int screen_count;
-extern ScreenInfo *screens;
-extern ScreenInfo *current_screen;
+extern ScreenInfo *screen;
 extern XFontSet font_set;
 extern XFontSetExtents *font_set_ext;
 extern XFontSet popup_font_set;
@@ -251,13 +247,13 @@ extern char *argv0;
 extern bool forceRestart;
 extern void shell(ScreenInfo *, int, int, int);
 extern void sendConfigureNotify(Client *);
-extern int titleHeight(void);
+extern int titleHeight();
 extern int titleWidth(XFontSet font_set, Client *c);
-extern int popupHeight(void);
+extern int popupHeight();
 extern int popupWidth(char *string, int string_length);
 extern int ascent(XFontSetExtents *font_set_ext);
 extern ScreenInfo *getScreenFromRoot(Window);
-extern void scanWindowTree(int);
+extern void scanWindowTree();
 
 // Debugging support (in lwm.cc).
 extern bool debug_configure_notify;  // -d=c
@@ -278,15 +274,15 @@ extern bool printDebugPrefix(char const* filename, int line);
 #define DBG(fmt, ...) DBG_IF(1, fmt, ##__VA_ARGS__)
 
 /* client.cc */
-extern Client *client_head(void);
+extern Client *client_head();
 extern Edge interacting_edge;
 extern Client *Client_Get(Window);
 extern Client *Client_Add(Window, Window);
 extern void Client_MakeSane(Client *, Edge, int *, int *, int *, int *);
 extern void Client_DrawBorder(Client *, int);
 extern void setactive(Client *, int, long);
-extern void Client_SizeFeedback(void);
-extern void size_expose(void);
+extern void Client_SizeFeedback();
+extern void size_expose();
 extern void Client_ReshapeEdge(Client *, Edge);
 extern void Client_Move(Client *);
 extern void Client_SetState(Client *, int);
@@ -294,12 +290,12 @@ extern void Client_Raise(Client *);
 extern void Client_Lower(Client *);
 extern void Client_Close(Client *);
 extern void Client_Remove(Client *);
-extern void Client_FreeAll(void);
+extern void Client_FreeAll();
 extern void Client_ColourMap(XEvent *);
 extern void Client_EnterFullScreen(Client *c);
 extern void Client_ExitFullScreen(Client *c);
 extern void Client_Focus(Client *c, Time time);
-extern void Client_ResetAllCursors(void);
+extern void Client_ResetAllCursors();
 extern void Client_Name(Client *c, const char *name, bool is_utf8);
 extern int hidden(Client *);
 extern int withdrawn(Client *);
@@ -309,7 +305,7 @@ extern Client *current;
 
 /* cursor.cc */
 extern Cursor getEdgeCursor(Edge edge);
-extern void initialiseCursors(int);
+extern void initialiseCursors();
 
 /* disp.cc */
 extern void dispatch(XEvent *);
@@ -346,13 +342,13 @@ extern void unhidec(Client *, int);
 extern int menu_whichitem(int, int);
 extern void menuhit(XButtonEvent *);
 extern void unhide(int, int);
-extern void menu_expose(void);
+extern void menu_expose();
 extern void menu_motionnotify(XEvent *);
 extern void menu_buttonrelease(XEvent *);
 
 /* shape.cc */
 extern int shapeEvent(XEvent *);
-extern int serverSupportsShapes(void);
+extern int serverSupportsShapes();
 extern int isShaped(Window);
 extern void setShape(Client *);
 
@@ -377,13 +373,13 @@ int borderWidth();
 /* session.cc */
 extern int ice_fd;
 extern void session_init(int argc, char *argv[]);
-extern void session_process(void);
-extern void session_end(void);
+extern void session_process();
+extern void session_end();
 
 /* ewmh.cc */
 extern Atom ewmh_atom[];
-extern void ewmh_init(void);
-extern void ewmh_init_screens(void);
+extern void ewmh_init();
+extern void ewmh_init_screen();
 extern EWMHWindowType ewmh_get_window_type(Window w);
 extern bool ewmh_get_window_name(Client *c);
 extern bool ewmh_hasframe(Client *c);

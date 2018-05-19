@@ -43,7 +43,7 @@ Edge interacting_edge;
 
 static void sendClientMessage(Window, Atom, long, long);
 
-Client *client_head(void) { return clients; }
+Client *client_head() { return clients; }
 
 static void focusChildrenOf(Window parent) {
   WindowTree wtree = WindowTree::Query(dpy, parent);
@@ -217,7 +217,7 @@ void Client_Remove(Client *c) {
      * so you can be sure that if you let go on an item, you always
      * get the corresponding window. */
     if (mode == wm_menu_up) {
-      XUnmapWindow(dpy, current_screen->popup);
+      XUnmapWindow(dpy, screen->popup);
       mode = wm_idle;
     }
   }
@@ -229,7 +229,7 @@ void Client_Remove(Client *c) {
     /* As pointed out by J. Han, if a window disappears while it's
      * being reshaped you need to get rid of the size indicator. */
     if (c == current && mode == wm_reshaping) {
-      XUnmapWindow(dpy, current_screen->popup);
+      XUnmapWindow(dpy, screen->popup);
       mode = wm_idle;
     }
     if (clickToFocus()) {
@@ -418,29 +418,29 @@ void Client_MakeSane(Client *c, Edge edge, int *x, int *y, int *dx, int *dy) {
   }
 }
 
-void Client_SizeFeedback(void) {
+void Client_SizeFeedback() {
   char buf[4 * 2 + 3 + 1];
 
   /* Make the popup 10% wider than the widest string it needs to show. */
-  snprintf(buf, sizeof(buf), "%i x %i", current_screen->display_width,
-           current_screen->display_height);
+  snprintf(buf, sizeof(buf), "%i x %i", screen->display_width,
+           screen->display_height);
   popup_width = popupWidth(buf, strlen(buf));
   popup_width += popup_width / 10;
 
   /* Put the popup in the right place to report on the window's size. */
   const MousePos mp = getMousePosition();
-  XMoveResizeWindow(dpy, current_screen->popup, mp.x + 8, mp.y + 8, popup_width,
+  XMoveResizeWindow(dpy, screen->popup, mp.x + 8, mp.y + 8, popup_width,
                     popupHeight() + 1);
-  XMapRaised(dpy, current_screen->popup);
+  XMapRaised(dpy, screen->popup);
 
   /*
   * Ensure that the popup contents get redrawn. Eventually, the function
   * size_expose will get called to do the actual redraw.
   */
-  XClearArea(dpy, current_screen->popup, 0, 0, 0, 0, true);
+  XClearArea(dpy, screen->popup, 0, 0, 0, 0, true);
 }
 
-void size_expose(void) {
+void size_expose() {
   int width = current->size.width - 2 * borderWidth();
   int height = current->size.height - 2 * borderWidth();
 
@@ -466,8 +466,7 @@ void size_expose(void) {
 
   char buf[4 * 2 + 3 + 1];
   snprintf(buf, sizeof(buf), "%i x %i", width, height);
-  XmbDrawString(dpy, current_screen->popup, popup_font_set,
-                current_screen->size_gc,
+  XmbDrawString(dpy, screen->popup, popup_font_set, screen->size_gc,
                 (popup_width - popupWidth(buf, strlen(buf))) / 2,
                 ascent(popup_font_set_ext) + 1, buf, strlen(buf));
 }
@@ -569,7 +568,7 @@ static void sendClientMessage(Window w, Atom a, long data0, long data1) {
   XSendEvent(dpy, w, false, mask, &ev);
 }
 
-extern void Client_ResetAllCursors(void) {
+extern void Client_ResetAllCursors() {
   for (Client *c = clients; c; c = c->next) {
     if (!c->framed) {
       continue;
@@ -581,7 +580,7 @@ extern void Client_ResetAllCursors(void) {
   }
 }
 
-extern void Client_FreeAll(void) {
+extern void Client_FreeAll() {
   for (Client *c = clients; c; c = c->next) {
     int not_mapped = !normal(c);
 

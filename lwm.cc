@@ -43,9 +43,7 @@ int start_x; /* The X position where the mode changed. */
 int start_y; /* The Y position where the mode changed. */
 
 Display *dpy;        /* The connection to the X server. */
-int screen_count;    /* The number of screens. */
-ScreenInfo *screens; /* Information about these screens. */
-ScreenInfo *current_screen;
+ScreenInfo *screen;
 
 XFontSet font_set = NULL; /* Font set for title var */
 XFontSetExtents *font_set_ext = NULL;
@@ -115,8 +113,7 @@ Atom motif_wm_hints;
 bool forceRestart;
 char *argv0;
 
-static void initScreens(void);
-static void initScreen(int);
+static void initScreen();
 
 static void rrScreenChangeNotify(XEvent *ev);
 static void rrNotify(XEvent *ev);
@@ -217,17 +214,15 @@ extern int main(int argc, char *argv[]) {
   }
   popup_font_set_ext = XExtentsOfFontSet(popup_font_set);
 
-  initScreens();
-  ewmh_init_screens();
+  initScreen();
+  ewmh_init_screen();
   session_init(argc, argv);
 
   // Do we need to support XRandR?
   int rr_event_base, rr_error_base;
   bool have_rr = XRRQueryExtension(dpy, &rr_event_base, &rr_error_base);
   if (have_rr) {
-    for (int i = 0; i < screen_count; i++) {
-      XRRSelectInput(dpy, screens[i].root, RRScreenChangeNotifyMask);
-    }
+    XRRSelectInput(dpy, screen->root, RRScreenChangeNotifyMask);
   }
 
   /* See if the server has the Shape Window extension. */
@@ -340,56 +335,51 @@ static void moveOrChangeSize(int olds, int news, int *pos, int *size, int inc) {
 
 static void rrScreenChangeNotify(XEvent *ev) {
   XRRScreenChangeNotifyEvent *rrev = (XRRScreenChangeNotifyEvent *)ev;
-  for (int i = 0; i < screen_count; i++) {
-    if (screens[i].root != rrev->root) {
-      continue;
-    }
-    const int oScrWidth = screens[i].display_width;
-    const int oScrHeight = screens[i].display_height;
-    const int nScrWidth = rrev->width;
-    const int nScrHeight = rrev->height;
-    // We've found the right screen. Refresh our idea of its size.
-    // Note that we don't call DisplayWidth() and DisplayHeight() because they
-    // seem to always return the original size, while the change notify event
-    // has the updated size.
-    if (oScrWidth == nScrWidth && oScrHeight == nScrHeight) {
-      return; // Don't process the same event multiple times.
-    }
-    screens[i].display_width = nScrWidth;
-    screens[i].display_height = nScrHeight;
-    // Now, go through the windows and adjust their sizes and locations to
-    // conform to the new screen layout.
-    for (Client *c = client_head(); c; c = c->next) {
-      int x = c->size.x;
-      int y = c->size.y;
-      const int oldx = x;
-      const int oldy = y;
-      const int oldw = c->size.width;
-      const int oldh = c->size.height;
+  const int oScrWidth = screen->display_width;
+  const int oScrHeight = screen->display_height;
+  const int nScrWidth = rrev->width;
+  const int nScrHeight = rrev->height;
+  // We've found the right screen. Refresh our idea of its size.
+  // Note that we don't call DisplayWidth() and DisplayHeight() because they
+  // seem to always return the original size, while the change notify event
+  // has the updated size.
+  if (oScrWidth == nScrWidth && oScrHeight == nScrHeight) {
+    return; // Don't process the same event multiple times.
+  }
+  screen->display_width = nScrWidth;
+  screen->display_height = nScrHeight;
+  // Now, go through the windows and adjust their sizes and locations to
+  // conform to the new screen layout.
+  for (Client *c = client_head(); c; c = c->next) {
+    int x = c->size.x;
+    int y = c->size.y;
+    const int oldx = x;
+    const int oldy = y;
+    const int oldw = c->size.width;
+    const int oldh = c->size.height;
 
-      moveOrChangeSize(oScrWidth, nScrWidth, &x, &(c->size.width),
-                       c->size.width_inc);
-      moveOrChangeSize(oScrHeight, nScrHeight, &y, &(c->size.height),
-                       c->size.height_inc);
-      Edge backup = interacting_edge;
-      interacting_edge = ENone;
-      // Note: the only reason this doesn't crash (due to the last two args
-      // being 0) is that dx and dy are only used when edge != ENone.
-      // You have been warned.
-      Client_MakeSane(c, ENone, &x, &y, 0, 0);
-      interacting_edge = backup;
-      XMoveResizeWindow(dpy, c->parent, c->size.x, c->size.y - titleHeight(),
-                        c->size.width, c->size.height + titleHeight());
-      if (c->size.width == oldw && c->size.height == oldh) {
-        if (c->size.x != oldx || c->size.y != oldy) {
-          sendConfigureNotify(c);
-        }
-      } else {
-        XMoveResizeWindow(dpy, c->window, borderWidth(),
-                          borderWidth() + titleHeight(),
-                          c->size.width - 2 * borderWidth(),
-                          c->size.height - 2 * borderWidth());
+    moveOrChangeSize(oScrWidth, nScrWidth, &x, &(c->size.width),
+                     c->size.width_inc);
+    moveOrChangeSize(oScrHeight, nScrHeight, &y, &(c->size.height),
+                     c->size.height_inc);
+    Edge backup = interacting_edge;
+    interacting_edge = ENone;
+    // Note: the only reason this doesn't crash (due to the last two args
+    // being 0) is that dx and dy are only used when edge != ENone.
+    // You have been warned.
+    Client_MakeSane(c, ENone, &x, &y, 0, 0);
+    interacting_edge = backup;
+    XMoveResizeWindow(dpy, c->parent, c->size.x, c->size.y - titleHeight(),
+                      c->size.width, c->size.height + titleHeight());
+    if (c->size.width == oldw && c->size.height == oldh) {
+      if (c->size.x != oldx || c->size.y != oldy) {
+        sendConfigureNotify(c);
       }
+    } else {
+      XMoveResizeWindow(dpy, c->window, borderWidth(),
+                        borderWidth() + titleHeight(),
+                        c->size.width - 2 * borderWidth(),
+                        c->size.height - 2 * borderWidth());
     }
   }
 }
@@ -417,17 +407,17 @@ void sendConfigureNotify(Client *c) {
   XSendEvent(dpy, c->window, false, StructureNotifyMask, (XEvent *)&ce);
 }
 
-extern void scanWindowTree(int screen) {
-  WindowTree wt = WindowTree::Query(dpy, screens[screen].root);
+extern void scanWindowTree() {
+  WindowTree wt = WindowTree::Query(dpy, screen->root);
   for (const Window win : wt.children) {
     XWindowAttributes attr;
     XGetWindowAttributes(dpy, win, &attr);
-    if (attr.override_redirect || win == screens[screen].popup) {
+    if (attr.override_redirect || win == screen->popup) {
       continue;
     }
-    Client *c = Client_Add(win, screens[screen].root);
+    Client *c = Client_Add(win, screen->root);
     if (c != 0 && c->window == win) {
-      c->screen = &screens[screen];
+      c->screen = screen;
       c->size.x = attr.x;
       c->size.y = attr.y;
       c->size.width = attr.width;
@@ -457,12 +447,16 @@ extern void shell(ScreenInfo *screen, int button, int x, int y) {
   if (!sh) {
     sh = "/bin/sh";
   }
+  const char* display_str = DisplayString(dpy);
 
   switch (fork()) {
   case 0: /* Child. */
     close(ConnectionNumber(dpy));
-    if (screen && screen->display_spec != 0) {
-      putenv(screen->display_spec);
+    if (display_str) {
+      const int len = strlen(display_str) + 9;
+      char* str = (char*) malloc(len);
+      snprintf(str, len, "DISPLAY=%s", display_str);
+      putenv(str);
     }
     execl(sh, sh, "-c", command.c_str(), NULL);
     fprintf(stderr, "%s: can't exec \"%s -c %s\"\n", argv0, sh,
@@ -475,13 +469,13 @@ extern void shell(ScreenInfo *screen, int button, int x, int y) {
   }
 }
 
-extern int titleHeight(void) { return font_set_ext->max_logical_extent.height; }
+extern int titleHeight() { return font_set_ext->max_logical_extent.height; }
 
 extern int ascent(XFontSetExtents *font_set_ext) {
   return abs(font_set_ext->max_logical_extent.y);
 }
 
-extern int popupHeight(void) {
+extern int popupHeight() {
   return popup_font_set_ext->max_logical_extent.height;
 }
 
@@ -511,116 +505,89 @@ extern int popupWidth(char *string, int string_length) {
   return logical.width;
 }
 
-static void initScreens(void) {
+static void initScreen() {
   /* Find out how many screens we've got, and allocate space for their info. */
-  screen_count = ScreenCount(dpy);
-  screens = (ScreenInfo *)malloc(screen_count * sizeof(ScreenInfo));
-
-  /* Go through the screens one-by-one, initialising them. */
-  for (int screen = 0; screen < screen_count; screen++) {
-    initialiseCursors(screen);
-    initScreen(screen);
-    scanWindowTree(screen);
+  const int num = ScreenCount(dpy);
+  if (num != 1) {
+    fprintf(stderr, "Sorry, LWM no longer supports multiple screens, and you "
+                    "have %d set up.\nPlease consider using xrandr.\n",
+            num);
   }
-}
-
-static void initScreen(int screen) {
-  /* Set the DISPLAY specification. */
-  char *display_string = DisplayString(dpy);
-  char *colon = strrchr(display_string, ':');
-  if (colon) {
-    char *dot = strrchr(colon, '.');
-    const int len = 9 + strlen(display_string) + ((dot == 0) ? 2 : 0) + 10;
-    screens[screen].display_spec = (char *)malloc(len);
-    sprintf(screens[screen].display_spec, "DISPLAY=%s", display_string);
-    if (!dot) {
-      dot = screens[screen].display_spec + len - 3;
-    } else {
-      dot = strrchr(screens[screen].display_spec, '.');
-    }
-    sprintf(dot, ".%i", screen);
-  } else {
-    screens[screen].display_spec = 0;
-  }
-
-  /* Find the root window. */
-  screens[screen].root = RootWindow(dpy, screen);
-  screens[screen].display_width = DisplayWidth(dpy, screen);
-  screens[screen].display_height = DisplayHeight(dpy, screen);
-  screens[screen].strut.left = 0;
-  screens[screen].strut.right = 0;
-  screens[screen].strut.top = 0;
-  screens[screen].strut.bottom = 0;
+  screen = new ScreenInfo(); // () constructor zero-inits everything.
+  initialiseCursors();
+  
+  const int screen_index = 0;
+  screen->root = RootWindow(dpy, screen_index);
+  screen->display_width = DisplayWidth(dpy, screen_index);
+  screen->display_height = DisplayHeight(dpy, screen_index);
+  screen->strut.left = 0;
+  screen->strut.right = 0;
+  screen->strut.top = 0;
+  screen->strut.bottom = 0;
 
   /* Get the pixel values of the only two colours we use. */
-  screens[screen].black = BlackPixel(dpy, screen);
-  screens[screen].white = WhitePixel(dpy, screen);
+  screen->black = BlackPixel(dpy, screen_index);
+  screen->white = WhitePixel(dpy, screen_index);
   XColor colour, exact;
-  XAllocNamedColor(dpy, DefaultColormap(dpy, screen), "DimGray", &colour,
+  XAllocNamedColor(dpy, DefaultColormap(dpy, screen_index), "DimGray", &colour,
                    &exact);
-  screens[screen].gray = colour.pixel;
+  screen->gray = colour.pixel;
 
   /* Set up root (frame) GC's. */
   XGCValues gv;
-  gv.foreground = screens[screen].black ^ screens[screen].white;
-  gv.background = screens[screen].white;
+  gv.foreground = screen->black ^ screen->white;
+  gv.background = screen->white;
   gv.function = GXxor;
   gv.line_width = 1;
   gv.subwindow_mode = IncludeInferiors;
-  screens[screen].gc_thin = XCreateGC(dpy, screens[screen].root,
-                                      GCForeground | GCBackground | GCFunction |
-                                          GCLineWidth | GCSubwindowMode,
-                                      &gv);
+  screen->gc_thin =
+      XCreateGC(dpy, screen->root, GCForeground | GCBackground | GCFunction |
+                                       GCLineWidth | GCSubwindowMode,
+                &gv);
 
   gv.line_width = 2;
-  screens[screen].gc = XCreateGC(dpy, screens[screen].root,
-                                 GCForeground | GCBackground | GCFunction |
-                                     GCLineWidth | GCSubwindowMode,
-                                 &gv);
+  screen->gc =
+      XCreateGC(dpy, screen->root, GCForeground | GCBackground | GCFunction |
+                                       GCLineWidth | GCSubwindowMode,
+                &gv);
 
   /* Create a window for our popup. */
-  screens[screen].popup =
-      XCreateSimpleWindow(dpy, screens[screen].root, 0, 0, 1, 1, 1,
-                          screens[screen].black, screens[screen].white);
+  screen->popup = XCreateSimpleWindow(dpy, screen->root, 0, 0, 1, 1, 1,
+                                      screen->black, screen->white);
   XSetWindowAttributes attr;
   attr.event_mask = ButtonMask | ButtonMotionMask | ExposureMask;
-  XChangeWindowAttributes(dpy, screens[screen].popup, CWEventMask, &attr);
+  XChangeWindowAttributes(dpy, screen->popup, CWEventMask, &attr);
 
   /* Create menu GC. */
   gv.line_width = 1;
-  screens[screen].menu_gc = XCreateGC(dpy, screens[screen].popup,
-                                      GCForeground | GCBackground | GCFunction |
-                                          GCLineWidth | GCSubwindowMode,
-                                      &gv);
+  screen->menu_gc =
+      XCreateGC(dpy, screen->popup, GCForeground | GCBackground | GCFunction |
+                                        GCLineWidth | GCSubwindowMode,
+                &gv);
 
   /* Create size indicator GC. */
-  gv.foreground = screens[screen].black;
+  gv.foreground = screen->black;
   gv.function = GXcopy;
-  screens[screen].size_gc = XCreateGC(dpy, screens[screen].popup,
-                                      GCForeground | GCBackground | GCFunction |
-                                          GCLineWidth | GCSubwindowMode,
-                                      &gv);
+  screen->size_gc =
+      XCreateGC(dpy, screen->popup, GCForeground | GCBackground | GCFunction |
+                                        GCLineWidth | GCSubwindowMode,
+                &gv);
 
   /* Announce our interest in the root window. */
-  attr.cursor = screens[screen].root_cursor;
+  attr.cursor = screen->root_cursor;
   attr.event_mask = SubstructureRedirectMask | SubstructureNotifyMask |
                     ColormapChangeMask | ButtonPressMask | PropertyChangeMask |
                     EnterWindowMask;
-  XChangeWindowAttributes(dpy, screens[screen].root, CWCursor | CWEventMask,
-                          &attr);
+  XChangeWindowAttributes(dpy, screen->root, CWCursor | CWEventMask, &attr);
 
   /* Make sure all our communication to the server got through. */
   XSync(dpy, false);
+  scanWindowTree();
 }
 
 /**
 Find the screen for which root is the root window.
 */
 ScreenInfo *getScreenFromRoot(Window root) {
-  for (int screen = 0; screen < screen_count; screen++) {
-    if (screens[screen].root == root) {
-      return &screens[screen];
-    }
-  }
-  return 0;
+  return screen->root == root ? screen : NULL;
 }

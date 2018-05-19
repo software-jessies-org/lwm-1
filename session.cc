@@ -155,7 +155,7 @@ static void session_save_yourself(SmcConn smc_conn, SmPointer client_data,
   SmcSaveYourselfDone(smc_conn, true);
 }
 
-void session_end(void) {
+void session_end() {
   if (smc_conn == NULL) {
     return;
   }
@@ -220,4 +220,4 @@ void session_init(int argc, char *argv[]) {
   ice_fd = IceConnectionNumber(ice_conn);
 }
 
-void session_process(void) { IceProcessMessages(ice_conn, NULL, NULL); }
+void session_process() { IceProcessMessages(ice_conn, NULL, NULL); }

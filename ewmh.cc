@@ -36,7 +36,7 @@ Atom ewmh_atom[EWMH_ATOM_LAST];
 char const* ewmh_atom_names[EWMH_ATOM_LAST];
 Atom utf8_string;
 
-void ewmh_init(void) {
+void ewmh_init() {
   // Build half a million EWMH atoms.
 #define SET_ATOM(x)                                          \
     do {                                                     \
@@ -115,47 +115,44 @@ char const *ewmh_atom_name(Atom at) {
   return "unknown atom";
 }
 
-void ewmh_init_screens(void) {
-  // Announce EWMH compatibility on all screens.
-  for (int i = 0; i < screen_count; i++) {
-    screens[i].ewmh_set_client_list = false;
-    screens[i].ewmh_compat =
-        XCreateSimpleWindow(dpy, screens[i].root, -200, -200, 1, 1, 0, 0, 0);
-    XChangeProperty(dpy, screens[i].ewmh_compat, ewmh_atom[_NET_WM_NAME],
-                    utf8_string, 8, PropModeReplace,
-                    (const unsigned char*) "lwm", 3);
+void ewmh_init_screen() {
+  // Announce EWMH compatibility on the screen.
+  screen->ewmh_set_client_list = false;
+  screen->ewmh_compat =
+      XCreateSimpleWindow(dpy, screen->root, -200, -200, 1, 1, 0, 0, 0);
+  XChangeProperty(dpy, screen->ewmh_compat, ewmh_atom[_NET_WM_NAME],
+                  utf8_string, 8, PropModeReplace, (const unsigned char *)"lwm",
+                  3);
 
-    /* set root window properties */
-    XChangeProperty(dpy, screens[i].root, ewmh_atom[_NET_SUPPORTED], XA_ATOM,
-                    32, PropModeReplace, (unsigned char *)ewmh_atom,
-                    EWMH_ATOM_LAST);
+  /* set root window properties */
+  XChangeProperty(dpy, screen->root, ewmh_atom[_NET_SUPPORTED], XA_ATOM, 32,
+                  PropModeReplace, (unsigned char *)ewmh_atom, EWMH_ATOM_LAST);
 
-    XChangeProperty(dpy, screens[i].root, ewmh_atom[_NET_SUPPORTING_WM_CHECK],
-                    XA_WINDOW, 32, PropModeReplace,
-                    (unsigned char *)&screens[i].ewmh_compat, 1);
+  XChangeProperty(dpy, screen->root, ewmh_atom[_NET_SUPPORTING_WM_CHECK],
+                  XA_WINDOW, 32, PropModeReplace,
+                  (unsigned char *)&screen->ewmh_compat, 1);
 
-    unsigned long data[4];
-    data[0] = 1;
-    XChangeProperty(dpy, screens[i].root, ewmh_atom[_NET_NUMBER_OF_DESKTOPS],
-                    XA_CARDINAL, 32, PropModeReplace, (unsigned char *)data, 1);
+  unsigned long data[4];
+  data[0] = 1;
+  XChangeProperty(dpy, screen->root, ewmh_atom[_NET_NUMBER_OF_DESKTOPS],
+                  XA_CARDINAL, 32, PropModeReplace, (unsigned char *)data, 1);
 
-    data[0] = screens[i].display_width;
-    data[1] = screens[i].display_height;
-    XChangeProperty(dpy, screens[i].root, ewmh_atom[_NET_DESKTOP_GEOMETRY],
-                    XA_CARDINAL, 32, PropModeReplace, (unsigned char *)data, 2);
+  data[0] = screen->display_width;
+  data[1] = screen->display_height;
+  XChangeProperty(dpy, screen->root, ewmh_atom[_NET_DESKTOP_GEOMETRY],
+                  XA_CARDINAL, 32, PropModeReplace, (unsigned char *)data, 2);
 
-    data[0] = 0;
-    data[1] = 0;
-    XChangeProperty(dpy, screens[i].root, ewmh_atom[_NET_DESKTOP_VIEWPORT],
-                    XA_CARDINAL, 32, PropModeReplace, (unsigned char *)data, 2);
+  data[0] = 0;
+  data[1] = 0;
+  XChangeProperty(dpy, screen->root, ewmh_atom[_NET_DESKTOP_VIEWPORT],
+                  XA_CARDINAL, 32, PropModeReplace, (unsigned char *)data, 2);
 
-    data[0] = 0;
-    XChangeProperty(dpy, screens[i].root, ewmh_atom[_NET_CURRENT_DESKTOP],
-                    XA_CARDINAL, 32, PropModeReplace, (unsigned char *)data, 1);
+  data[0] = 0;
+  XChangeProperty(dpy, screen->root, ewmh_atom[_NET_CURRENT_DESKTOP],
+                  XA_CARDINAL, 32, PropModeReplace, (unsigned char *)data, 1);
 
-    ewmh_set_strut(&screens[i]);
-    ewmh_set_client_list(&screens[i]);
-  }
+  ewmh_set_strut(screen);
+  ewmh_set_client_list(screen);
 }
 
 EWMHWindowType ewmh_get_window_type(Window w) {

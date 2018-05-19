@@ -81,7 +81,7 @@ extern int isShaped(Window w) {
 #endif
 }
 
-extern int serverSupportsShapes(void) {
+extern int serverSupportsShapes() {
 #ifdef SHAPE
   int shape_error;
   return XShapeQueryExtension(dpy, &shape_event, &shape_error);

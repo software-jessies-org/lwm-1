@@ -227,7 +227,7 @@ static void expose(XEvent *ev) {
   }
 
   /* Decide what needs redrawing: window frame or menu? */
-  if (current_screen && w == current_screen->popup) {
+  if (w == screen->popup) {
     if (mode == wm_menu_up) {
       menu_expose();
     } else if (mode == wm_reshaping && current != 0) {
@@ -346,7 +346,7 @@ static void buttonrelease(XEvent *ev) {
   if (mode == wm_menu_up) {
     menu_buttonrelease(ev);
   } else if (mode == wm_reshaping) {
-    XUnmapWindow(dpy, current_screen->popup);
+    XUnmapWindow(dpy, screen->popup);
   } else if (mode == wm_closing_window) {
     /* was the button released within the window's box?*/
     int quarter = (borderWidth() + titleHeight()) / 4;
@@ -396,9 +396,8 @@ static void maprequest(XEvent *ev) {
   DBG_IF(debug_map, "in maprequest, client %p", c);
   
   if (c == 0 || c->window != e->window) {
-    for (int screen = 0; screen < screen_count; screen++) {
-      scanWindowTree(screen);
-    }
+    // TODO(phil): Do I really need to do this? And for every window?
+    scanWindowTree();
     c = Client_Get(e->window);
     DBG_IF(debug_map, "in maprequest, after scan client is %p", c);
     if (c == 0 || c->window != e->window) {
@@ -889,7 +888,7 @@ void reshaping_motionnotify(XEvent *ev) {
     // ensure the little white window that shows the current being-dragged
     // window's size is closed. Otherwise it gets left there in the middle of
     // the screen, looking foolish.
-    XUnmapWindow(dpy, current_screen->popup);
+    XUnmapWindow(dpy, screen->popup);
     DBG("Flipped out of weird dragging mode.");
     return;
   }
