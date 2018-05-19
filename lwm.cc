@@ -414,7 +414,6 @@ extern void scanWindowTree() {
     }
     Client *c = Client_Add(win, screen->root);
     if (c != 0 && c->window == win) {
-      c->screen = screen;
       c->size.x = attr.x;
       c->size.y = attr.y;
       c->size.width = attr.width;

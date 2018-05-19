@@ -195,8 +195,6 @@ struct Client {
   std::string menu_name; // Name used in root popup.
   bool name_utf8;
 
-  ScreenInfo *screen;
-
   Edge cursor; /* indicates which cursor is being used for parent window */
 
   EWMHWindowType wtype;
@@ -397,9 +395,9 @@ extern void ewmh_get_state(Client *c);
 extern void ewmh_change_state(Client *c, unsigned long action,
                               unsigned long atom);
 extern void ewmh_set_allowed(Client *c);
-extern void ewmh_set_client_list(ScreenInfo *screen);
+extern void ewmh_set_client_list();
 extern void ewmh_get_strut(Client *c);
-extern void ewmh_set_strut(ScreenInfo *screen);
+extern void ewmh_set_strut();
 extern char const *ewmh_atom_name(Atom at);
 
 // geometry.cc

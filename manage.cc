@@ -203,50 +203,50 @@ void manage(Client *c) {
 
       /* firstly, make sure auto_x and auto_y are outside
        * strut */
-      if (auto_x < c->screen->strut.left) {
-        auto_x = c->screen->strut.left;
+      if (auto_x < screen->strut.left) {
+        auto_x = screen->strut.left;
       }
-      if (auto_y < c->screen->strut.top) {
-        auto_y = c->screen->strut.top;
+      if (auto_y < screen->strut.top) {
+        auto_y = screen->strut.top;
       }
 
       if ((auto_x + c->size.width) >
-              (c->screen->display_width - c->screen->strut.right) &&
-          (c->size.width <= (c->screen->display_width - c->screen->strut.left -
-                             c->screen->strut.right))) {
+              (screen->display_width - screen->strut.right) &&
+          (c->size.width <= (screen->display_width - screen->strut.left -
+                             screen->strut.right))) {
         /*
          * If the window wouldn't fit using normal
          * auto-placement but is small enough to fit
          * horizontally, then centre the window
          * horizontally.
          */
-        c->size.x = (c->screen->display_width - c->size.width) / 2;
-        auto_x = c->screen->strut.left + 20;
+        c->size.x = (screen->display_width - c->size.width) / 2;
+        auto_x = screen->strut.left + 20;
       } else {
         c->size.x = auto_x;
         auto_x += 10;
-        if (auto_x > (c->screen->display_width / 2)) {
-          auto_x = c->screen->strut.left + 20;
+        if (auto_x > (screen->display_width / 2)) {
+          auto_x = screen->strut.left + 20;
         }
       }
 
       if (((auto_y + c->size.height) >
-           (c->screen->display_height - c->screen->strut.bottom)) &&
-          (c->size.height <= (c->screen->display_height - c->screen->strut.top -
-                              c->screen->strut.bottom))) {
+           (screen->display_height - screen->strut.bottom)) &&
+          (c->size.height <= (screen->display_height - screen->strut.top -
+                              screen->strut.bottom))) {
         /*
          * If the window wouldn't fit using normal
          * auto-placement but is small enough to fit
          * vertically, then centre the window
          * vertically.
          */
-        c->size.y = (c->screen->display_height - c->size.height) / 2;
-        auto_y = c->screen->strut.top + 20;
+        c->size.y = (screen->display_height - c->size.height) / 2;
+        auto_y = screen->strut.top + 20;
       } else {
         c->size.y = auto_y;
         auto_y += 10;
-        if (auto_y > (c->screen->display_height / 2)) {
-          auto_y = c->screen->strut.top + 20;
+        if (auto_y > (screen->display_height / 2)) {
+          auto_y = screen->strut.top + 20;
         }
       }
     }
@@ -261,10 +261,9 @@ void manage(Client *c) {
    */
 
   if (c->framed) {
-    c->parent = XCreateSimpleWindow(dpy, c->screen->root, c->size.x,
-                                    c->size.y - titleHeight(), c->size.width,
-                                    c->size.height + titleHeight(), 1,
-                                    c->screen->black, c->screen->white);
+    c->parent = XCreateSimpleWindow(
+        dpy, screen->root, c->size.x, c->size.y - titleHeight(), c->size.width,
+        c->size.height + titleHeight(), 1, screen->black, screen->white);
 
     XSetWindowAttributes attr;
     attr.event_mask = ExposureMask | EnterWindowMask | ButtonMask |
@@ -296,7 +295,8 @@ void manage(Client *c) {
                           CWEventMask | CWWinGravity | CWDontPropagate, &attr);
 
   if (c->framed) {
-    XReparentWindow(dpy, c->window, c->parent, borderWidth(), borderWidth() + titleHeight());
+    XReparentWindow(dpy, c->window, c->parent, borderWidth(),
+                    borderWidth() + titleHeight());
   } else {
     XReparentWindow(dpy, c->window, c->parent, c->size.x, c->size.y);
   }
@@ -331,14 +331,14 @@ static void applyGravity(Client *c) {
   if (c->size.flags & PWinGravity) {
     switch (c->size.win_gravity) {
     case NorthEastGravity:
-        c->size.x -= 2 * borderWidth();
+      c->size.x -= 2 * borderWidth();
       break;
     case SouthWestGravity:
-        c->size.y -= 2 * borderWidth();
+      c->size.y -= 2 * borderWidth();
       break;
     case SouthEastGravity:
-        c->size.x -= 2 * borderWidth();
-        c->size.y -= 2 * borderWidth();
+      c->size.x -= 2 * borderWidth();
+      c->size.y -= 2 * borderWidth();
       break;
     }
   }
@@ -351,9 +351,9 @@ void getTransientFor(Client *c) {
 }
 
 void withdraw(Client *c) {
-  if (c->parent != c->screen->root) {
+  if (c->parent != screen->root) {
     XUnmapWindow(dpy, c->parent);
-    XReparentWindow(dpy, c->parent, c->screen->root, c->size.x, c->size.y);
+    XReparentWindow(dpy, c->parent, screen->root, c->size.x, c->size.y);
   }
 
   XRemoveFromSaveSet(dpy, c->window);
@@ -569,7 +569,7 @@ void getNormalHints(Client *c) {
   if (!(c->size.flags & PResizeInc)) {
     c->size.width_inc = c->size.height_inc = 1;
   }
-  
+
   /*
    * If the client gives identical minimum and maximum sizes, we don't
    * want the user to resize in that direction.

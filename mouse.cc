@@ -232,11 +232,11 @@ static void draw_menu_item(Client *c, int i, int width, int height) {
 
 #ifdef X_HAVE_UTF8_STRING
   if (c->name_utf8)
-    Xutf8DrawString(dpy, c->screen->popup, popup_font_set, screen->menu_gc, tx,
+    Xutf8DrawString(dpy, screen->popup, popup_font_set, screen->menu_gc, tx,
                     ty, name.c_str(), name.size());
   else
 #endif
-    XmbDrawString(dpy, c->screen->popup, popup_font_set, screen->menu_gc, tx,
+    XmbDrawString(dpy, screen->popup, popup_font_set, screen->menu_gc, tx,
                   ty, name.c_str(), name.size());
 }
 

@@ -151,8 +151,8 @@ void ewmh_init_screen() {
   XChangeProperty(dpy, screen->root, ewmh_atom[_NET_CURRENT_DESKTOP],
                   XA_CARDINAL, 32, PropModeReplace, (unsigned char *)data, 1);
 
-  ewmh_set_strut(screen);
-  ewmh_set_client_list(screen);
+  ewmh_set_strut();
+  ewmh_set_client_list();
 }
 
 EWMHWindowType ewmh_get_window_type(Window w) {
@@ -325,7 +325,7 @@ void ewmh_change_state(Client *c, unsigned long action, unsigned long atom) {
   ewmh_set_state(c);
 
   /* may have to shuffle windows in the stack after a change of state */
-  ewmh_set_client_list(c->screen);
+  ewmh_set_client_list();
 }
 
 void ewmh_set_state(Client *c) {
@@ -377,7 +377,7 @@ void ewmh_set_allowed(Client *c) {
                   32, PropModeReplace, (unsigned char *)action, 4);
 }
 
-void ewmh_set_strut(ScreenInfo *screen) {
+void ewmh_set_strut() {
   /* find largest reserved areas */
   EWMHStrut strut;
   strut.left = 0;
@@ -385,9 +385,6 @@ void ewmh_set_strut(ScreenInfo *screen) {
   strut.top = 0;
   strut.bottom = 0;
   for (Client *c = client_head(); c; c = c->next) {
-    if (c->screen != screen) {
-      continue;
-    }
     if (c->strut.left > strut.left) {
       strut.left = c->strut.left;
     }
@@ -472,7 +469,7 @@ void ewmh_get_strut(Client *c) {
   c->strut.right = (unsigned int)strut[1];
   c->strut.top = (unsigned int)strut[2];
   c->strut.bottom = (unsigned int)strut[3];
-  ewmh_set_strut(c->screen);
+  ewmh_set_strut();
 }
 
 /* fix stack forces each window on the screen to be in the right place in
@@ -526,10 +523,7 @@ static void fix_stack() {
   }
 }
 
-static bool valid_for_client_list(ScreenInfo *screen, Client *c) {
-  if (c->screen != screen) {
-    return false;
-  }
+static bool valid_for_client_list(Client *c) {
   return c->state != WithdrawnState;
 }
 
@@ -540,15 +534,15 @@ static bool valid_for_client_list(ScreenInfo *screen, Client *c) {
 * it should be called whenever the window stack is modified, or when clients
 * are hidden or unhidden.
 */
-void ewmh_set_client_list(ScreenInfo *screen) {
-  if (screen == NULL || screen->ewmh_set_client_list) {
+void ewmh_set_client_list() {
+  if (screen->ewmh_set_client_list) {
     return;
   }
   screen->ewmh_set_client_list = true;
   fix_stack();
   int no_clients = 0;
   for (Client *c = client_head(); c; c = c->next) {
-    if (valid_for_client_list(screen, c)) {
+    if (valid_for_client_list(c)) {
       no_clients++;
     }
   }
@@ -558,7 +552,7 @@ void ewmh_set_client_list(ScreenInfo *screen) {
     client_list = (Window*) malloc(sizeof(Window) * no_clients);
     int i = no_clients - 1; /* array starts with oldest */
     for (Client *c = client_head(); c; c = c->next) {
-      if (valid_for_client_list(screen, c)) {
+      if (valid_for_client_list(c)) {
         client_list[i] = c->window;
         i--;
         if (i < 0) {
@@ -576,7 +570,7 @@ void ewmh_set_client_list(ScreenInfo *screen) {
       if (!c) {
         continue;
       }
-      if (valid_for_client_list(screen, c)) {
+      if (valid_for_client_list(c)) {
         stacked_client_list[ci] = c->window;
         ci++;
         if (ci >= no_clients) {

@@ -432,7 +432,7 @@ static void maprequest(XEvent *ev) {
     Client_SetState(c, NormalState);
     break;
   }
-  ewmh_set_client_list(c->screen);
+  ewmh_set_client_list();
 }
 
 static void unmap(XEvent *ev) {
@@ -791,7 +791,7 @@ static void enter(XEvent *ev) {
   if (c->framed) {
     XSetWindowAttributes attr;
 
-    attr.cursor = c->screen->root_cursor;
+    attr.cursor = screen->root_cursor;
     XChangeWindowAttributes(dpy, c->parent, CWCursor, &attr);
     c->cursor = ENone;
   }
@@ -849,11 +849,11 @@ static void motionnotify(XEvent *ev) {
         XSetWindowAttributes attr;
 
         if (edge == ENone) {
-          attr.cursor = c->screen->root_cursor;
+          attr.cursor = screen->root_cursor;
         } else if (edge == E_LAST) {
-          attr.cursor = c->screen->box_cursor;
+          attr.cursor = screen->box_cursor;
         } else {
-          attr.cursor = c->screen->cursor_map[edge];
+          attr.cursor = screen->cursor_map[edge];
         }
         XChangeWindowAttributes(dpy, c->parent, CWCursor, &attr);
         c->cursor = edge;
