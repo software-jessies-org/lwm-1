@@ -48,7 +48,7 @@ static int getWindowState(Window, int *);
 static void applyGravity(Client *);
 
 /*ARGSUSED*/
-void manage(Client *c, int mapped) {
+void manage(Client *c) {
   /* get the EWMH window type, as this might overrule some hints */
   c->wtype = ewmh_get_window_type(c->window);
   /* get in the initial EWMH state */
@@ -194,10 +194,12 @@ void manage(Client *c, int mapped) {
        */
       applyGravity(c);
     } else {
-      /* No position was specified: use the auto-placement
-       * heuristics. */
-      static int auto_x = 100;
-      static int auto_y = 100;
+      // No position was specified: use the auto-placement heuristics.
+      // These are static so that the windows aren't all opened at exactly
+      // the same place, but rather the opening position advances down and to
+      // the right with each successive window opened.
+      static unsigned int auto_x = 100;
+      static unsigned int auto_y = 100;
 
       /* firstly, make sure auto_x and auto_y are outside
        * strut */

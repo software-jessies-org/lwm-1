@@ -21,7 +21,7 @@ LOCAL_LIBRARIES = $(XLIB) $(SMLIB) $(XRANDRLIB) -lICE
 DEFINES = -DSHAPE
 CXX=g++
 CC=g++
-CXXFLAGS=-std=c++14 -g
+CXXFLAGS=-std=c++14 -g -Wall -Werror -Wextra -Wpedantic -Wno-sign-compare
 LDFLAGS='-lstdc++14'
 
 HEADERS = lwm.h ewmh.h

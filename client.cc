@@ -241,7 +241,7 @@ void Client_Remove(Client *c) {
       if (!focus) {
         WindowTree wt = WindowTree::Query(dpy, c->screen->root);
         for (int i = wt.children.size() - 1; i >= 0; i--) {
-          if (focus = Client_Get(wt.children[i])) {
+          if ((focus = Client_Get(wt.children[i]))) {
             break;
           }
         }

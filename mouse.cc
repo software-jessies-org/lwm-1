@@ -225,8 +225,7 @@ void unhidec(Client *c, int map) {
   }
 }
 
-static void draw_menu_item(Client *c, int i, int width, int height,
-                           int length) {
+static void draw_menu_item(Client *c, int i, int width, int height) {
   int tx = (width - titleWidth(popup_font_set, c)) / 2;
   int ty = i * height + ascent(popup_font_set_ext);
   const std::string &name = c->menu_name.empty() ? c->name : c->menu_name;
@@ -250,7 +249,7 @@ void menu_expose() {
   /* Redraw the labels. */
   int i = 0;
   for (menuitem *m = hidden_menu; m != 0; m = m->next, i++) {
-    draw_menu_item(m->client, i, width, height, length);
+    draw_menu_item(m->client, i, width, height);
   }
 
   // Draw a dashed line between the hidden and non-hidden items.
@@ -264,7 +263,7 @@ void menu_expose() {
     if (!c->framed || c->hidden) {
       continue;
     }
-    draw_menu_item(c, i++, width, height, length);
+    draw_menu_item(c, i++, width, height);
   }
 
   /* Highlight current item if there is one. */

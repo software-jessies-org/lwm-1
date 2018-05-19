@@ -478,7 +478,7 @@ void ewmh_get_strut(Client *c) {
 /* fix stack forces each window on the screen to be in the right place in
  * the window stack as indicated in the EWMH spec version 1.2 (section 7.10).
  */
-static void fix_stack(ScreenInfo *screen) {
+static void fix_stack() {
   /* this is pretty dumb. we should query the tree and only move
    * those windows that require it. doing it regardless like this
    * causes the desktop to flicker
@@ -545,7 +545,7 @@ void ewmh_set_client_list(ScreenInfo *screen) {
     return;
   }
   screen->ewmh_set_client_list = true;
-  fix_stack(screen);
+  fix_stack();
   int no_clients = 0;
   for (Client *c = client_head(); c; c = c->next) {
     if (valid_for_client_list(screen, c)) {

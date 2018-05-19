@@ -116,7 +116,6 @@ char *argv0;
 static void initScreen();
 
 static void rrScreenChangeNotify(XEvent *ev);
-static void rrNotify(XEvent *ev);
 
 /*ARGSUSED*/
 extern int main(int argc, char *argv[]) {
@@ -294,8 +293,6 @@ static void moveOrChangeSize(int olds, int news, int *pos, int *size, int inc) {
   if (inc < 1) {
     inc = 1;
   }
-  int opos = *pos;
-  int osize = *size;
   // For clarity, comments assume we're talking about the X dimension. This is
   // not necessarily the case, but it's easier to visualise if we pick one
   // dimension.
@@ -425,14 +422,14 @@ extern void scanWindowTree() {
       c->border = attr.border_width;
       if (attr.map_state == IsViewable) {
         c->internal_state = IPendingReparenting;
-        manage(c, 1);
+        manage(c);
       }
     }
   }
 }
 
 /*ARGSUSED*/
-extern void shell(ScreenInfo *screen, int button, int x, int y) {
+extern void shell(int button) {
   std::string command;
   if (button == Button1) {
     command = resources()->btn1_command;

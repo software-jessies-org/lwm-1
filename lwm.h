@@ -245,7 +245,7 @@ extern bool shape;
 extern int shape_event;
 extern char *argv0;
 extern bool forceRestart;
-extern void shell(ScreenInfo *, int, int, int);
+extern void shell(int);
 extern void sendConfigureNotify(Client *);
 extern int titleHeight();
 extern int titleWidth(XFontSet font_set, Client *c);
@@ -263,16 +263,25 @@ extern bool debug_map;               // -d=m
 extern bool debug_property_notify;   // -d=p
 extern bool printDebugPrefix(char const* filename, int line);
 
-#define DBG_IF(cond, fmt, ...)                                                 \
+#define DBGF_IF(cond, fmt, ...)                                                \
     do {                                                                       \
       if (cond && printDebugPrefix(__FILE__, __LINE__)) {                      \
         fprintf(stderr, fmt, ##__VA_ARGS__);                                   \
         fputc('\n', stderr);                                                   \
       }                                                                        \
     } while (0)
-
-#define DBG(fmt, ...) DBG_IF(1, fmt, ##__VA_ARGS__)
-
+        
+#define DBG_IF(cond, str)                                                      \
+    do {                                                                       \
+      if (cond && printDebugPrefix(__FILE__, __LINE__)) {                      \
+        fputs(str, stderr);                                                    \
+        fputc('\n', stderr);                                                   \
+      }                                                                        \
+    } while (0)
+        
+#define DBG(str) DBG_IF(1, str)
+#define DBGF(fmt, ...) DBGF_IF(1, fmt, ##__VA_ARGS__)
+        
 /* client.cc */
 extern Client *client_head();
 extern Edge interacting_edge;
@@ -320,7 +329,7 @@ extern void panic(const char *);
 extern void getWindowName(Client *);
 extern void getNormalHints(Client *);
 extern bool motifWouldDecorate(Client *);
-extern void manage(Client *, int);
+extern void manage(Client *);
 extern void withdraw(Client *);
 extern void cmapfocus(Client *);
 extern void getColourmaps(Client *);

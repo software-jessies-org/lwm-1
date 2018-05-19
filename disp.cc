@@ -115,41 +115,40 @@ static char const *debugFocusDetail(int v) {
 
 static void debugGeneric(XEvent *ev, char const *evName) {
   if (debug_all_events) {
-    DBG("%s: window 0x%lx", evName, ev->xany.window);
+    DBGF("%s: window 0x%lx", evName, ev->xany.window);
   }
 }
 
 static void debugConfigureNotify(XEvent *ev, char const *evName) {
   if (debug_all_events || debug_configure_notify) {
     XConfigureEvent *xc = &(ev->xconfigure);
-    DBG("%s: ev window 0x%lx, window 0x%lx; pos %d, %d; size %d, %d",
-        evName, xc->event, xc->window, xc->x, xc->y, xc->width, xc->height);
+    DBGF("%s: ev window 0x%lx, window 0x%lx; pos %d, %d; size %d, %d", evName,
+         xc->event, xc->window, xc->x, xc->y, xc->width, xc->height);
   }
 }
 
 static void debugPropertyNotify(XEvent *ev, char const *evName) {
   if (debug_all_events || debug_property_notify) {
     XPropertyEvent *xp = &(ev->xproperty);
-    DBG("%s: window 0x%lx, atom %ld (%s); state %s", evName,
-        xp->window, xp->atom, ewmh_atom_name(xp->atom),
-        debugPropertyState(xp->state));
+    DBGF("%s: window 0x%lx, atom %ld (%s); state %s", evName, xp->window,
+         xp->atom, ewmh_atom_name(xp->atom), debugPropertyState(xp->state));
   }
 }
 
 static void debugFocusChange(XEvent *ev, char const *evName) {
   if (debug_all_events || debug_focus) {
     XFocusChangeEvent *xf = &(ev->xfocus);
-    DBG("%s: %s, window 0x%lx, mode=%s, detail=%s", evName,
-        debugFocusType(xf->type), xf->window, debugFocusMode(xf->mode),
-        debugFocusDetail(xf->detail));
+    DBGF("%s: %s, window 0x%lx, mode=%s, detail=%s", evName,
+         debugFocusType(xf->type), xf->window, debugFocusMode(xf->mode),
+         debugFocusDetail(xf->detail));
   }
 }
 
 static void debugMapRequest(XEvent *ev, char const *evName) {
   if (debug_all_events || debug_map) {
     XMapRequestEvent *e = &ev->xmaprequest;
-    DBG("%s: window 0x%lx, parent 0x%lx, send=%d, serial=%lu", evName,
-        e->window, e->parent, e->send_event, e->serial);
+    DBGF("%s: window 0x%lx, parent 0x%lx, send=%d, serial=%lu", evName,
+         e->window, e->parent, e->send_event, e->serial);
   }
 }
 
@@ -206,7 +205,7 @@ extern void dispatch(XEvent *ev) {
     }
   }
   if (!shapeEvent(ev)) {
-    DBG("%s: unknown event %d", argv0, ev->type);
+    DBGF("%s: unknown event %d", argv0, ev->type);
   }
 }
 
@@ -336,7 +335,7 @@ static void buttonpress(XEvent *ev) {
       cmapfocus(0);
       menuhit(e);
     } else {
-      shell(getScreenFromRoot(e->root), e->button, e->x, e->y);
+      shell(e->button);
     }
   }
 }
@@ -393,15 +392,15 @@ static void circulaterequest(XEvent *ev) {
 static void maprequest(XEvent *ev) {
   XMapRequestEvent *e = &ev->xmaprequest;
   Client *c = Client_Get(e->window);
-  DBG_IF(debug_map, "in maprequest, client %p", c);
-  
+  DBGF_IF(debug_map, "in maprequest, client %p", (void*) c);
+
   if (c == 0 || c->window != e->window) {
     // TODO(phil): Do I really need to do this? And for every window?
     scanWindowTree();
     c = Client_Get(e->window);
-    DBG_IF(debug_map, "in maprequest, after scan client is %p", c);
+    DBGF_IF(debug_map, "in maprequest, after scan client is %p", (void*) c);
     if (c == 0 || c->window != e->window) {
-      DBG("MapRequest for non-existent window!");
+      DBGF("MapRequest for non-existent window: %lx!", c->window);
       return;
     }
   }
@@ -410,10 +409,11 @@ static void maprequest(XEvent *ev) {
 
   switch (c->state) {
   case WithdrawnState:
-    DBG_IF(debug_map, "in maprequest, WithdrawnState");
+    DBGF_IF(debug_map, "in maprequest, WithdrawnState %d", c->state);
     if (getScreenFromRoot(c->parent) != 0) {
-      DBG_IF(debug_map, "in maprequest, taking over management of window.");
-      manage(c, 0);
+      DBGF_IF(debug_map, "in maprequest, taking over management of window %lx.",
+              c->parent);
+      manage(c);
       break;
     }
     if (c->framed) {
@@ -637,7 +637,7 @@ static void clientmessage(XEvent *ev) {
   }
   if (e->message_type == ewmh_atom[_NET_WM_MOVERESIZE] && e->format == 32) {
     Edge edge = E_LAST;
-    EWMHDirection direction = (EWMHDirection) e->data.l[2];
+    EWMHDirection direction = (EWMHDirection)e->data.l[2];
 
     /* before we can do any resizing, make the window visible */
     if (hidden(c)) {
@@ -864,6 +864,7 @@ static void motionnotify(XEvent *ev) {
 
 /*ARGSUSED*/
 void reshaping_motionnotify(XEvent *ev) {
+  ev = ev;
   int nx;  /* New x. */
   int ny;  /* New y. */
   int ox;  /* Original x. */

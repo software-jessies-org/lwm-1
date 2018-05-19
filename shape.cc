@@ -49,6 +49,8 @@ extern void setShape(Client *c) {
                        c->window, ShapeBounding, ShapeSet);
   }
   XFree(rect);
+#else
+  c = c;
 #endif
 }
 
@@ -63,6 +65,8 @@ extern int shapeEvent(XEvent *ev) {
     }
     return 1;
   }
+#else
+  ev = ev;
 #endif
   return 0;
 }
@@ -77,6 +81,7 @@ extern int isShaped(Window w) {
 
   return (n > 1);
 #else
+  w = w;
   return 0;
 #endif
 }
