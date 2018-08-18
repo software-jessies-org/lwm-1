@@ -5,6 +5,7 @@
 
 #include <X11/X.h>
 #include <X11/Xatom.h>
+#include <X11/Xft/Xft.h>
 #include <X11/Xlib.h>
 #include <X11/Xos.h>
 #include <X11/Xutil.h>
@@ -16,7 +17,7 @@ struct WindowTree {
   Window root;
   std::vector<Window> children;
   unsigned int num_children;
-  
+
   static WindowTree Query(Display *dpy, Window w);
 };
 

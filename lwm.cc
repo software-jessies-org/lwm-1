@@ -45,6 +45,11 @@ int start_y; /* The Y position where the mode changed. */
 Display *dpy;        /* The connection to the X server. */
 ScreenInfo *screen;
 
+XftFont* g_font;
+XftDraw* g_font_draw;
+XftColor g_font_white;
+XftColor g_font_pale_grey;
+
 XFontSet font_set = NULL; /* Font set for title var */
 XFontSetExtents *font_set_ext = NULL;
 XFontSet popup_font_set = NULL; /* Font set for popups */
@@ -181,6 +186,23 @@ extern int main(int argc, char *argv[]) {
   char **missing;
   char *def;
   int missing_count;
+
+  int screenID = DefaultScreen(dpy);
+  g_font = XftFontOpenName(dpy, screenID, resources()->font_name.c_str());
+  if (g_font == nullptr) {
+    fprintf(stderr, "Couldn't find font %s; falling back",
+            resources()->font_name.c_str());
+    g_font = XftFontOpenName(dpy, 0, "fixed");
+    if (g_font == nullptr) {
+      panic("Can't find a font");
+    }
+  }
+  XRenderColor xrc = {0xffff, 0xffff, 0xffff, 0xffff};
+  XftColorAllocValue(dpy, DefaultVisual(dpy, screenID),
+                     DefaultColormap(dpy, screenID), &xrc, &g_font_white);
+  xrc = {0xafff, 0xafff, 0xafff, 0xffff};
+  XftColorAllocValue(dpy, DefaultVisual(dpy, screenID),
+                     DefaultColormap(dpy, screenID), &xrc, &g_font_pale_grey);
 
   font_set = XCreateFontSet(dpy, resources()->font_name.c_str(), &missing,
                             &missing_count, &def);
@@ -482,13 +504,7 @@ extern int titleWidth(XFontSet font_set, Client *c) {
   const std::string &name = (c->menu_name == "") ? c->name : c->menu_name;
   XRectangle ink;
   XRectangle logical;
-#ifdef X_HAVE_UTF8_STRING
-  if (c->name_utf8)
-    Xutf8TextExtents(font_set, name.c_str(), name.size(), &ink, &logical);
-  else
-#endif
-    XmbTextExtents(font_set, name.c_str(), name.size(), &ink, &logical);
-
+  Xutf8TextExtents(font_set, name.c_str(), name.size(), &ink, &logical);
   return logical.width;
 }
 
@@ -511,7 +527,7 @@ static void initScreen() {
   }
   screen = new ScreenInfo(); // () constructor zero-inits everything.
   initialiseCursors();
-  
+
   const int screen_index = 0;
   screen->root = RootWindow(dpy, screen_index);
   screen->display_width = DisplayWidth(dpy, screen_index);

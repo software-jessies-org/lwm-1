@@ -123,17 +123,17 @@ void Client_DrawBorder(Client *c, int active) {
 
   /* Draw window title. */
   if (!c->name.empty()) {
-#ifdef X_HAVE_UTF8_STRING
-    if (c->name_utf8)
-      Xutf8DrawString(dpy, c->parent, font_set, screen->gc,
-                      borderWidth() + 2 + (3 * quarter),
-                      2 + ascent(font_set_ext), c->name.c_str(),
-                      c->name.size());
-    else
-#endif
-      XmbDrawString(dpy, c->parent, font_set, screen->gc,
-                    borderWidth() + 2 + (3 * quarter), 2 + ascent(font_set_ext),
-                    c->name.c_str(), c->name.size());
+    const char *name = c->name.c_str();
+    int x = borderWidth() + 2 + (3 * quarter);
+    int y = borderWidth() + g_font->ascent;
+    int screenID = DefaultScreen(dpy);
+    XftColor *color = active ? &g_font_white : &g_font_pale_grey;
+    XftDraw *g_font_draw =
+        XftDrawCreate(dpy, c->parent, DefaultVisual(dpy, screenID),
+                      DefaultColormap(dpy, screenID));
+    XftDrawStringUtf8(g_font_draw, color, g_font, x, y,
+                      reinterpret_cast<const FcChar8 *>(name), strlen(name));
+    XftDrawDestroy(g_font_draw);
   }
 }
 
@@ -178,18 +178,10 @@ Client *Client_Add(Window w, Window root) {
     }
   }
 
-  c = (Client *)calloc(1, sizeof *c);
-  c->window = w;
-  c->parent = root;
-  c->state = WithdrawnState;
-  c->internal_state = INormal;
-  c->cmap = None;
-  c->cursor = ENone;
-  c->wtype = WTypeNone;
-  c->accepts_focus = true;
-  c->next = clients;
+  c = new Client(w, root);
 
   /* Add to head of list of clients. */
+  c->next = clients;
   clients = c;
   return clients;
 }
@@ -253,12 +245,7 @@ void Client_Remove(Client *c) {
   if (getScreenFromRoot(c->parent) == 0) {
     XDestroyWindow(dpy, c->parent);
   }
-
-  if (c->ncmapwins) {
-    XFree(c->cmapwins);
-    free(c->wmcmaps);
-  }
-  free(c);
+  delete c;
   ewmh_set_client_list();
   ewmh_set_strut();
 }
@@ -369,8 +356,8 @@ void Client_MakeSane(Client *c, Edge edge, int *x, int *y, int *dx, int *dy) {
      * be "thrown" to the edge of the workarea without precise mousing,
      * as requested by MAD.
      */
-    if (*x<(int)screen->strut.left && * x>((int)screen->strut.left -
-                                           EDGE_RESIST)) {
+    if (*x < (int)screen->strut.left &&
+        *x > ((int)screen->strut.left - EDGE_RESIST)) {
       *x = (int)screen->strut.left;
     }
     if ((*x + c->size.width) >
@@ -711,10 +698,12 @@ extern void Client_Focus(Client *c, Time time) {
   }
 }
 
-extern void Client_Name(Client *c, const char *name, bool is_utf8) {
+extern void Client_Name(Client *c, const char *name, int len) {
   static const char dots[] = "...";
-  c->name = std::string(name);
-  c->name_utf8 = is_utf8;
+  c->name = "";
+  if (name && len) {
+    c->name = std::string(name, len);
+  }
 
   // Check if the menu_name will fit in the display, minus 10% for safety.
   // If not, try truncating until it fits.

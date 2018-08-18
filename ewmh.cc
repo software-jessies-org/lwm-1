@@ -121,8 +121,8 @@ void ewmh_init_screen() {
   screen->ewmh_compat =
       XCreateSimpleWindow(dpy, screen->root, -200, -200, 1, 1, 0, 0, 0);
   XChangeProperty(dpy, screen->ewmh_compat, ewmh_atom[_NET_WM_NAME],
-                  utf8_string, 8, PropModeReplace, (const unsigned char *)"lwm",
-                  3);
+                  utf8_string, XA_CURSOR, PropModeReplace,
+                  (const unsigned char *)"lwm", 3);
 
   /* set root window properties */
   XChangeProperty(dpy, screen->root, ewmh_atom[_NET_SUPPORTED], XA_ATOM, 32,
@@ -207,24 +207,21 @@ EWMHWindowType ewmh_get_window_type(Window w) {
 }
 
 bool ewmh_get_window_name(Client *c) {
-#ifdef X_HAVE_UTF8_STRING
   Atom rt;
-  char *name;
-  int fmt;
-  unsigned long n;
-  unsigned long extra;
+  char *name = NULL;
+  int fmt = 0;
+  unsigned long n = 0;
+  unsigned long extra = 0;
   int i = XGetWindowProperty(dpy, c->window, ewmh_atom[_NET_WM_NAME], 0, 100,
                              false, utf8_string, &rt, &fmt, &n, &extra,
                              (unsigned char **)&name);
   if (i != Success || name == NULL) {
+    fprintf(stderr, "Got no window name for client %p\n", (void*)c);
     return false;
   }
-  Client_Name(c, name, true);
+  Client_Name(c, name, n);
   XFree(name);
   return true;
-#else
-  return false;
-#endif
 }
 
 bool ewmh_hasframe(Client *c) {
@@ -562,7 +559,7 @@ void ewmh_set_client_list() {
     }
 
     stacked_client_list = (Window*) malloc(sizeof(Window) * no_clients);
-    
+
     WindowTree wt = WindowTree::Query(dpy, screen->root);
     int ci = 0;
     for (Window win : wt.children) {

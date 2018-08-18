@@ -480,37 +480,9 @@ void getWindowName(Client *c) {
   if (!c) {
     return;
   }
-  int was_nameless = (c->name == "");
-  if (!ewmh_get_window_name(c)) {
-    char *name;
-    Atom actual_type;
-    int format;
-    unsigned long n;
-    unsigned long extra;
-    if (XGetWindowProperty(dpy, c->window, _mozilla_url, 0L, 100L, false,
-                           AnyPropertyType, &actual_type, &format, &n, &extra,
-                           (unsigned char **)&name) == Success &&
-        name && *name != '\0' && n != 0) {
-      Client_Name(c, name, false);
-      XFree(name);
-    } else if (XGetWindowProperty(dpy, c->window, XA_WM_NAME, 0L, 100L, false,
-                                  AnyPropertyType, &actual_type, &format, &n,
-                                  &extra, (unsigned char **)&name) == Success &&
-               name && *name != '\0' && n != 0) {
-      /* That rather unpleasant condition is necessary because xwsh uses
-      * COMPOUND_TEXT rather than STRING for its WM_NAME property,
-      * and anonymous xwsh windows are annoying.
-      */
-      if (actual_type == compound_text &&
-          memcmp(name, "\x1b\x28\x42", 3) == 0) {
-        Client_Name(c, name + 3, false);
-      } else {
-        Client_Name(c, name, false);
-      }
-      XFree(name);
-    }
-  }
-  if (!was_nameless) {
+  std::string old_name = c->name;
+  ewmh_get_window_name(c);
+  if (old_name != c->name) {
     Client_DrawBorder(c, c == current);
   }
 }

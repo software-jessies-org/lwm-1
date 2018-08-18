@@ -19,11 +19,12 @@
 
 #include <string>
 
+#include <X11/Xft/Xft.h>
+
 /* --- Administrator-configurable defaults. --- */
 
-#define DEFAULT_TITLE_FONT                                                     \
-  "-*-lucida-bold-r-normal-sans-14-*-*-*-p-*-iso10646-1"
-#define DEFAULT_POPUP_FONT                                                     \
+#define DEFAULT_TITLE_FONT "roboto-16"
+#define DEFAULT_POPUP_FONT \
   "-*-lucida-medium-r-normal-sans-12-*-*-*-p-*-iso10646-1"
 #define DEFAULT_TERMINAL "xterm"
 #define DEFAULT_BORDER 6
@@ -171,9 +172,42 @@ struct ScreenInfo {
 };
 
 struct Client {
-  Window window; /* Client's window. */
-  Window parent; /* Window manager frame. */
-  Window trans;  /* Window that client is a transient for. */
+  Client(Window w, Window parent)
+      : window(w),
+        parent(parent),
+        trans(0),
+        framed(false),
+        next(nullptr),
+        border(0),
+        state(WithdrawnState),
+        hidden(false),
+        internal_state(INormal),
+        proto(0),
+        accepts_focus(true),
+        cursor(ENone),
+        wtype(WTypeNone),
+        ncmapwins(0),
+        cmapwins(nullptr),
+        wmcmaps(nullptr) {
+#define ZERO_STRUCT(x) memset(&x, 0, sizeof(x))
+    ZERO_STRUCT(wstate);
+    ZERO_STRUCT(strut);
+    ZERO_STRUCT(size);
+    ZERO_STRUCT(return_size);
+    ZERO_STRUCT(cmap);
+#undef ZERO_STRUCT
+  }
+
+  ~Client() {
+    if (ncmapwins) {
+      XFree(cmapwins);
+      free(wmcmaps);
+    }
+  }
+  
+  Window window;     /* Client's window. */
+  Window parent;     /* Window manager frame. */
+  Window trans;      /* Window that client is a transient for. */
 
   bool framed; /* true is lwm is maintaining a frame */
 
@@ -190,22 +224,25 @@ struct Client {
   int proto;
 
   bool accepts_focus; /* Does this window want keyboard events? */
-  
-  std::string name;  // Name used for title in frame.
-  std::string menu_name; // Name used in root popup.
-  bool name_utf8;
+
+  std::string name;       // Name used for title in frame.
+  std::string menu_name;  // Name used in root popup.
 
   Edge cursor; /* indicates which cursor is being used for parent window */
 
   EWMHWindowType wtype;
   EWMHWindowState wstate;
   EWMHStrut strut; /* reserved areas */
-  
+
   /* Colourmap scum. */
   Colormap cmap;
   int ncmapwins;
   Window *cmapwins;
   Colormap *wmcmaps;
+
+ private:
+  Client(const Client &) = delete;
+  Client &operator=(const Client &) = delete;
 };
 
 /*
@@ -226,6 +263,13 @@ extern int start_x;
 extern int start_y;
 extern Display *dpy;
 extern ScreenInfo *screen;
+
+// New, pretty fonts:
+extern XftFont* g_font;
+extern XftDraw* g_font_draw;
+extern XftColor g_font_white;
+extern XftColor g_font_pale_grey;
+
 extern XFontSet font_set;
 extern XFontSetExtents *font_set_ext;
 extern XFontSet popup_font_set;
@@ -259,27 +303,27 @@ extern bool debug_all_events;        // -d=e
 extern bool debug_focus;             // -d=f
 extern bool debug_map;               // -d=m
 extern bool debug_property_notify;   // -d=p
-extern bool printDebugPrefix(char const* filename, int line);
+extern bool printDebugPrefix(char const *filename, int line);
 
-#define DBGF_IF(cond, fmt, ...)                                                \
-    do {                                                                       \
-      if (cond && printDebugPrefix(__FILE__, __LINE__)) {                      \
-        fprintf(stderr, fmt, ##__VA_ARGS__);                                   \
-        fputc('\n', stderr);                                                   \
-      }                                                                        \
-    } while (0)
-        
-#define DBG_IF(cond, str)                                                      \
-    do {                                                                       \
-      if (cond && printDebugPrefix(__FILE__, __LINE__)) {                      \
-        fputs(str, stderr);                                                    \
-        fputc('\n', stderr);                                                   \
-      }                                                                        \
-    } while (0)
-        
+#define DBGF_IF(cond, fmt, ...)                         \
+  do {                                                  \
+    if (cond && printDebugPrefix(__FILE__, __LINE__)) { \
+      fprintf(stderr, fmt, ##__VA_ARGS__);              \
+      fputc('\n', stderr);                              \
+    }                                                   \
+  } while (0)
+
+#define DBG_IF(cond, str)                               \
+  do {                                                  \
+    if (cond && printDebugPrefix(__FILE__, __LINE__)) { \
+      fputs(str, stderr);                               \
+      fputc('\n', stderr);                              \
+    }                                                   \
+  } while (0)
+
 #define DBG(str) DBG_IF(1, str)
 #define DBGF(fmt, ...) DBGF_IF(1, fmt, ##__VA_ARGS__)
-        
+
 /* client.cc */
 extern Client *client_head();
 extern Edge interacting_edge;
@@ -303,7 +347,7 @@ extern void Client_EnterFullScreen(Client *c);
 extern void Client_ExitFullScreen(Client *c);
 extern void Client_Focus(Client *c, Time time);
 extern void Client_ResetAllCursors();
-extern void Client_Name(Client *c, const char *name, bool is_utf8);
+extern void Client_Name(Client *c, const char *name, int len);
 extern int hidden(Client *);
 extern int withdrawn(Client *);
 extern int normal(Client *);

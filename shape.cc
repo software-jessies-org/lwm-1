@@ -45,6 +45,7 @@ extern void setShape(Client *c) {
   XRectangle *rect =
       XShapeGetRectangles(dpy, c->window, ShapeBounding, &n, &order);
   if (n > 1) {
+    int border = borderWidth();
     XShapeCombineShape(dpy, c->parent, ShapeBounding, border - 1, border - 1,
                        c->window, ShapeBounding, ShapeSet);
   }
