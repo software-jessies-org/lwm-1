@@ -1,28 +1,28 @@
 XCOMM lwm, a window manager for X11
 XCOMM Copyright (C) 1997-2016 Elliott Hughes, James Carter
-XCOMM 
+XCOMM
 XCOMM This program is free software; you can redistribute it and/or
 XCOMM modify it under the terms of the GNU General Public License
 XCOMM as published by the Free Software Foundation; either version 2
 XCOMM of the License, or (at your option) any later version.
-XCOMM 
+XCOMM
 XCOMM This program is distributed in the hope that it will be useful,
 XCOMM but WITHOUT ANY WARRANTY; without even the implied warranty of
 XCOMM MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 XCOMM GNU General Public License for more details.
-XCOMM 
+XCOMM
 XCOMM You should have received a copy of the GNU General Public License
 XCOMM along with this program; if not, write to the Free Software
 XCOMM Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
-INCLUDES = -I$(TOP)
+INCLUDES = -I$(TOP) -I/usr/include/freetype2
 DEPLIBS = $(DEPXLIB) $(DEPSMLIB)
-LOCAL_LIBRARIES = $(XLIB) $(SMLIB) $(XRANDRLIB) -lICE
+LOCAL_LIBRARIES = $(XLIB) $(XFREETYPELIB) $(SMLIB) $(XRANDRLIB) -lICE $(XFTLIB)
 DEFINES = -DSHAPE
 CXX=g++
 CC=g++
-CXXFLAGS=-std=c++14 -g -Wall -Werror -Wextra -Wpedantic -Wno-sign-compare
-LDFLAGS='-lstdc++14'
+CXXFLAGS=-std=c++14 -g -Wall -Werror -Wextra -Wpedantic -Wno-sign-compare -I/usr/include/freetype2
+LDFLAGS='-lstdc++14 -lXft'
 
 HEADERS = lwm.h ewmh.h
 SRCS = lwm.cc manage.cc mouse.cc client.cc cursor.cc error.cc disp.cc shape.cc resource.cc session.cc ewmh.cc geometry.cc xlib.cc
