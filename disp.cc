@@ -273,7 +273,7 @@ static void buttonpress(XEvent *ev) {
     /* Click went to our frame around a client. */
 
     /* The ``box''. */
-    int quarter = (borderWidth() + titleHeight()) / 4;
+    int quarter = (borderWidth() + textHeight()) / 4;
     if (e->x > (quarter + 2) && e->x < (3 + 3 * quarter) && e->y > quarter &&
         e->y <= 3 * quarter) {
       /*Client_Close(c);*/
@@ -303,25 +303,25 @@ static void buttonpress(XEvent *ev) {
       } else if (e->x >= (c->size.width - border) && e->y <= border) {
         Client_ReshapeEdge(c, ETopRight);
       } else if (e->x >= (c->size.width - border) &&
-                 e->y >= (c->size.height + titleHeight() - border)) {
+                 e->y >= (c->size.height + textHeight() - border)) {
         Client_ReshapeEdge(c, EBottomRight);
       } else if (e->x <= border &&
-                 e->y >= (c->size.height + titleHeight() - border)) {
+                 e->y >= (c->size.height + textHeight() - border)) {
         Client_ReshapeEdge(c, EBottomLeft);
       } else if (e->x > border && e->x < (c->size.width - border) &&
                  e->y < border) {
         Client_ReshapeEdge(c, ETop);
       } else if (e->x > border && e->x < (c->size.width - border) &&
-                 e->y >= border && e->y < (titleHeight() + border)) {
+                 e->y >= border && e->y < (textHeight() + border)) {
         Client_Move(c);
       } else if (e->x > (c->size.width - border) && e->y > border &&
-                 e->y < (c->size.height + titleHeight() - border)) {
+                 e->y < (c->size.height + textHeight() - border)) {
         Client_ReshapeEdge(c, ERight);
       } else if (e->x > border && e->x < (c->size.width - border) &&
                  e->y > (c->size.height - border)) {
         Client_ReshapeEdge(c, EBottom);
       } else if (e->x < border && e->y > border &&
-                 e->y < (c->size.height + titleHeight() - border)) {
+                 e->y < (c->size.height + textHeight() - border)) {
         Client_ReshapeEdge(c, ELeft);
       }
       return;
@@ -348,7 +348,7 @@ static void buttonrelease(XEvent *ev) {
     XUnmapWindow(dpy, screen->popup);
   } else if (mode == wm_closing_window) {
     /* was the button released within the window's box?*/
-    int quarter = (borderWidth() + titleHeight()) / 4;
+    int quarter = (borderWidth() + textHeight()) / 4;
     if (pending != NULL && (e->window == pending->parent) &&
         (e->x > (quarter + 2) && e->x < (3 + 3 * quarter) && e->y > quarter &&
          e->y <= 3 * quarter)) {
@@ -359,7 +359,7 @@ static void buttonrelease(XEvent *ev) {
     /* was the button release within the window's frame? */
     if (pending != NULL && (e->window == pending->parent) && (e->x >= 0) &&
         (e->y >= 0) && (e->x <= pending->size.width) &&
-        (e->y <= (pending->size.height + titleHeight()))) {
+        (e->y <= (pending->size.height + textHeight()))) {
       if (e->state & ShiftMask) {
         Client_Lower(pending);
       } else {
@@ -418,7 +418,7 @@ static void maprequest(XEvent *ev) {
     }
     if (c->framed) {
       XReparentWindow(dpy, c->window, c->parent, borderWidth(),
-                      borderWidth() + titleHeight());
+                      borderWidth() + textHeight());
     } else {
       XReparentWindow(dpy, c->window, c->parent, c->size.x, c->size.y);
     }
@@ -493,7 +493,7 @@ static void configurereq(XEvent *ev) {
     if (e->value_mask & CWY) {
       c->size.y = e->y;
       if (c->framed) {
-        c->size.y += titleHeight();
+        c->size.y += textHeight();
       }
     }
     if (e->value_mask & CWWidth) {
@@ -516,12 +516,12 @@ static void configurereq(XEvent *ev) {
       wc.x = c->size.x;
       wc.y = c->size.y;
       if (c->framed) {
-        wc.y -= titleHeight();
+        wc.y -= textHeight();
       }
       wc.width = c->size.width;
       wc.height = c->size.height;
       if (c->framed) {
-        wc.height += titleHeight();
+        wc.height += textHeight();
       }
       wc.border_width = 1;
       wc.sibling = e->above;
@@ -550,9 +550,9 @@ static void configurereq(XEvent *ev) {
 
   if (c) {
     if (c->framed) {
-      XMoveResizeWindow(dpy, c->parent, c->size.x, c->size.y - titleHeight(),
-                        c->size.width, c->size.height + titleHeight());
-      XMoveWindow(dpy, c->window, borderWidth(), borderWidth() + titleHeight());
+      XMoveResizeWindow(dpy, c->parent, c->size.x, c->size.y - textHeight(),
+                        c->size.width, c->size.height + textHeight());
+      XMoveWindow(dpy, c->window, borderWidth(), borderWidth() + textHeight());
     } else {
       XMoveResizeWindow(dpy, c->window, c->size.x, c->size.y, c->size.width,
                         c->size.height);
@@ -815,7 +815,7 @@ static void motionnotify(XEvent *ev) {
         mode == wm_idle) {
       /* mouse moved in a frame we manage - check cursor */
       const int border = borderWidth();
-      int quarter = (border + titleHeight()) / 4;
+      int quarter = (border + textHeight()) / 4;
       if (e->x > (quarter + 2) && e->x < (3 + 3 * quarter) && e->y > quarter &&
           e->y <= 3 * quarter) {
         edge = E_LAST;
@@ -824,25 +824,25 @@ static void motionnotify(XEvent *ev) {
       } else if (e->x >= (c->size.width - border) && e->y <= border) {
         edge = ETopRight;
       } else if (e->x >= (c->size.width - border) &&
-                 e->y >= (c->size.height + titleHeight() - border)) {
+                 e->y >= (c->size.height + textHeight() - border)) {
         edge = EBottomRight;
       } else if (e->x <= border &&
-                 e->y >= (c->size.height + titleHeight() - border)) {
+                 e->y >= (c->size.height + textHeight() - border)) {
         edge = EBottomLeft;
       } else if (e->x > border && e->x < (c->size.width - border) &&
                  e->y < border) {
         edge = ETop;
       } else if (e->x > border && e->x < (c->size.width - border) &&
-                 e->y >= border && e->y < (titleHeight() + border)) {
+                 e->y >= border && e->y < (textHeight() + border)) {
         edge = ENone;
       } else if (e->x > (c->size.width - border) && e->y > border &&
-                 e->y < (c->size.height + titleHeight() - border)) {
+                 e->y < (c->size.height + textHeight() - border)) {
         edge = ERight;
       } else if (e->x > border && e->x < (c->size.width - border) &&
                  e->y > (c->size.height - border)) {
         edge = EBottom;
       } else if (e->x < border && e->y > border &&
-                 e->y < (c->size.height + titleHeight() - border)) {
+                 e->y < (c->size.height + textHeight() - border)) {
         edge = ELeft;
       }
       if (c->cursor != edge) {
@@ -904,7 +904,7 @@ void reshaping_motionnotify(XEvent *ev) {
 
     /* Vertical. */
     if (isTopEdge(interacting_edge)) {
-      mp.y += titleHeight();
+      mp.y += textHeight();
       ndy += (current->size.y - mp.y);
       ny = mp.y;
     }
@@ -923,15 +923,15 @@ void reshaping_motionnotify(XEvent *ev) {
 
     Client_MakeSane(current, interacting_edge, &nx, &ny, &ndx, &ndy);
     XMoveResizeWindow(dpy, current->parent, current->size.x,
-                      current->size.y - titleHeight(), current->size.width,
-                      current->size.height + titleHeight());
+                      current->size.y - textHeight(), current->size.width,
+                      current->size.height + textHeight());
     if (current->size.width == odx && current->size.height == ody) {
       if (current->size.x != ox || current->size.y != oy) {
         sendConfigureNotify(current);
       }
     } else {
       const int border = borderWidth();
-      XMoveResizeWindow(dpy, current->window, border, border + titleHeight(),
+      XMoveResizeWindow(dpy, current->window, border, border + textHeight(),
                         current->size.width - 2 * border,
                         current->size.height - 2 * border);
     }
@@ -942,7 +942,7 @@ void reshaping_motionnotify(XEvent *ev) {
     Client_MakeSane(current, interacting_edge, &nx, &ny, 0, 0);
     if (current->framed) {
       XMoveWindow(dpy, current->parent, current->size.x,
-                  current->size.y - titleHeight());
+                  current->size.y - textHeight());
     } else {
       XMoveWindow(dpy, current->parent, current->size.x, current->size.y);
     }

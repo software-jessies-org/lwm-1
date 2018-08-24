@@ -56,7 +56,6 @@ static std::string getResource(XrmDatabase *db, const char *name,
 Resources* parseResources() {
   Resources* res = new Resources();
   res->font_name = DEFAULT_TITLE_FONT;
-  res->popup_font_name = DEFAULT_POPUP_FONT;
   res->border = DEFAULT_BORDER;
   res->btn2_command = DEFAULT_TERMINAL;
   res->click_to_focus = false;
@@ -73,7 +72,6 @@ Resources* parseResources() {
 
   // Simple string resources.
   setResource(&db, "lwm.titleFont", "Font", &(res->font_name));
-  setResource(&db, "lwm.popupFont", "Font", &(res->popup_font_name));
   setResource(&db, "lwm.button1", "Command", &(res->btn1_command));
   setResource(&db, "lwm.button2", "Command", &(res->btn2_command));
 

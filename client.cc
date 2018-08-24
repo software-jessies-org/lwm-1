@@ -17,6 +17,7 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
 
+#include <sstream>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -45,6 +46,41 @@ static void sendClientMessage(Window, Atom, long, long);
 
 Client *client_head() { return clients; }
 
+// Truncate names to this many characters (UTF8 characters, naturally). Much
+// simpler than trying to calculate the 'best' length based on the render text
+// width, which is quite unnecessary anyway.
+static constexpr int maxMenuNameChars = 100;
+
+std::string Client::MenuName() const {
+  if (name_.size() <= maxMenuNameChars) return name_;
+  int chars = 0;
+  int uniLeft = 0;
+  for (int i = 0; i < name_.size(); i++) {
+    if (uniLeft && --uniLeft) continue; // Skip trailing UTF8 only.
+    char ch = name_[i];
+    chars++;
+    if (chars == maxMenuNameChars) {
+      // i must be at the start of a unicode character (or ascii), and we've
+      // seen as many visible characters as we wanted.
+      return name_.substr(0, i) + "...";
+    }
+    int mask = 0xf8;
+    int val = 0xf0;
+    uniLeft = 4;
+    while (mask && uniLeft) {
+      if ((ch & mask) == val) {
+        break;
+      }
+      uniLeft--;
+      mask = (mask << 1) & 0xff;
+      val = (val << 1) & 0xff;
+    }
+  }
+  // Dropped off the end? The name must be under maxMenuNameChars UTF8
+  // characters in length then.
+  return name_;
+}
+
 static void focusChildrenOf(Window parent) {
   WindowTree wtree = WindowTree::Query(dpy, parent);
   for (Window win : wtree.children) {
@@ -64,9 +100,9 @@ void setactive(Client *c, int on, long timestamp) {
   const int inhibit = !c->framed;
 
   if (!inhibit) {
-    XMoveResizeWindow(dpy, c->parent, c->size.x, c->size.y - titleHeight(),
-                      c->size.width, c->size.height + titleHeight());
-    XMoveWindow(dpy, c->window, borderWidth(), borderWidth() + titleHeight());
+    XMoveResizeWindow(dpy, c->parent, c->size.x, c->size.y - textHeight(),
+                      c->size.width, c->size.height + textHeight());
+    XMoveWindow(dpy, c->window, borderWidth(), borderWidth() + textHeight());
     sendConfigureNotify(c);
   }
 
@@ -105,7 +141,7 @@ void setactive(Client *c, int on, long timestamp) {
 }
 
 void Client_DrawBorder(Client *c, int active) {
-  const int quarter = (borderWidth() + titleHeight()) / 4;
+  const int quarter = (borderWidth() + textHeight()) / 4;
 
   if (c->parent == screen->root || c->parent == 0 || !c->framed ||
       c->wstate.fullscreen) {
@@ -122,19 +158,10 @@ void Client_DrawBorder(Client *c, int active) {
   }
 
   /* Draw window title. */
-  if (!c->name.empty()) {
-    const char *name = c->name.c_str();
-    int x = borderWidth() + 2 + (3 * quarter);
-    int y = borderWidth() + g_font->ascent;
-    int screenID = DefaultScreen(dpy);
-    XftColor *color = active ? &g_font_white : &g_font_pale_grey;
-    XftDraw *g_font_draw =
-        XftDrawCreate(dpy, c->parent, DefaultVisual(dpy, screenID),
-                      DefaultColormap(dpy, screenID));
-    XftDrawStringUtf8(g_font_draw, color, g_font, x, y,
-                      reinterpret_cast<const FcChar8 *>(name), strlen(name));
-    XftDrawDestroy(g_font_draw);
-  }
+  int x = borderWidth() + 2 + (3 * quarter);
+  int y = borderWidth() / 2 + g_font->ascent;
+  XftColor *color = active ? &g_font_white : &g_font_pale_grey;
+  drawString(c->parent, x, y, c->Name(), color);
 }
 
 // Returns the parent window of w, or NULL if we hit the root or on error.
@@ -366,9 +393,9 @@ void Client_MakeSane(Client *c, Edge edge, int *x, int *y, int *dx, int *dy) {
             (int)(screen->display_width - screen->strut.right + EDGE_RESIST)) {
       *x = (int)(screen->display_width - screen->strut.right - c->size.width);
     }
-    if ((*y - titleHeight()) < (int)screen->strut.top &&
-        (*y - titleHeight()) > ((int)screen->strut.top - EDGE_RESIST)) {
-      *y = (int)screen->strut.top + titleHeight();
+    if ((*y - textHeight()) < (int)screen->strut.top &&
+        (*y - textHeight()) > ((int)screen->strut.top - EDGE_RESIST)) {
+      *y = (int)screen->strut.top + textHeight();
     }
     if ((*y + c->size.height) >
             (int)(screen->display_height - screen->strut.bottom) &&
@@ -401,19 +428,22 @@ void Client_MakeSane(Client *c, Edge edge, int *x, int *y, int *dx, int *dy) {
   }
 }
 
+static std::string makeSizeString(int x, int y) {
+  std::ostringstream buf;
+  buf << x << " x " << y;
+  return buf.str();
+}
+
 void Client_SizeFeedback() {
-  char buf[4 * 2 + 3 + 1];
-
   /* Make the popup 10% wider than the widest string it needs to show. */
-  snprintf(buf, sizeof(buf), "%i x %i", screen->display_width,
-           screen->display_height);
-  popup_width = popupWidth(buf, strlen(buf));
+  popup_width = textWidth(makeSizeString(screen->display_width,
+                                         screen->display_height));
   popup_width += popup_width / 10;
-
+  
   /* Put the popup in the right place to report on the window's size. */
   const MousePos mp = getMousePosition();
   XMoveResizeWindow(dpy, screen->popup, mp.x + 8, mp.y + 8, popup_width,
-                    popupHeight() + 1);
+                    textHeight() + 1);
   XMapRaised(dpy, screen->popup);
 
   /*
@@ -446,12 +476,10 @@ void size_expose() {
   if (current->size.height_inc != 0) {
     height /= current->size.height_inc;
   }
-
-  char buf[4 * 2 + 3 + 1];
-  snprintf(buf, sizeof(buf), "%i x %i", width, height);
-  XmbDrawString(dpy, screen->popup, popup_font_set, screen->size_gc,
-                (popup_width - popupWidth(buf, strlen(buf))) / 2,
-                ascent(popup_font_set_ext) + 1, buf, strlen(buf));
+  
+  const std::string text = makeSizeString(width, height);
+  const int x = (popup_width - textWidth(text)) / 2;
+  drawString(screen->popup, x, g_font->ascent + 1, text, &g_font_black);
 }
 
 static void Client_OpaquePrimitive(Client *c, Edge edge) {
@@ -649,13 +677,13 @@ extern void Client_ExitFullScreen(Client *c) {
   memcpy(&c->size, &c->return_size, sizeof(XSizeHints));
   if (c->framed) {
     fs.x = c->size.x;
-    fs.y = c->size.y - titleHeight();
+    fs.y = c->size.y - textHeight();
     fs.width = c->size.width;
-    fs.height = c->size.height + titleHeight();
+    fs.height = c->size.height + textHeight();
     XConfigureWindow(dpy, c->parent, CWX | CWY | CWWidth | CWHeight, &fs);
 
     fs.x = borderWidth();
-    fs.y = borderWidth() + titleHeight();
+    fs.y = borderWidth() + textHeight();
     fs.width = c->size.width - (2 * borderWidth());
     fs.height = c->size.height - (2 * borderWidth());
     XConfigureWindow(dpy, c->window, CWX | CWY | CWWidth | CWHeight, &fs);
@@ -698,22 +726,6 @@ extern void Client_Focus(Client *c, Time time) {
   }
 }
 
-extern void Client_Name(Client *c, const char *name, int len) {
-  static const char dots[] = "...";
-  c->name = "";
-  if (name && len) {
-    c->name = std::string(name, len);
-  }
-
-  // Check if the menu_name will fit in the display, minus 10% for safety.
-  // If not, try truncating until it fits.
-  for (int cut = 0; cut < c->name.size(); cut++) {
-    const int len = c->name.size() - cut;
-    // TODO: Fix this for UTF8.
-    c->menu_name = cut ? c->name.substr(0, len) + dots : c->name;
-    int tx = titleWidth(popup_font_set, c);
-    if (tx <= (screen->display_width * 9 / 10)) {
-      break;
-    }
-  }
+void Client::SetName(const char *c, int len) {
+  name_ = (c && len) ? std::string(c, len) : "";
 }

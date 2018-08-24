@@ -24,8 +24,6 @@
 /* --- Administrator-configurable defaults. --- */
 
 #define DEFAULT_TITLE_FONT "roboto-16"
-#define DEFAULT_POPUP_FONT \
-  "-*-lucida-medium-r-normal-sans-12-*-*-*-p-*-iso10646-1"
 #define DEFAULT_TERMINAL "xterm"
 #define DEFAULT_BORDER 6
 
@@ -205,6 +203,10 @@ struct Client {
     }
   }
   
+  void SetName(const char* c, int len);
+  const std::string& Name() const { return name_; }
+  std::string MenuName() const;
+  
   Window window;     /* Client's window. */
   Window parent;     /* Window manager frame. */
   Window trans;      /* Window that client is a transient for. */
@@ -225,9 +227,6 @@ struct Client {
 
   bool accepts_focus; /* Does this window want keyboard events? */
 
-  std::string name;       // Name used for title in frame.
-  std::string menu_name;  // Name used in root popup.
-
   Edge cursor; /* indicates which cursor is being used for parent window */
 
   EWMHWindowType wtype;
@@ -241,6 +240,8 @@ struct Client {
   Colormap *wmcmaps;
 
  private:
+  std::string name_;       // Name used for title in frame.
+  
   Client(const Client &) = delete;
   Client &operator=(const Client &) = delete;
 };
@@ -266,14 +267,16 @@ extern ScreenInfo *screen;
 
 // New, pretty fonts:
 extern XftFont* g_font;
-extern XftDraw* g_font_draw;
 extern XftColor g_font_white;
 extern XftColor g_font_pale_grey;
+extern XftColor g_font_black;
 
-extern XFontSet font_set;
-extern XFontSetExtents *font_set_ext;
-extern XFontSet popup_font_set;
-extern XFontSetExtents *popup_font_set_ext;
+// Functions for dealing with new pretty fonts:
+extern int textHeight();
+extern int textWidth(const std::string& s);
+extern void drawString(Window w, int x, int y, const std::string& s,
+                       XftColor *c);
+  
 extern Atom _mozilla_url;
 extern Atom motif_wm_hints;
 extern Atom wm_state;
@@ -289,11 +292,6 @@ extern char *argv0;
 extern bool forceRestart;
 extern void shell(int);
 extern void sendConfigureNotify(Client *);
-extern int titleHeight();
-extern int titleWidth(XFontSet font_set, Client *c);
-extern int popupHeight();
-extern int popupWidth(char *string, int string_length);
-extern int ascent(XFontSetExtents *font_set_ext);
 extern ScreenInfo *getScreenFromRoot(Window);
 extern void scanWindowTree();
 
@@ -347,7 +345,6 @@ extern void Client_EnterFullScreen(Client *c);
 extern void Client_ExitFullScreen(Client *c);
 extern void Client_Focus(Client *c, Time time);
 extern void Client_ResetAllCursors();
-extern void Client_Name(Client *c, const char *name, int len);
 extern int hidden(Client *);
 extern int withdrawn(Client *);
 extern int normal(Client *);
@@ -406,7 +403,6 @@ extern void setShape(Client *);
 /* resource.cc */
 struct Resources {
   std::string font_name;
-  std::string popup_font_name;
   std::string btn1_command;
   std::string btn2_command;
   int border;

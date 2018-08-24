@@ -262,8 +262,8 @@ void manage(Client *c) {
 
   if (c->framed) {
     c->parent = XCreateSimpleWindow(
-        dpy, screen->root, c->size.x, c->size.y - titleHeight(), c->size.width,
-        c->size.height + titleHeight(), 1, screen->black, screen->white);
+        dpy, screen->root, c->size.x, c->size.y - textHeight(), c->size.width,
+        c->size.height + textHeight(), 1, screen->black, screen->white);
 
     XSetWindowAttributes attr;
     attr.event_mask = ExposureMask | EnterWindowMask | ButtonMask |
@@ -296,7 +296,7 @@ void manage(Client *c) {
 
   if (c->framed) {
     XReparentWindow(dpy, c->window, c->parent, borderWidth(),
-                    borderWidth() + titleHeight());
+                    borderWidth() + textHeight());
   } else {
     XReparentWindow(dpy, c->window, c->parent, c->size.x, c->size.y);
   }
@@ -480,9 +480,9 @@ void getWindowName(Client *c) {
   if (!c) {
     return;
   }
-  std::string old_name = c->name;
+  const std::string old_name = c->Name();
   ewmh_get_window_name(c);
-  if (old_name != c->name) {
+  if (old_name != c->Name()) {
     Client_DrawBorder(c, c == current);
   }
 }

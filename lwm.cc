@@ -46,14 +46,9 @@ Display *dpy;        /* The connection to the X server. */
 ScreenInfo *screen;
 
 XftFont* g_font;
-XftDraw* g_font_draw;
 XftColor g_font_white;
 XftColor g_font_pale_grey;
-
-XFontSet font_set = NULL; /* Font set for title var */
-XFontSetExtents *font_set_ext = NULL;
-XFontSet popup_font_set = NULL; /* Font set for popups */
-XFontSetExtents *popup_font_set_ext = NULL;
+XftColor g_font_black;
 
 bool shape;      /* Does server have Shape Window extension? */
 int shape_event; /* ShapeEvent event type. */
@@ -177,16 +172,6 @@ extern int main(int argc, char *argv[]) {
 
   ewmh_init();
 
-  /*
-   * Get fonts for our titlebar and our popup window. We try to
-   * get Lucida, but if we can't we make do with fixed because everyone
-   * has that.
-   */
-  /* FIXME: do these need to be freed? */
-  char **missing;
-  char *def;
-  int missing_count;
-
   int screenID = DefaultScreen(dpy);
   g_font = XftFontOpenName(dpy, screenID, resources()->font_name.c_str());
   if (g_font == nullptr) {
@@ -203,38 +188,10 @@ extern int main(int argc, char *argv[]) {
   xrc = {0xafff, 0xafff, 0xafff, 0xffff};
   XftColorAllocValue(dpy, DefaultVisual(dpy, screenID),
                      DefaultColormap(dpy, screenID), &xrc, &g_font_pale_grey);
-
-  font_set = XCreateFontSet(dpy, resources()->font_name.c_str(), &missing,
-                            &missing_count, &def);
-  if (font_set == NULL) {
-    font_set = XCreateFontSet(dpy, "fixed", &missing, &missing_count, &def);
-  }
-  if (font_set == NULL) {
-    panic("unable to create font set for title font");
-  }
-  if (missing_count > 0) {
-    fprintf(stderr, "%s: warning: missing %d charset"
-                    "%s for title font\n",
-            argv0, missing_count, (missing_count == 1) ? "" : "s");
-  }
-  font_set_ext = XExtentsOfFontSet(font_set);
-
-  popup_font_set = XCreateFontSet(dpy, resources()->popup_font_name.c_str(),
-                                  &missing, &missing_count, &def);
-  if (popup_font_set == NULL) {
-    popup_font_set =
-        XCreateFontSet(dpy, "fixed", &missing, &missing_count, &def);
-  }
-  if (popup_font_set == NULL) {
-    panic("unable to create font set for popup font");
-  }
-  if (missing_count > 0) {
-    fprintf(stderr, "%s: warning: missing %d charset"
-                    "%s for popup font\n",
-            argv0, missing_count, (missing_count == 1) ? "" : "s");
-  }
-  popup_font_set_ext = XExtentsOfFontSet(popup_font_set);
-
+  xrc = {0, 0, 0, 0xffff};
+  XftColorAllocValue(dpy, DefaultVisual(dpy, screenID),
+                     DefaultColormap(dpy, screenID), &xrc, &g_font_black);
+  
   initScreen();
   ewmh_init_screen();
   session_init(argc, argv);
@@ -388,15 +345,15 @@ static void rrScreenChangeNotify(XEvent *ev) {
     // You have been warned.
     Client_MakeSane(c, ENone, &x, &y, 0, 0);
     interacting_edge = backup;
-    XMoveResizeWindow(dpy, c->parent, c->size.x, c->size.y - titleHeight(),
-                      c->size.width, c->size.height + titleHeight());
+    XMoveResizeWindow(dpy, c->parent, c->size.x, c->size.y - textHeight(),
+                      c->size.width, c->size.height + textHeight());
     if (c->size.width == oldw && c->size.height == oldh) {
       if (c->size.x != oldx || c->size.y != oldy) {
         sendConfigureNotify(c);
       }
     } else {
       XMoveResizeWindow(dpy, c->window, borderWidth(),
-                        borderWidth() + titleHeight(),
+                        borderWidth() + textHeight(),
                         c->size.width - 2 * borderWidth(),
                         c->size.height - 2 * borderWidth());
     }
@@ -487,34 +444,23 @@ extern void shell(int button) {
   }
 }
 
-extern int titleHeight() { return font_set_ext->max_logical_extent.height; }
+extern int textHeight() { return g_font->height; }
 
-extern int ascent(XFontSetExtents *font_set_ext) {
-  return abs(font_set_ext->max_logical_extent.y);
+extern void drawString(Window w, int x, int y, const std::string& s, XftColor *c) {
+  int screenID = DefaultScreen(dpy);
+  XftDraw *draw = XftDrawCreate(dpy, w, DefaultVisual(dpy, screenID),
+                                DefaultColormap(dpy, screenID));
+  XftDrawStringUtf8(draw, c, g_font, x, y,
+                    reinterpret_cast<const FcChar8 *>(s.c_str()), s.size());
+  XftDrawDestroy(draw);
 }
 
-extern int popupHeight() {
-  return popup_font_set_ext->max_logical_extent.height;
-}
-
-extern int titleWidth(XFontSet font_set, Client *c) {
-  if (c == NULL) {
-    return 0;
-  }
-  const std::string &name = (c->menu_name == "") ? c->name : c->menu_name;
-  XRectangle ink;
-  XRectangle logical;
-  Xutf8TextExtents(font_set, name.c_str(), name.size(), &ink, &logical);
-  return logical.width;
-}
-
-extern int popupWidth(char *string, int string_length) {
-  XRectangle ink;
-  XRectangle logical;
-
-  XmbTextExtents(popup_font_set, string, string_length, &ink, &logical);
-
-  return logical.width;
+// Returns the width of the given string in pixels, rendered in the LWM font.
+extern int textWidth(const std::string& s) {
+  XGlyphInfo extents;
+  XftTextExtentsUtf8(dpy, g_font, reinterpret_cast<const FcChar8*>(s.c_str()),
+                     s.size(), &extents);
+  return extents.xOff;
 }
 
 static void initScreen() {

@@ -219,7 +219,7 @@ bool ewmh_get_window_name(Client *c) {
     fprintf(stderr, "Got no window name for client %p\n", (void*)c);
     return false;
   }
-  Client_Name(c, name, n);
+  c->SetName(name, n);
   XFree(name);
   return true;
 }
@@ -433,7 +433,7 @@ void ewmh_set_strut() {
     Client_MakeSane(c, ENone, &x, &y, 0, 0);
     interacting_edge = backup;
     if (c->framed) {
-      XMoveWindow(dpy, c->parent, c->size.x, c->size.y - titleHeight());
+      XMoveWindow(dpy, c->parent, c->size.x, c->size.y - textHeight());
     } else {
       XMoveWindow(dpy, c->parent, c->size.x, c->size.y);
     }

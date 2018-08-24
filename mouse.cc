@@ -80,13 +80,13 @@ static void getMenuDimensions(int *width, int *height, int *length) {
       continue;
     }
     (*length)++;
-    int tw = titleWidth(popup_font_set, c) + 4;
+    int tw = textWidth(c->MenuName()) + 4;
     if (tw > w) {
       w = tw;
     }
   }
   *width = w + borderWidth();
-  *height = popupHeight();
+  *height = textHeight();
 }
 
 void menuhit(XButtonEvent *e) {
@@ -225,12 +225,9 @@ void unhidec(Client *c, int map) {
   }
 }
 
-static void draw_menu_item(Client *c, int i, int width, int height) {
-  int tx = (width - titleWidth(popup_font_set, c)) / 2;
-  int ty = i * height + ascent(popup_font_set_ext);
-  const std::string &name = c->menu_name.empty() ? c->name : c->menu_name;
-  Xutf8DrawString(dpy, screen->popup, popup_font_set, screen->menu_gc, tx,
-                  ty, name.c_str(), name.size());
+static void draw_menu_item(Client *c, int i, int height) {
+  int ty = i * height + g_font->ascent;
+  drawString(screen->popup, 5, ty, c->MenuName(), &g_font_black);
 }
 
 void menu_expose() {
@@ -242,7 +239,7 @@ void menu_expose() {
   /* Redraw the labels. */
   int i = 0;
   for (menuitem *m = hidden_menu; m != 0; m = m->next, i++) {
-    draw_menu_item(m->client, i, width, height);
+    draw_menu_item(m->client, i, height);
   }
 
   // Draw a dashed line between the hidden and non-hidden items.
@@ -256,7 +253,7 @@ void menu_expose() {
     if (!c->framed || c->hidden) {
       continue;
     }
-    draw_menu_item(c, i++, width, height);
+    draw_menu_item(c, i++, height);
   }
 
   /* Highlight current item if there is one. */
