@@ -156,11 +156,11 @@ void ewmh_init_screen() {
 }
 
 EWMHWindowType ewmh_get_window_type(Window w) {
-  Atom rt;
-  Atom *type;
-  int fmt;
-  unsigned long n;
-  unsigned long extra;
+  Atom rt = 0;
+  Atom *type = nullptr;
+  int fmt = 0;
+  unsigned long n = 0;
+  unsigned long extra = 0;
   int i = XGetWindowProperty(dpy, w, ewmh_atom[_NET_WM_WINDOW_TYPE], 0, 100,
                              false, XA_ATOM, &rt, &fmt, &n, &extra,
                              (unsigned char **)&type);
@@ -240,11 +240,11 @@ void ewmh_get_state(Client *c) {
   if (c == NULL) {
     return;
   }
-  Atom rt;
-  Atom *state;
-  int fmt;
-  unsigned long n;
-  unsigned long extra;
+  Atom rt = 0;
+  Atom *state = nullptr;
+  int fmt = 0;
+  unsigned long n = 0;
+  unsigned long extra = 0;
   int i = XGetWindowProperty(dpy, c->window, ewmh_atom[_NET_WM_STATE], 0, 100,
                              false, XA_ATOM, &rt, &fmt, &n, &extra,
                              (unsigned char **)&state);
@@ -451,21 +451,25 @@ void ewmh_get_strut(Client *c) {
   if (c == NULL) {
     return;
   }
-  Atom rt;
-  unsigned long *strut;
-  int fmt;
-  unsigned long n;
-  unsigned long extra;
+  Atom rt = 0;
+  unsigned long *strut = nullptr;
+  int fmt = 0;
+  unsigned long n = 0;
+  unsigned long extra = 0;
   int i = XGetWindowProperty(dpy, c->window, ewmh_atom[_NET_WM_STRUT], 0, 5,
                              false, XA_CARDINAL, &rt, &fmt, &n, &extra,
                              (unsigned char **)&strut);
-  if (i != Success || strut == NULL || n < 4) {
+  if (i != Success || strut == nullptr || n < 4) {
+    if (strut) {
+      XFree(strut);
+    }
     return;
   }
   c->strut.left = (unsigned int)strut[0];
   c->strut.right = (unsigned int)strut[1];
   c->strut.top = (unsigned int)strut[2];
   c->strut.bottom = (unsigned int)strut[3];
+  XFree(strut);
   ewmh_set_strut();
 }
 

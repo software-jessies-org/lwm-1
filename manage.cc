@@ -403,7 +403,7 @@ void getColourmaps(Client *c) {
   if (c == 0) {
     return;
   }
-  Window *cw;
+  Window *cw = nullptr;
   int n = getProperty(c->window, wm_colormaps, XA_WINDOW, 100L,
                       (unsigned char **)&cw);
   if (c->ncmapwins != 0) {
@@ -454,20 +454,18 @@ void Terminate(int signal) {
 
 static int getProperty(Window w, Atom a, Atom type, long len,
                        unsigned char **p) {
-  Atom real_type;
-  int format;
-  unsigned long n;
-  unsigned long extra;
+  Atom real_type = 0;
+  int format = 0;
+  unsigned long n = 0;
+  unsigned long extra = 0;
 
-  /*
-   * len is in 32-bit multiples.
-   */
+  // len is in 32-bit multiples.
   int status = XGetWindowProperty(dpy, w, a, 0L, len, false, type, &real_type,
                                   &format, &n, &extra, p);
   if (status != Success || *p == 0) {
     return -1;
   }
-  if (n == 0) {
+  if (n == 0 && p) {
     XFree(*p);
   }
   /*
