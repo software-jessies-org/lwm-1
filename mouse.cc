@@ -37,7 +37,26 @@ struct menuitem {
 
 static menuitem *hidden_menu = 0;
 
-static void getMenuDimensions(int *, int *, int *);
+// Left and right margins on the hidden window menu.
+#define MENU_MARGIN 20
+#define MENU_Y_PADDING 6
+
+static void getMenuDimensions(int *width, int *height, int *length) {
+  *length = 0;
+  int w = 0; // Widest string so far.
+  for (Client *c = client_head(); c; c = c->next) {
+    if (!c->framed) {
+      continue;
+    }
+    (*length)++;
+    int tw = textWidth(c->MenuName()) + 2 * MENU_MARGIN;
+    if (tw > w) {
+      w = tw;
+    }
+  }
+  *width = w + borderWidth();
+  *height = textHeight() + MENU_Y_PADDING;
+}
 
 MousePos getMousePosition() {
   Window root, child;
@@ -70,23 +89,6 @@ int menu_whichitem(int x, int y) {
     return -1;
   }
   return y / height;
-}
-
-static void getMenuDimensions(int *width, int *height, int *length) {
-  *length = 0;
-  int w = 0; // Widest string so far.
-  for (Client *c = client_head(); c; c = c->next) {
-    if (!c->framed) {
-      continue;
-    }
-    (*length)++;
-    int tw = textWidth(c->MenuName()) + 4;
-    if (tw > w) {
-      w = tw;
-    }
-  }
-  *width = w + borderWidth();
-  *height = textHeight();
 }
 
 void menuhit(XButtonEvent *e) {
@@ -227,7 +229,8 @@ void unhidec(Client *c, int map) {
 
 static void draw_menu_item(Client *c, int i, int height) {
   int ty = i * height + g_font->ascent;
-  drawString(screen->popup, 5, ty, c->MenuName(), &g_font_black);
+  drawString(screen->popup, MENU_MARGIN, ty + MENU_Y_PADDING / 2, c->MenuName(),
+             &g_font_black);
 }
 
 void menu_expose() {
