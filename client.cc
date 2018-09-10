@@ -240,14 +240,21 @@ void Client_Remove(Client *c) {
       mode = wm_idle;
     }
   }
+  
+  // Take note of any special status this window had, and then nullify all the
+  // ugly global variables that currently point to it. This prevents the
+  // structure's future use in other code, which can cause crashes.
+  const bool wasCurrent = c == current;
+  const bool wasLastFocus = (current == NULL && c == last_focus);
+  current = last_focus = pendingClient = nullptr;
 
   /* A deleted window can no longer be the current window. */
-  if (c == current || (current == NULL && c == last_focus)) {
+  if (wasCurrent || wasLastFocus) {
     Client *focus = NULL;
 
     /* As pointed out by J. Han, if a window disappears while it's
      * being reshaped you need to get rid of the size indicator. */
-    if (c == current && mode == wm_reshaping) {
+    if (wasCurrent && mode == wm_reshaping) {
       XUnmapWindow(dpy, screen->popup);
       mode = wm_idle;
     }

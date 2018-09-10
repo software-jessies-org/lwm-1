@@ -188,11 +188,10 @@ static Disp disps[] = {
 };
 #undef REG_DISP
 
-/**
- * pending it the client in which an action has been started by a mouse press
- * and we are waiting for the button to be released before performing the action
- */
-static Client *pending = NULL;
+// pendingClient is the client in which an action has been started by a mouse
+// press and we are waiting for the button to be released before performing
+// the action.
+Client *pendingClient = NULL;
 
 extern void dispatch(XEvent *ev) {
   for (Disp *p = disps; p < disps + sizeof(disps) / sizeof(disps[0]); p++) {
@@ -277,14 +276,14 @@ static void buttonpress(XEvent *ev) {
     if (e->x > (quarter + 2) && e->x < (3 + 3 * quarter) && e->y > quarter &&
         e->y <= 3 * quarter) {
       /*Client_Close(c);*/
-      pending = c;
+      pendingClient = c;
       mode = wm_closing_window;
       return;
     }
 
     /* Somewhere in the rest of the frame. */
     if (e->button == HIDE_BUTTON) {
-      pending = c;
+      pendingClient = c;
       mode = wm_hiding_window;
       return;
     }
@@ -349,24 +348,24 @@ static void buttonrelease(XEvent *ev) {
   } else if (mode == wm_closing_window) {
     /* was the button released within the window's box?*/
     int quarter = (borderWidth() + textHeight()) / 4;
-    if (pending != NULL && (e->window == pending->parent) &&
+    if (pendingClient != NULL && (e->window == pendingClient->parent) &&
         (e->x > (quarter + 2) && e->x < (3 + 3 * quarter) && e->y > quarter &&
          e->y <= 3 * quarter)) {
-      Client_Close(pending);
+      Client_Close(pendingClient);
     }
-    pending = NULL;
+    pendingClient = NULL;
   } else if (mode == wm_hiding_window) {
     /* was the button release within the window's frame? */
-    if (pending != NULL && (e->window == pending->parent) && (e->x >= 0) &&
-        (e->y >= 0) && (e->x <= pending->size.width) &&
-        (e->y <= (pending->size.height + textHeight()))) {
+    if (pendingClient != NULL && (e->window == pendingClient->parent) &&
+        (e->x >= 0) && (e->y >= 0) && (e->x <= pendingClient->size.width) &&
+        (e->y <= (pendingClient->size.height + textHeight()))) {
       if (e->state & ShiftMask) {
-        Client_Lower(pending);
+        Client_Lower(pendingClient);
       } else {
-        hide(pending);
+        hide(pendingClient);
       }
     }
-    pending = NULL;
+    pendingClient = NULL;
   }
   mode = wm_idle;
 }
