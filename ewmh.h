@@ -1,3 +1,5 @@
+#ifndef LWM_EWMH_H_included
+#define LWM_EWMH_H_included
 /*
  * lwm, a window manager for X11
  * Copyright (C) 1997-2016 Elliott Hughes, James Carter
@@ -91,3 +93,5 @@ enum EWMHAtom {
   _NET_WM_ACTION_CLOSE,
   EWMH_ATOM_LAST
 };
+
+#endif // LWM_EWMH_H_included

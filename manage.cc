@@ -18,14 +18,6 @@
  */
 
 #include <signal.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-
-#include <X11/X.h>
-#include <X11/Xatom.h>
-#include <X11/Xlib.h>
-#include <X11/Xutil.h>
 
 /* These are Motif definitions from Xm/MwmUtil.h, but Motif isn't available
    everywhere. */

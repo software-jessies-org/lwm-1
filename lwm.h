@@ -1,3 +1,5 @@
+#ifndef LWM_LWM_H_included
+#define LWM_LWM_H_included
 /*
  * lwm, a window manager for X11
  * Copyright (C) 1997-2016 Elliott Hughes, James Carter
@@ -17,9 +19,7 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
 
-#include <string>
-
-#include <X11/Xft/Xft.h>
+#include "xlib.h"
 
 /* --- Administrator-configurable defaults. --- */
 
@@ -451,3 +451,5 @@ extern bool isLeftEdge(Edge e);
 extern bool isRightEdge(Edge e);
 extern bool isTopEdge(Edge e);
 extern bool isBottomEdge(Edge e);
+
+#endif // LWM_LWM_H_included
