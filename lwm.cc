@@ -308,6 +308,19 @@ static void rrScreenChangeNotify(XEvent *ev) {
   const int oScrHeight = screen->display_height;
   const int nScrWidth = rrev->width;
   const int nScrHeight = rrev->height;
+  // If my laptop is connected to a screen that is switched off, of I try
+  // to switch to an external screen when none is connected, LWM gets this
+  // event with a new size of 320x200. This forces all the windows to be
+  // crushed into tiny little boxes, which is really annoying to repair
+  // once I've got the external screen connected and X sorted out again.
+  // A simple solution to this is to ignore any notifications smaller than
+  // the smallest vaguely sensible size I can think of (and, TBH, this is
+  // really too small to be sensible already).
+  if (nScrWidth < 600 || nScrHeight < 400) {
+    fprintf(stderr, "Ignoring tiny screen dimensions from xrandr: %dx%d\n",
+            nScrWidth, nScrHeight);
+    return;
+  }
   // We've found the right screen. Refresh our idea of its size.
   // Note that we don't call DisplayWidth() and DisplayHeight() because they
   // seem to always return the original size, while the change notify event
