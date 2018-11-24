@@ -389,28 +389,28 @@ void sendConfigureNotify(Client *c) {
   XSendEvent(dpy, c->window, false, StructureNotifyMask, (XEvent *)&ce);
 }
 
-extern void scanWindowTree() {
-  WindowTree wt = WindowTree::Query(dpy, screen->root);
-  for (const Window win : wt.children) {
-    XWindowAttributes attr;
-    XGetWindowAttributes(dpy, win, &attr);
-    if (attr.override_redirect || win == screen->popup) {
-      continue;
-    }
-    Client *c = Client_Add(win, screen->root);
-    if (c != 0 && c->window == win) {
-      c->size.x = attr.x;
-      c->size.y = attr.y;
-      c->size.width = attr.width;
-      c->size.height = attr.height;
-      c->border = attr.border_width;
-      if (attr.map_state == IsViewable) {
-        c->internal_state = IPendingReparenting;
-        manage(c);
-      }
-    }
-  }
-}
+//extern void scanWindowTree() {
+//  WindowTree wt = WindowTree::Query(dpy, screen->root);
+//  for (const Window win : wt.children) {
+//    XWindowAttributes attr;
+//    XGetWindowAttributes(dpy, win, &attr);
+//    if (attr.override_redirect || win == screen->popup) {
+//      continue;
+//    }
+//    Client *c = Client_Add(win, screen->root);
+//    if (c != 0 && c->window == win) {
+//      c->size.x = attr.x;
+//      c->size.y = attr.y;
+//      c->size.width = attr.width;
+//      c->size.height = attr.height;
+//      c->border = attr.border_width;
+//      if (attr.map_state == IsViewable) {
+//        c->internal_state = IPendingReparenting;
+//        manage(c);
+//      }
+//    }
+//  }
+//}
 
 /*ARGSUSED*/
 extern void shell(int button) {
@@ -477,6 +477,7 @@ static void initScreen() {
                     "have %d set up.\nPlease consider using xrandr.\n",
             num);
   }
+  LScr::I = new LScr(dpy);
   screen = new ScreenInfo(); // () constructor zero-inits everything.
   initialiseCursors();
 
@@ -545,8 +546,8 @@ static void initScreen() {
   XChangeWindowAttributes(dpy, screen->root, CWCursor | CWEventMask, &attr);
 
   /* Make sure all our communication to the server got through. */
-  XSync(dpy, false);
-  scanWindowTree();
+//  XSync(dpy, false);
+//  scanWindowTree();
 }
 
 /**

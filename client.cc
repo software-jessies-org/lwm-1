@@ -159,70 +159,46 @@ void Client_DrawBorder(Client *c, int active) {
   drawString(c->parent, x, y, c->Name(), color);
 }
 
-// Returns the parent window of w, or NULL if we hit the root or on error.
-static Window getParentWindow(Window w) {
-  WindowTree wt = WindowTree::Query(dpy, w);
-  return (wt.parent == wt.root) ? 0 : wt.parent;
-}
-
 Client *Client_Get(Window w) {
-  if (w == 0 || (getScreenFromRoot(w) != 0)) {
-    return 0;
-  }
-
-  while (w) {
-    /* Search for the client corresponding to this window. */
-    for (Client *c = clients; c; c = c->next) {
-      if (c->window == w || c->parent == w) {
-        return c;
-      }
-    }
-    // Didn't find this one; try to see if we find its parent. This can be
-    // necessary if we receive a FocusIn event for a child window of a
-    // window we're managing (eg the 'FocusProxy' on Java windows).
-    w = getParentWindow(w);
-  }
-
-  /* Not found. */
-  return 0;
+  return LScr::I->GetClient(w);
 }
 
-Client *Client_Add(Window w, Window root) {
-  if (w == 0 || w == root) {
-    return 0;
-  }
-
-  /* Search for the client corresponding to this window. */
-  Client *c;
-  for (c = clients; c != 0; c = c->next) {
-    if (c->window == w || c->parent == w) {
-      return c;
-    }
-  }
-
-  c = new Client(w, root);
-
-  /* Add to head of list of clients. */
-  c->next = clients;
-  clients = c;
-  return clients;
-}
+//Client *Client_Add(Window w, Window root) {
+//  if (w == 0 || w == root) {
+//    return 0;
+//  }
+//
+//  /* Search for the client corresponding to this window. */
+//  Client *c;
+//  for (c = clients; c != 0; c = c->next) {
+//    if (c->window == w || c->parent == w) {
+//      return c;
+//    }
+//  }
+//
+//  c = new Client(w, root);
+//
+//  /* Add to head of list of clients. */
+//  c->next = clients;
+//  clients = c;
+//  return clients;
+//}
 
 void Client_Remove(Client *c) {
   if (c == 0) {
     return;
   }
 
-  /* Remove the client from our client list. */
-  if (c == clients) {
-    clients = c->next;
-  } else {
-    for (Client *cc = clients; cc && cc->next; cc = cc->next) {
-      if (cc->next == c) {
-        cc->next = cc->next->next;
-      }
-    }
-  }
+//  /* Remove the client from our client list. */
+//  if (c == clients) {
+//    clients = c->next;
+//  } else {
+//    for (Client *cc = clients; cc && cc->next; cc = cc->next) {
+//      if (cc->next == c) {
+//        cc->next = cc->next->next;
+//      }
+//    }
+//  }
 
   /* Remove it from the hidden list if it's hidden. */
   if (hidden(c)) {
@@ -274,7 +250,7 @@ void Client_Remove(Client *c) {
   if (getScreenFromRoot(c->parent) == 0) {
     XDestroyWindow(dpy, c->parent);
   }
-  delete c;
+  LScr::I->Remove(c);
   ewmh_set_client_list();
   ewmh_set_strut();
 }

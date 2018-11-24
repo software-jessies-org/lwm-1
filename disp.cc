@@ -385,7 +385,7 @@ static void maprequest(XEvent *ev) {
 
   if (c == 0 || c->window != e->window) {
     // TODO(phil): Do I really need to do this? And for every window?
-    scanWindowTree();
+    LScr::I->ScanWindowTree();
     c = Client_Get(e->window);
     DBGF_IF(debug_map, "in maprequest, after scan client is %p", (void*) c);
     if (c == 0 || c->window != e->window) {

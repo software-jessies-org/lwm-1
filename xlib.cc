@@ -18,3 +18,9 @@ WindowTree WindowTree::Query(Display *dpy, Window w) {
   }
   return res;
 }
+
+// Returns the parent window of w, or NULL if we hit the root or on error.
+Window WindowTree::ParentOf(Window w) {
+  WindowTree wt = WindowTree::Query(LScr::I->Dpy(), w);
+  return (wt.parent == wt.root) ? 0 : wt.parent;
+}

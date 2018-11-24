@@ -19,6 +19,9 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
 
+#include <map>
+#include <string>
+
 #include "xlib.h"
 
 /* --- Administrator-configurable defaults. --- */
@@ -169,7 +172,8 @@ struct ScreenInfo {
   bool ewmh_set_client_list; /* hack to prevent recursion */
 };
 
-struct Client {
+class Client {
+ public:
   Client(Window w, Window parent)
       : window(w),
         parent(parent),
@@ -246,6 +250,72 @@ struct Client {
   Client &operator=(const Client &) = delete;
 };
 
+class CursorMap {
+ public:
+  explicit CursorMap(Display *dpy);
+  
+  Cursor Root() const { return root_; }
+  Cursor Box() const { return box_; }
+  Cursor ForEdge(Edge e) const;
+  
+ private:
+  Cursor root_;
+  Cursor box_;
+  std::map<Edge, Cursor> edges_;
+};
+
+// Screen information.
+class LScr {
+ public:
+  explicit LScr(Display *dpy);
+  
+  Display *Dpy() const { return dpy_; }
+  Window Root() const { return RootWindow(dpy_, kOnlyScreenIndex); }
+  int Width() const { return DisplayWidth(dpy_, kOnlyScreenIndex); }
+  int Height() const { return DisplayHeight(dpy_, kOnlyScreenIndex); }
+  unsigned long Black() const { return BlackPixel(dpy_, kOnlyScreenIndex); }
+  unsigned long White() const { return WhitePixel(dpy_, kOnlyScreenIndex); }
+  unsigned long Grey() const { return grey_; }
+  CursorMap *Cursors() const { return cursor_map_; }
+  
+  // ScanWindowTree queries all currently-manageable windows, and ensures the
+  // clients_ map is up-to-date.
+  void ScanWindowTree();
+  
+  // GetClient returns the Client which owns the given window (including if w
+  // is a sub-window of the main client window). Returns nullptr if there is
+  // no client allocated for this window.
+  Client *GetClient(Window w) const;
+  
+  void Remove(Client* client);
+  
+  // This is used as a static pointer to the global LScr instance, initialised
+  // on start-up in lwm.cc.
+  static LScr* I;
+  
+ private:
+  Display *dpy_ = nullptr;
+  CursorMap *cursor_map_;
+  std::map<Window, Client*> clients_;
+  
+  static constexpr int kOnlyScreenIndex = 0;
+  Window popup_ = 0;
+  Window ewmh_compat_ = 0;
+  
+  EWMHStrut strut_;    /* reserved areas */
+  
+  GC gc_;
+  
+  unsigned long grey_ = 0;  /* Gray pixel value. */
+  
+  Cursor root_cursor;
+  Cursor box_cursor;
+  
+  Cursor cursor_map[E_LAST];
+  
+  bool ewmh_set_client_list = false; /* hack to prevent recursion */
+};
+
 /*
  * c->proto is a bitarray of these
  */
@@ -293,7 +363,7 @@ extern bool forceRestart;
 extern void shell(int);
 extern void sendConfigureNotify(Client *);
 extern ScreenInfo *getScreenFromRoot(Window);
-extern void scanWindowTree();
+//extern void scanWindowTree();
 
 // Debugging support (in lwm.cc).
 extern bool debug_configure_notify;  // -d=c
@@ -326,7 +396,7 @@ extern bool printDebugPrefix(char const *filename, int line);
 extern Client *client_head();
 extern Edge interacting_edge;
 extern Client *Client_Get(Window);
-extern Client *Client_Add(Window, Window);
+//extern Client *Client_Add(Window, Window);
 extern void Client_MakeSane(Client *, Edge, int *, int *, int *, int *);
 extern void Client_DrawBorder(Client *, int);
 extern void setactive(Client *, int, long);

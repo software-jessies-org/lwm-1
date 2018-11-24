@@ -25,8 +25,13 @@ struct WindowTree {
   Window root;
   std::vector<Window> children;
   unsigned int num_children;
-
+  
+  // Query returns the set of children of the given window.
   static WindowTree Query(Display *dpy, Window w);
+  
+  // Parent returns the parent window of w, or 0 if the parent is the root
+  // window.
+  static Window ParentOf(Window w);
 };
 
 #endif // LWM_XLIB_H_included
