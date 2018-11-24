@@ -48,7 +48,6 @@ Resources* parseResources() {
   res->font_name = DEFAULT_TITLE_FONT;
   res->border = DEFAULT_BORDER;
   res->btn2_command = DEFAULT_TERMINAL;
-  res->click_to_focus = false;
 
   char *resource_manager = XResourceManagerString(dpy);
   if (!resource_manager) {
@@ -66,9 +65,6 @@ Resources* parseResources() {
   setResource(&db, "lwm.button2", "Command", &(res->btn2_command));
 
   // Resources that require some interpretation.
-  if (getResource(&db, "lwm.focus", "FocusMode") == "click") {
-    res->click_to_focus = true;
-  }
   const std::string brdr = getResource(&db, "lwm.border", "Border");
   if (brdr != "") {
     res->border = (int)strtol(brdr.c_str(), (char **)0, 0);
@@ -81,10 +77,6 @@ Resources* resources() {
     resource_cache = parseResources();
   }
   return resource_cache;
-}
-
-bool clickToFocus() {
-  return resources()->click_to_focus;
 }
 
 int borderWidth() {

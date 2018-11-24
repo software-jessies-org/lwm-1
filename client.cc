@@ -113,21 +113,12 @@ void setactive(Client *c, int on, long timestamp) {
     if (c->proto & Ptakefocus) {
       sendClientMessage(c->window, wm_protocols, wm_take_focus, timestamp);
     }
-    if (clickToFocus()) {
-      XUngrabButton(dpy, AnyButton, AnyModifier, c->window);
-    }
     cmapfocus(c);
   }
 
   /* FIXME: is this sensible? */
   if (on && !c->accepts_focus) {
     XSetInputFocus(dpy, None, RevertToPointerRoot, CurrentTime);
-  }
-
-  if (!on && clickToFocus()) {
-    XGrabButton(dpy, AnyButton, AnyModifier, c->window, false,
-                ButtonPressMask | ButtonReleaseMask, GrabModeAsync,
-                GrabModeSync, None, None);
   }
 
   if (!inhibit) {
@@ -147,7 +138,7 @@ void Client_DrawBorder(Client *c, int active) {
   XClearWindow(dpy, c->parent);
 
   /* Draw the ``box''. */
-  if (active || clickToFocus()) {
+  if (active) {
     XDrawRectangle(dpy, c->parent, screen->gc, quarter + 2, quarter,
                    2 * quarter, 2 * quarter);
   }
@@ -228,21 +219,6 @@ void Client_Remove(Client *c) {
     if (wasCurrent && mode == wm_reshaping) {
       XUnmapWindow(dpy, screen->popup);
       mode = wm_idle;
-    }
-    if (clickToFocus()) {
-      /* Try and find the window that this was a transient
-       * for, else focus on the top client. */
-      if (c->trans != None) {
-        focus = Client_Get(c->trans);
-      }
-      if (!focus) {
-        WindowTree wt = WindowTree::Query(dpy, screen->root);
-        for (int i = wt.children.size() - 1; i >= 0; i--) {
-          if ((focus = Client_Get(wt.children[i]))) {
-            break;
-          }
-        }
-      }
     }
     Client_Focus(focus, CurrentTime);
   }
@@ -697,10 +673,6 @@ extern void Client_Focus(Client *c, Time time) {
     setactive(current, 1, time);
     XChangeProperty(dpy, screen->root, ewmh_atom[_NET_ACTIVE_WINDOW], XA_WINDOW,
                     32, PropModeReplace, (unsigned char *)&current->window, 1);
-  }
-
-  if (clickToFocus()) {
-    Client_Raise(c);
   }
 }
 

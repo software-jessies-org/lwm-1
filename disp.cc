@@ -246,13 +246,6 @@ static void buttonpress(XEvent *ev) {
   XButtonEvent *e = &ev->xbutton;
   Client *c = Client_Get(e->window);
 
-  if (c && c != current && clickToFocus()) {
-    /* Click is not on current window,
-     * and in click-to-focus mode, so change focus
-     */
-    Client_Focus(c, e->time);
-  }
-
   /*move this test up to disable scroll to focus*/
   if (e->button >= 4 && e->button <= 7) {
     return;
@@ -590,9 +583,6 @@ static void clientmessage(XEvent *ev) {
     }
     XMapWindow(dpy, c->parent);
     Client_Raise(c);
-    if (c != current && clickToFocus()) {
-      Client_Focus(c, CurrentTime);
-    }
     return;
   }
   if (e->message_type == ewmh_atom[_NET_CLOSE_WINDOW] && e->format == 32) {
@@ -784,7 +774,7 @@ static void enter(XEvent *ev) {
     XChangeWindowAttributes(dpy, c->parent, CWCursor, &attr);
     c->cursor = ENone;
   }
-  if (c != current && !c->hidden && !clickToFocus()) {
+  if (c != current && !c->hidden) {
     /* Entering a new window in enter focus mode, so take focus */
     Client_Focus(c, ev->xcrossing.time);
   }

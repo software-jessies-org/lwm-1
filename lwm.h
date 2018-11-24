@@ -482,7 +482,6 @@ struct Resources {
   std::string btn1_command;
   std::string btn2_command;
   int border;
-  bool click_to_focus;
 };
 
 // Parses, or returns a cached copy, of the resources.
@@ -490,7 +489,6 @@ Resources *resources();
 
 // Handy accessors which parse resources if necessary, and return the relevant
 // bit of config info.
-bool clickToFocus();
 int borderWidth();
 
 /* session.cc */
