@@ -44,8 +44,9 @@ static void sendClientMessage(Window, Atom, long, long);
 static constexpr int maxMenuNameChars = 100;
 
 std::string Client::MenuName() const {
-  if (name_.size() <= maxMenuNameChars)
+  if (name_.size() <= maxMenuNameChars) {
     return name_;
+  }
   int chars = 0;
   int uniLeft = 0;
   for (int i = 0; i < name_.size(); i++) {

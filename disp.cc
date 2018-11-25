@@ -245,7 +245,6 @@ static void buttonpress(XEvent *ev) {
 
   XButtonEvent *e = &ev->xbutton;
   Client *c = LScr::I->GetClient(e->window);
-  fprintf(stderr, "buttonpress on 0x%lx: client %p\n", e->window,  (void*) c);
 
   /*move this test up to disable scroll to focus*/
   if (e->button >= 4 && e->button <= 7) {

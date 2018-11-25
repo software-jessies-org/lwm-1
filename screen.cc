@@ -142,8 +142,6 @@ void LScr::Furnish(Client *c) {
                                   c->size.y - textHeight(), c->size.width,
                                   c->size.height + textHeight(), 1,
                                   Black(), White());
-  
-  fprintf(stderr, "FRAMED! Created new parent: %lx\n", c->parent);
   XSetWindowAttributes attr;
   attr.event_mask = ExposureMask | EnterWindowMask | ButtonMask |
       SubstructureRedirectMask | SubstructureNotifyMask |
