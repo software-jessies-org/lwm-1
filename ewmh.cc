@@ -166,8 +166,15 @@ bool ewmh_get_window_name(Client* c) {
   int i = XGetWindowProperty(dpy, c->window, ewmh_atom[_NET_WM_NAME], 0, 100,
                              false, LScr::I->GetUTF8StringAtom(), &rt, &fmt, &n,
                              &extra, (unsigned char**)&name);
-  if (i != Success || name == NULL) {
-    fprintf(stderr, "Got no window name for client %p\n", (void*)c);
+  if (i != Success || name == nullptr) {
+    // While modern X11 displays always work with UTF8, some VNC servers don't.
+    // As I'm using 'tightvnc' for testing LWM in a window, it's actually quite
+    // useful to be able to fall back to bad old non-UTF8 strings.
+    i = XGetWindowProperty(dpy, c->window, XA_WM_NAME, 0, 100, false,
+                           AnyPropertyType, &rt, &fmt, &n, &extra,
+                           (unsigned char**)&name);
+  }
+  if (i != Success || name == nullptr) {
     return false;
   }
   c->SetName(name, n);
@@ -372,9 +379,9 @@ void ewmh_set_strut() {
     }
     Edge backup = interacting_edge;
     interacting_edge = ENone;
-    // Note: the only reason this doesn't crash (due to the last two args being
-    // 0) is that dx and dy are only used when edge != ENone.
-    // You have been warned.
+    // Note: the only reason this doesn't crash (due to the last two args
+    // being 0) is that dx and dy are only used when edge != ENone. You have
+    // been warned.
     Client_MakeSane(c, ENone, &x, &y, 0, 0);
     interacting_edge = backup;
     if (c->framed) {
