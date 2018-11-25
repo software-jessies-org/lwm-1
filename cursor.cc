@@ -21,25 +21,6 @@
 
 #include "lwm.h"
 
-struct CursorMapping {
-  Edge edge;
-  int font_char;
-};
-
-static CursorMapping cursor_map[] = {
-    {ETopLeft, XC_top_left_corner},
-    {ETop, XC_top_side},
-    {ETopRight, XC_top_right_corner},
-    {ERight, XC_right_side},
-    {ENone, XC_fleur},
-    {ELeft, XC_left_side},
-    {EBottomLeft, XC_bottom_left_corner},
-    {EBottom, XC_bottom_side},
-    {EBottomRight, XC_bottom_right_corner},
-
-    {ENone, 0},
-};
-
 static Cursor colouredCursor(Display* dpy,
                              unsigned int shape,
                              XColor* fg,
@@ -73,28 +54,4 @@ CursorMap::CursorMap(Display* dpy) {
 Cursor CursorMap::ForEdge(Edge e) const {
   auto it = edges_.find(e);
   return (it == edges_.end()) ? Root() : it->second;
-}
-
-extern void initialiseCursors() {
-  XColor red, white, exact;
-  Colormap cmp = DefaultColormap(dpy, 0);  // 0 = screen index 0.
-
-  XAllocNamedColor(dpy, cmp, "red", &red, &exact);
-  XAllocNamedColor(dpy, cmp, "white", &white, &exact);
-
-  screen->root_cursor = XCreateFontCursor(dpy, XC_left_ptr);
-  XRecolorCursor(dpy, screen->root_cursor, &red, &white);
-
-  screen->box_cursor = XCreateFontCursor(dpy, XC_draped_box);
-  XRecolorCursor(dpy, screen->box_cursor, &red, &white);
-
-  for (int i = 0; cursor_map[i].font_char != 0; i++) {
-    Edge e = cursor_map[i].edge;
-    screen->cursor_map[e] = XCreateFontCursor(dpy, cursor_map[i].font_char);
-    XRecolorCursor(dpy, screen->cursor_map[e], &red, &white);
-  }
-}
-
-extern Cursor getEdgeCursor(Edge edge) {
-  return screen->cursor_map[edge];
 }

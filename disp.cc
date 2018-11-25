@@ -210,19 +210,19 @@ static void expose(XEvent *ev) {
   * We don't draw on the root window so that people can have
   * their favourite Spice Girls backdrop...
   */
-  if (getScreenFromRoot(w) != 0) {
+  if (w == LScr::I->Root()) {
     return;
   }
 
   /* Decide what needs redrawing: window frame or menu? */
-  if (w == screen->popup) {
+  if (w == LScr::I->Popup()) {
     if (mode == wm_menu_up) {
       menu_expose();
     } else if (mode == wm_reshaping && current != 0) {
       size_expose();
     }
   } else {
-    Client *c = Client_Get(w);
+    Client *c = LScr::I->GetClient(w);
     if (c != 0) {
       Client_DrawBorder(c, c == current);
     }
@@ -244,7 +244,8 @@ static void buttonpress(XEvent *ev) {
   }
 
   XButtonEvent *e = &ev->xbutton;
-  Client *c = Client_Get(e->window);
+  Client *c = LScr::I->GetClient(e->window);
+  fprintf(stderr, "buttonpress on 0x%lx: client %p\n", e->window,  (void*) c);
 
   /*move this test up to disable scroll to focus*/
   if (e->button >= 4 && e->button <= 7) {
@@ -327,7 +328,7 @@ static void buttonrelease(XEvent *ev) {
   if (mode == wm_menu_up) {
     menu_buttonrelease(ev);
   } else if (mode == wm_reshaping) {
-    XUnmapWindow(dpy, screen->popup);
+    XUnmapWindow(dpy, LScr::I->Popup());
   } else if (mode == wm_closing_window) {
     /* was the button released within the window's box?*/
     int quarter = (borderWidth() + textHeight()) / 4;
@@ -355,7 +356,7 @@ static void buttonrelease(XEvent *ev) {
 
 static void circulaterequest(XEvent *ev) {
   XCirculateRequestEvent *e = &ev->xcirculaterequest;
-  Client *c = Client_Get(e->window);
+  Client *c = LScr::I->GetClient(e->window);
   if (c == 0) {
     if (e->place == PlaceOnTop) {
       XRaiseWindow(e->display, e->window);
@@ -373,18 +374,11 @@ static void circulaterequest(XEvent *ev) {
 
 static void maprequest(XEvent *ev) {
   XMapRequestEvent *e = &ev->xmaprequest;
-  Client *c = Client_Get(e->window);
+  Client *c = LScr::I->GetOrAddClient(e->window);
   DBGF_IF(debug_map, "in maprequest, client %p", (void*) c);
-
-  if (c == 0 || c->window != e->window) {
-    // TODO(phil): Do I really need to do this? And for every window?
-    LScr::I->ScanWindowTree();
-    c = Client_Get(e->window);
-    DBGF_IF(debug_map, "in maprequest, after scan client is %p", (void*) c);
-    if (c == 0 || c->window != e->window) {
-      DBGF("MapRequest for non-existent window: %lx!", c->window);
-      return;
-    }
+  if (!c) {
+    DBGF("MapRequest for non-existent window: %lx!", c->window);
+    return;
   }
 
   unhidec(c, 1);
@@ -392,7 +386,7 @@ static void maprequest(XEvent *ev) {
   switch (c->state) {
   case WithdrawnState:
     DBGF_IF(debug_map, "in maprequest, WithdrawnState %d", c->state);
-    if (getScreenFromRoot(c->parent) != 0) {
+    if (c->parent == LScr::I->Root()) {
       DBGF_IF(debug_map, "in maprequest, taking over management of window %lx.",
               c->parent);
       manage(c);
@@ -419,7 +413,7 @@ static void maprequest(XEvent *ev) {
 
 static void unmap(XEvent *ev) {
   XUnmapEvent *e = &ev->xunmap;
-  Client *c = Client_Get(e->window);
+  Client *c = LScr::I->GetClient(e->window);
   if (c == 0) {
     return;
   }
@@ -456,7 +450,7 @@ static void unmap(XEvent *ev) {
 static void configurereq(XEvent *ev) {
   XWindowChanges wc;
   XConfigureRequestEvent *e = &ev->xconfigurerequest;
-  Client *c = Client_Get(e->window);
+  Client *c = LScr::I->GetClient(e->window);
 
   if (c && c->window == e->window) {
     /*
@@ -494,7 +488,7 @@ static void configurereq(XEvent *ev) {
       c->border = e->border_width;
     }
 
-    if (getScreenFromRoot(c->parent) == 0) {
+    if (c->parent != LScr::I->Root()) {
       wc.x = c->size.x;
       wc.y = c->size.y;
       if (c->framed) {
@@ -544,7 +538,7 @@ static void configurereq(XEvent *ev) {
 
 static void destroy(XEvent *ev) {
   Window w = ev->xdestroywindow.window;
-  Client *c = Client_Get(w);
+  Client *c = LScr::I->GetClient(w);
   if (c == 0) {
     return;
   }
@@ -556,7 +550,7 @@ static void destroy(XEvent *ev) {
 
 static void clientmessage(XEvent *ev) {
   XClientMessageEvent *e = &ev->xclient;
-  Client *c = Client_Get(e->window);
+  Client *c = LScr::I->GetClient(e->window);
   if (c == 0) {
     return;
   }
@@ -683,7 +677,7 @@ static void clientmessage(XEvent *ev) {
 static void colormap(XEvent *ev) {
   XColormapEvent *e = &ev->xcolormap;
   if (e->c_new) {
-    Client *c = Client_Get(e->window);
+    Client *c = LScr::I->GetClient(e->window);
     if (c) {
       c->cmap = e->colormap;
       if (c == current) {
@@ -697,7 +691,7 @@ static void colormap(XEvent *ev) {
 
 static void property(XEvent *ev) {
   XPropertyEvent *e = &ev->xproperty;
-  Client *c = Client_Get(e->window);
+  Client *c = LScr::I->GetClient(e->window);
   if (c == 0) {
     return;
   }
@@ -731,13 +725,13 @@ static void property(XEvent *ev) {
 
 static void reparent(XEvent *ev) {
   XReparentEvent *e = &ev->xreparent;
-  if (getScreenFromRoot(e->event) == 0 || e->override_redirect ||
-      getScreenFromRoot(e->parent) != 0) {
+  if (e->event != LScr::I->Root() || e->override_redirect ||
+      e->parent == LScr::I->Root()) {
     return;
   }
 
-  Client *c = Client_Get(e->window);
-  if (c != 0 && (getScreenFromRoot(c->parent) != 0 || withdrawn(c))) {
+  Client *c = LScr::I->GetClient(e->window);
+  if (c != 0 && (c->parent == LScr::I->Root() || withdrawn(c))) {
     Client_Remove(c);
   }
 }
@@ -755,14 +749,14 @@ static void focuschange(XEvent *ev) {
     }
     return;
   }
-  Client *c = Client_Get(focus_window);
+  Client *c = LScr::I->GetClient(focus_window);
   if (c && c != current) {
     Client_Focus(c, CurrentTime);
   }
 }
 
 static void enter(XEvent *ev) {
-  Client *c = Client_Get(ev->xcrossing.window);
+  Client *c = LScr::I->GetClient(ev->xcrossing.window);
   if (c == 0 || mode != wm_idle) {
     return;
   }
@@ -770,7 +764,7 @@ static void enter(XEvent *ev) {
   if (c->framed) {
     XSetWindowAttributes attr;
 
-    attr.cursor = screen->root_cursor;
+    attr.cursor = LScr::I->Cursors()->Root();
     XChangeWindowAttributes(dpy, c->parent, CWCursor, &attr);
     c->cursor = ENone;
   }
@@ -787,7 +781,7 @@ static void motionnotify(XEvent *ev) {
     menu_motionnotify(ev);
   } else if (mode == wm_idle) {
     XMotionEvent *e = &ev->xmotion;
-    Client *c = Client_Get(e->window);
+    Client *c = LScr::I->GetClient(e->window);
     Edge edge = ENone;
 
     if (c && (e->window == c->parent) && (e->subwindow != c->window) &&
@@ -828,11 +822,11 @@ static void motionnotify(XEvent *ev) {
         XSetWindowAttributes attr;
 
         if (edge == ENone) {
-          attr.cursor = screen->root_cursor;
+          attr.cursor = LScr::I->Cursors()->Root();
         } else if (edge == E_LAST) {
-          attr.cursor = screen->box_cursor;
+          attr.cursor = LScr::I->Cursors()->Box();
         } else {
-          attr.cursor = screen->cursor_map[edge];
+          attr.cursor = LScr::I->Cursors()->ForEdge(edge);
         }
         XChangeWindowAttributes(dpy, c->parent, CWCursor, &attr);
         c->cursor = edge;
@@ -868,7 +862,7 @@ void reshaping_motionnotify(XEvent *ev) {
     // ensure the little white window that shows the current being-dragged
     // window's size is closed. Otherwise it gets left there in the middle of
     // the screen, looking foolish.
-    XUnmapWindow(dpy, screen->popup);
+    XUnmapWindow(dpy, LScr::I->Popup());
     DBG("Flipped out of weird dragging mode.");
     return;
   }

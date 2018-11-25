@@ -29,11 +29,11 @@ Atom utf8_string;
 
 void ewmh_init() {
   // Build half a million EWMH atoms.
-#define SET_ATOM(x)                                          \
-    do {                                                     \
-      ewmh_atom[x] = XInternAtom(dpy, #x, false);            \
-      ewmh_atom_names[x] = #x;                               \
-    } while (0)
+#define SET_ATOM(x)                             \
+  do {                                          \
+    ewmh_atom[x] = XInternAtom(dpy, #x, false); \
+    ewmh_atom_names[x] = #x;                    \
+  } while (0)
   SET_ATOM(_NET_SUPPORTED);
   SET_ATOM(_NET_CLIENT_LIST);
   SET_ATOM(_NET_CLIENT_LIST_STACKING);
@@ -97,7 +97,7 @@ void ewmh_init() {
   utf8_string = XInternAtom(dpy, "UTF8_STRING", false);
 }
 
-char const *ewmh_atom_name(Atom at) {
+char const* ewmh_atom_name(Atom at) {
   for (int i = 0; i < EWMH_ATOM_LAST; i++) {
     if (at == ewmh_atom[i]) {
       return ewmh_atom_names[i];
@@ -106,55 +106,15 @@ char const *ewmh_atom_name(Atom at) {
   return "unknown atom";
 }
 
-void ewmh_init_screen() {
-  // Announce EWMH compatibility on the screen.
-  screen->ewmh_set_client_list = false;
-  screen->ewmh_compat =
-      XCreateSimpleWindow(dpy, screen->root, -200, -200, 1, 1, 0, 0, 0);
-  XChangeProperty(dpy, screen->ewmh_compat, ewmh_atom[_NET_WM_NAME],
-                  utf8_string, XA_CURSOR, PropModeReplace,
-                  (const unsigned char *)"lwm", 3);
-
-  /* set root window properties */
-  XChangeProperty(dpy, screen->root, ewmh_atom[_NET_SUPPORTED], XA_ATOM, 32,
-                  PropModeReplace, (unsigned char *)ewmh_atom, EWMH_ATOM_LAST);
-
-  XChangeProperty(dpy, screen->root, ewmh_atom[_NET_SUPPORTING_WM_CHECK],
-                  XA_WINDOW, 32, PropModeReplace,
-                  (unsigned char *)&screen->ewmh_compat, 1);
-
-  unsigned long data[4];
-  data[0] = 1;
-  XChangeProperty(dpy, screen->root, ewmh_atom[_NET_NUMBER_OF_DESKTOPS],
-                  XA_CARDINAL, 32, PropModeReplace, (unsigned char *)data, 1);
-
-  data[0] = screen->display_width;
-  data[1] = screen->display_height;
-  XChangeProperty(dpy, screen->root, ewmh_atom[_NET_DESKTOP_GEOMETRY],
-                  XA_CARDINAL, 32, PropModeReplace, (unsigned char *)data, 2);
-
-  data[0] = 0;
-  data[1] = 0;
-  XChangeProperty(dpy, screen->root, ewmh_atom[_NET_DESKTOP_VIEWPORT],
-                  XA_CARDINAL, 32, PropModeReplace, (unsigned char *)data, 2);
-
-  data[0] = 0;
-  XChangeProperty(dpy, screen->root, ewmh_atom[_NET_CURRENT_DESKTOP],
-                  XA_CARDINAL, 32, PropModeReplace, (unsigned char *)data, 1);
-
-  ewmh_set_strut();
-  ewmh_set_client_list();
-}
-
 EWMHWindowType ewmh_get_window_type(Window w) {
   Atom rt = 0;
-  Atom *type = nullptr;
+  Atom* type = nullptr;
   int fmt = 0;
   unsigned long n = 0;
   unsigned long extra = 0;
   int i = XGetWindowProperty(dpy, w, ewmh_atom[_NET_WM_WINDOW_TYPE], 0, 100,
                              false, XA_ATOM, &rt, &fmt, &n, &extra,
-                             (unsigned char **)&type);
+                             (unsigned char**)&type);
   if (i != Success || type == NULL) {
     return WTypeNone;
   }
@@ -197,15 +157,15 @@ EWMHWindowType ewmh_get_window_type(Window w) {
   return ret;
 }
 
-bool ewmh_get_window_name(Client *c) {
+bool ewmh_get_window_name(Client* c) {
   Atom rt;
-  char *name = NULL;
+  char* name = NULL;
   int fmt = 0;
   unsigned long n = 0;
   unsigned long extra = 0;
   int i = XGetWindowProperty(dpy, c->window, ewmh_atom[_NET_WM_NAME], 0, 100,
-                             false, utf8_string, &rt, &fmt, &n, &extra,
-                             (unsigned char **)&name);
+                             false, LScr::I->GetUTF8StringAtom(), &rt, &fmt, &n,
+                             &extra, (unsigned char**)&name);
   if (i != Success || name == NULL) {
     fprintf(stderr, "Got no window name for client %p\n", (void*)c);
     return false;
@@ -215,30 +175,30 @@ bool ewmh_get_window_name(Client *c) {
   return true;
 }
 
-bool ewmh_hasframe(Client *c) {
+bool ewmh_hasframe(Client* c) {
   switch (c->wtype) {
-  case WTypeDesktop:
-  case WTypeDock:
-  case WTypeMenu:
-  case WTypeSplash:
-    return false;
-  default:
-    return true;
+    case WTypeDesktop:
+    case WTypeDock:
+    case WTypeMenu:
+    case WTypeSplash:
+      return false;
+    default:
+      return true;
   }
 }
 
-void ewmh_get_state(Client *c) {
+void ewmh_get_state(Client* c) {
   if (c == NULL) {
     return;
   }
   Atom rt = 0;
-  Atom *state = nullptr;
+  Atom* state = nullptr;
   int fmt = 0;
   unsigned long n = 0;
   unsigned long extra = 0;
   int i = XGetWindowProperty(dpy, c->window, ewmh_atom[_NET_WM_STATE], 0, 100,
                              false, XA_ATOM, &rt, &fmt, &n, &extra,
-                             (unsigned char **)&state);
+                             (unsigned char**)&state);
   if (i != Success || state == NULL) {
     return;
   }
@@ -270,19 +230,19 @@ void ewmh_get_state(Client *c) {
 static bool new_state(unsigned long action, bool current) {
   enum Action { remove, add, toggle };
   switch (action) {
-  case remove:
-    return false;
-  case add:
-    return true;
-  case toggle:
-    return !current;
+    case remove:
+      return false;
+    case add:
+      return true;
+    case toggle:
+      return !current;
   }
   fprintf(stderr, "%s: bad action in _NET_WM_STATE (%d)\n", argv0, (int)action);
   return current;
 }
 
-void ewmh_change_state(Client *c, unsigned long action, unsigned long atom) {
-  Atom *a = (Atom *)&atom;
+void ewmh_change_state(Client* c, unsigned long action, unsigned long atom) {
+  Atom* a = (Atom*)&atom;
 
   if (atom == 0) {
     return;
@@ -316,7 +276,7 @@ void ewmh_change_state(Client *c, unsigned long action, unsigned long atom) {
   ewmh_set_client_list();
 }
 
-void ewmh_set_state(Client *c) {
+void ewmh_set_state(Client* c) {
   if (c == NULL) {
     return;
   }
@@ -347,11 +307,11 @@ void ewmh_set_state(Client *c) {
     panic("too many atoms! Change MAX_ATOMS in ewmh_set_state");
   }
   XChangeProperty(dpy, c->window, ewmh_atom[_NET_WM_STATE], XA_ATOM, 32,
-                  PropModeReplace, (unsigned char *)a, atoms);
+                  PropModeReplace, (unsigned char*)a, atoms);
 #undef MAX_ATOMS
 }
 
-void ewmh_set_allowed(Client *c) {
+void ewmh_set_allowed(Client* c) {
   /* FIXME: this is dumb - the allowed actions should be calculated
    * but for now, anything goes.
    */
@@ -362,7 +322,7 @@ void ewmh_set_allowed(Client *c) {
   action[2] = ewmh_atom[_NET_WM_ACTION_FULLSCREEN];
   action[3] = ewmh_atom[_NET_WM_ACTION_CLOSE];
   XChangeProperty(dpy, c->window, ewmh_atom[_NET_WM_ALLOWED_ACTIONS], XA_ATOM,
-                  32, PropModeReplace, (unsigned char *)action, 4);
+                  32, PropModeReplace, (unsigned char*)action, 4);
 }
 
 void ewmh_set_strut() {
@@ -372,7 +332,9 @@ void ewmh_set_strut() {
   strut.right = 0;
   strut.top = 0;
   strut.bottom = 0;
-  for (Client *c = client_head(); c; c = c->next) {
+
+  for (auto it : LScr::I->Clients()) {
+    Client* c = it.second;
     if (c->strut.left > strut.left) {
       strut.left = c->strut.left;
     }
@@ -386,30 +348,22 @@ void ewmh_set_strut() {
       strut.bottom = c->strut.bottom;
     }
   }
-
-  /* if the reserved areas have not changed then we're done */
-  if (screen->strut.left == strut.left && screen->strut.right == strut.right &&
-      screen->strut.top == strut.top && screen->strut.bottom == strut.bottom) {
-    return;
+  if (!LScr::I->ChangeStrut(strut)) {
+    return;  // No change; we're done.
   }
-
-  /* apply the new strut */
-  screen->strut.left = strut.left;
-  screen->strut.right = strut.right;
-  screen->strut.top = strut.top;
-  screen->strut.bottom = strut.bottom;
 
   /* set the new workarea */
   unsigned long data[4];
   data[0] = strut.left;
   data[1] = strut.top;
-  data[2] = screen->display_width - (strut.left + strut.right);
-  data[3] = screen->display_height - (strut.top + strut.bottom);
-  XChangeProperty(dpy, screen->root, ewmh_atom[_NET_WORKAREA], XA_CARDINAL, 32,
-                  PropModeReplace, (unsigned char *)data, 4);
+  data[2] = LScr::I->Width() - (strut.left + strut.right);
+  data[3] = LScr::I->Height() - (strut.top + strut.bottom);
+  XChangeProperty(dpy, LScr::I->Root(), ewmh_atom[_NET_WORKAREA], XA_CARDINAL,
+                  32, PropModeReplace, (unsigned char*)data, 4);
 
   /* ensure no window fully occupy reserved areas */
-  for (Client *c = client_head(); c; c = c->next) {
+  for (auto it : LScr::I->Clients()) {
+    Client* c = it.second;
     int x = c->size.x;
     int y = c->size.y;
 
@@ -438,18 +392,18 @@ void ewmh_set_strut() {
  * about hidden windows. It seems silly to reserve space for an invisible
  * window, but the spec allows it. Ho Hum...		jfc
  */
-void ewmh_get_strut(Client *c) {
+void ewmh_get_strut(Client* c) {
   if (c == NULL) {
     return;
   }
   Atom rt = 0;
-  unsigned long *strut = nullptr;
+  unsigned long* strut = nullptr;
   int fmt = 0;
   unsigned long n = 0;
   unsigned long extra = 0;
   int i = XGetWindowProperty(dpy, c->window, ewmh_atom[_NET_WM_STRUT], 0, 5,
                              false, XA_CARDINAL, &rt, &fmt, &n, &extra,
-                             (unsigned char **)&strut);
+                             (unsigned char**)&strut);
   if (i != Success || strut == nullptr || n < 4) {
     if (strut) {
       XFree(strut);
@@ -474,7 +428,8 @@ static void fix_stack() {
    */
 
   /* first lower clients with _NET_WM_STATE_BELOW */
-  for (Client *c = client_head(); c; c = c->next) {
+  for (auto it : LScr::I->Clients()) {
+    Client* c = it.second;
     if (!c->wstate.below) {
       continue;
     }
@@ -482,7 +437,8 @@ static void fix_stack() {
   }
 
   /* lower desktops - they are always the lowest */
-  for (Client *c = client_head(); c; c = c->next) {
+  for (auto it : LScr::I->Clients()) {
+    Client* c = it.second;
     if (c->wtype != WTypeDesktop) {
       continue;
     }
@@ -493,7 +449,8 @@ static void fix_stack() {
   /* raise clients with _NET_WM_STATE_ABOVE and docks
    * (unless marked with _NET_WM_STATE_BELOW)
    */
-  for (Client *c = client_head(); c; c = c->next) {
+  for (auto it : LScr::I->Clients()) {
+    Client* c = it.second;
     if (!(c->wstate.above || (c->wtype == WTypeDock && !c->wstate.below))) {
       continue;
     }
@@ -507,7 +464,8 @@ static void fix_stack() {
    * However if the code below is removed then the panel is raised above
    * fullscreens, which is not desirable.
    */
-  for (Client *c = client_head(); c; c = c->next) {
+  for (auto it : LScr::I->Clients()) {
+    Client* c = it.second;
     if (!c->wstate.fullscreen) {
       continue;
     }
@@ -515,35 +473,38 @@ static void fix_stack() {
   }
 }
 
-static bool valid_for_client_list(Client *c) {
+static bool valid_for_client_list(Client* c) {
   return c->state != WithdrawnState;
 }
 
 /*
-* update_client_list updates the properties on the root window used by
-* task lists and pagers.
-*
-* it should be called whenever the window stack is modified, or when clients
-* are hidden or unhidden.
-*/
+ * update_client_list updates the properties on the root window used by
+ * task lists and pagers.
+ *
+ * it should be called whenever the window stack is modified, or when clients
+ * are hidden or unhidden.
+ */
 void ewmh_set_client_list() {
-  if (screen->ewmh_set_client_list) {
+  static bool recursion_stop;
+  if (recursion_stop) {
     return;
   }
-  screen->ewmh_set_client_list = true;
+  recursion_stop = true;
   fix_stack();
   int no_clients = 0;
-  for (Client *c = client_head(); c; c = c->next) {
+  for (auto it : LScr::I->Clients()) {
+    Client* c = it.second;
     if (valid_for_client_list(c)) {
       no_clients++;
     }
   }
-  Window *client_list = NULL;
-  Window *stacked_client_list = NULL;
+  Window* client_list = NULL;
+  Window* stacked_client_list = NULL;
   if (no_clients > 0) {
-    client_list = (Window*) malloc(sizeof(Window) * no_clients);
+    client_list = (Window*)malloc(sizeof(Window) * no_clients);
     int i = no_clients - 1; /* array starts with oldest */
-    for (Client *c = client_head(); c; c = c->next) {
+    for (auto it : LScr::I->Clients()) {
+      Client* c = it.second;
       if (valid_for_client_list(c)) {
         client_list[i] = c->window;
         i--;
@@ -553,12 +514,12 @@ void ewmh_set_client_list() {
       }
     }
 
-    stacked_client_list = (Window*) malloc(sizeof(Window) * no_clients);
+    stacked_client_list = (Window*)malloc(sizeof(Window) * no_clients);
 
-    WindowTree wt = WindowTree::Query(dpy, screen->root);
+    WindowTree wt = WindowTree::Query(dpy, LScr::I->Root());
     int ci = 0;
     for (Window win : wt.children) {
-      Client *c = Client_Get(win);
+      Client* c = LScr::I->GetClient(win);
       if (!c) {
         continue;
       }
@@ -571,12 +532,12 @@ void ewmh_set_client_list() {
       }
     }
   }
-  XChangeProperty(dpy, screen->root, ewmh_atom[_NET_CLIENT_LIST], XA_WINDOW, 32,
-                  PropModeReplace, (unsigned char *)client_list, no_clients);
-  XChangeProperty(dpy, screen->root, ewmh_atom[_NET_CLIENT_LIST_STACKING],
+  XChangeProperty(dpy, LScr::I->Root(), ewmh_atom[_NET_CLIENT_LIST], XA_WINDOW,
+                  32, PropModeReplace, (unsigned char*)client_list, no_clients);
+  XChangeProperty(dpy, LScr::I->Root(), ewmh_atom[_NET_CLIENT_LIST_STACKING],
                   XA_WINDOW, 32, PropModeReplace,
-                  (unsigned char *)stacked_client_list, no_clients);
+                  (unsigned char*)stacked_client_list, no_clients);
   free(client_list);
   free(stacked_client_list);
-  screen->ewmh_set_client_list = false;
+  recursion_stop = false;
 }

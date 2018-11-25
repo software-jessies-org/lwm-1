@@ -17,11 +17,11 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
 
-#include <sstream>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <sstream>
 
 #include <unistd.h>
 
@@ -29,9 +29,8 @@
 #include "lwm.h"
 #include "xlib.h"
 
-Client *current;
-Client *last_focus = NULL;
-static Client *clients;
+Client* current;
+Client* last_focus = NULL;
 
 static int popup_width; /* The width of the size-feedback window. */
 
@@ -39,19 +38,19 @@ Edge interacting_edge;
 
 static void sendClientMessage(Window, Atom, long, long);
 
-Client *client_head() { return clients; }
-
 // Truncate names to this many characters (UTF8 characters, naturally). Much
 // simpler than trying to calculate the 'best' length based on the render text
 // width, which is quite unnecessary anyway.
 static constexpr int maxMenuNameChars = 100;
 
 std::string Client::MenuName() const {
-  if (name_.size() <= maxMenuNameChars) return name_;
+  if (name_.size() <= maxMenuNameChars)
+    return name_;
   int chars = 0;
   int uniLeft = 0;
   for (int i = 0; i < name_.size(); i++) {
-    if (uniLeft && --uniLeft) continue; // Skip trailing UTF8 only.
+    if (uniLeft && --uniLeft)
+      continue;  // Skip trailing UTF8 only.
     char ch = name_[i];
     chars++;
     if (chars == maxMenuNameChars) {
@@ -87,7 +86,7 @@ static void focusChildrenOf(Window parent) {
   }
 }
 
-void setactive(Client *c, int on, long timestamp) {
+void setactive(Client* c, int on, long timestamp) {
   if (c == 0 || hidden(c)) {
     return;
   }
@@ -126,70 +125,35 @@ void setactive(Client *c, int on, long timestamp) {
   }
 }
 
-void Client_DrawBorder(Client *c, int active) {
+void Client_DrawBorder(Client* c, int active) {
   const int quarter = (borderWidth() + textHeight()) / 4;
 
-  if (c->parent == screen->root || c->parent == 0 || !c->framed ||
+  LScr* lscr = LScr::I;
+  if (c->parent == lscr->Root() || c->parent == 0 || !c->framed ||
       c->wstate.fullscreen) {
     return;
   }
 
-  XSetWindowBackground(dpy, c->parent, active ? screen->black : screen->gray);
+  XSetWindowBackground(dpy, c->parent, active ? lscr->Black() : lscr->Grey());
   XClearWindow(dpy, c->parent);
 
   /* Draw the ``box''. */
   if (active) {
-    XDrawRectangle(dpy, c->parent, screen->gc, quarter + 2, quarter,
+    XDrawRectangle(dpy, c->parent, lscr->GetGC(), quarter + 2, quarter,
                    2 * quarter, 2 * quarter);
   }
 
   /* Draw window title. */
   int x = borderWidth() + 2 + (3 * quarter);
   int y = borderWidth() / 2 + g_font->ascent;
-  XftColor *color = active ? &g_font_white : &g_font_pale_grey;
+  XftColor* color = active ? &g_font_white : &g_font_pale_grey;
   drawString(c->parent, x, y, c->Name(), color);
 }
 
-Client *Client_Get(Window w) {
-  return LScr::I->GetClient(w);
-}
-
-//Client *Client_Add(Window w, Window root) {
-//  if (w == 0 || w == root) {
-//    return 0;
-//  }
-//
-//  /* Search for the client corresponding to this window. */
-//  Client *c;
-//  for (c = clients; c != 0; c = c->next) {
-//    if (c->window == w || c->parent == w) {
-//      return c;
-//    }
-//  }
-//
-//  c = new Client(w, root);
-//
-//  /* Add to head of list of clients. */
-//  c->next = clients;
-//  clients = c;
-//  return clients;
-//}
-
-void Client_Remove(Client *c) {
+void Client_Remove(Client* c) {
   if (c == 0) {
     return;
   }
-
-//  /* Remove the client from our client list. */
-//  if (c == clients) {
-//    clients = c->next;
-//  } else {
-//    for (Client *cc = clients; cc && cc->next; cc = cc->next) {
-//      if (cc->next == c) {
-//        cc->next = cc->next->next;
-//      }
-//    }
-//  }
 
   /* Remove it from the hidden list if it's hidden. */
   if (hidden(c)) {
@@ -198,11 +162,11 @@ void Client_Remove(Client *c) {
      * so you can be sure that if you let go on an item, you always
      * get the corresponding window. */
     if (mode == wm_menu_up) {
-      XUnmapWindow(dpy, screen->popup);
+      XUnmapWindow(dpy, LScr::I->Popup());
       mode = wm_idle;
     }
   }
-  
+
   // Take note of any special status this window had, and then nullify all the
   // ugly global variables that currently point to it. This prevents the
   // structure's future use in other code, which can cause crashes.
@@ -212,18 +176,18 @@ void Client_Remove(Client *c) {
 
   /* A deleted window can no longer be the current window. */
   if (wasCurrent || wasLastFocus) {
-    Client *focus = NULL;
+    Client* focus = NULL;
 
     /* As pointed out by J. Han, if a window disappears while it's
      * being reshaped you need to get rid of the size indicator. */
     if (wasCurrent && mode == wm_reshaping) {
-      XUnmapWindow(dpy, screen->popup);
+      XUnmapWindow(dpy, LScr::I->Popup());
       mode = wm_idle;
     }
     Client_Focus(focus, CurrentTime);
   }
 
-  if (getScreenFromRoot(c->parent) == 0) {
+  if (c->parent != LScr::I->Root()) {
     XDestroyWindow(dpy, c->parent);
   }
   LScr::I->Remove(c);
@@ -231,7 +195,7 @@ void Client_Remove(Client *c) {
   ewmh_set_strut();
 }
 
-void Client_MakeSane(Client *c, Edge edge, int *x, int *y, int *dx, int *dy) {
+void Client_MakeSane(Client* c, Edge edge, int* x, int* y, int* dx, int* dy) {
   bool horizontal_ok = true;
   bool vertical_ok = true;
 
@@ -304,21 +268,21 @@ void Client_MakeSane(Client *c, Edge edge, int *x, int *y, int *dx, int *dy) {
    * Of course all of this is only applicable if the client doesn't
    * set a strut itself.					jfc
    */
+  LScr* lscr = LScr::I;
+  const EWMHStrut& scrStrut = lscr->Strut();
   if (c->strut.left == 0 && c->strut.right == 0 && c->strut.top == 0 &&
       c->strut.bottom == 0) {
-    if ((int)(*y + borderWidth()) >=
-        (int)(screen->display_height - screen->strut.bottom)) {
-      *y = screen->display_height - screen->strut.bottom - borderWidth();
+    if ((int)(*y + borderWidth()) >= (int)(lscr->Height() - scrStrut.bottom)) {
+      *y = lscr->Height() - scrStrut.bottom - borderWidth();
     }
-    if ((int)(*y + c->size.height - borderWidth()) <= (int)screen->strut.top) {
-      *y = screen->strut.top + borderWidth() - c->size.height;
+    if ((int)(*y + c->size.height - borderWidth()) <= (int)scrStrut.top) {
+      *y = scrStrut.top + borderWidth() - c->size.height;
     }
-    if ((int)(*x + borderWidth()) >=
-        (int)(screen->display_width - screen->strut.right)) {
-      *x = screen->display_width - screen->strut.right - borderWidth();
+    if ((int)(*x + borderWidth()) >= (int)(lscr->Width() - scrStrut.right)) {
+      *x = lscr->Width() - scrStrut.right - borderWidth();
     }
-    if ((int)(*x + c->size.width - borderWidth()) <= (int)screen->strut.left) {
-      *x = screen->strut.left + borderWidth() - c->size.width;
+    if ((int)(*x + c->size.width - borderWidth()) <= (int)scrStrut.left) {
+      *x = scrStrut.left + borderWidth() - c->size.width;
     }
   }
 
@@ -337,26 +301,22 @@ void Client_MakeSane(Client *c, Edge edge, int *x, int *y, int *dx, int *dy) {
      * be "thrown" to the edge of the workarea without precise mousing,
      * as requested by MAD.
      */
-    if (*x < (int)screen->strut.left &&
-        *x > ((int)screen->strut.left - EDGE_RESIST)) {
-      *x = (int)screen->strut.left;
+    if (*x<(int)scrStrut.left&& * x>((int)scrStrut.left - EDGE_RESIST)) {
+      *x = (int)scrStrut.left;
     }
-    if ((*x + c->size.width) >
-            (int)(screen->display_width - screen->strut.right) &&
+    if ((*x + c->size.width) > (int)(lscr->Width() - scrStrut.right) &&
         (*x + c->size.width) <
-            (int)(screen->display_width - screen->strut.right + EDGE_RESIST)) {
-      *x = (int)(screen->display_width - screen->strut.right - c->size.width);
+            (int)(lscr->Width() - scrStrut.right + EDGE_RESIST)) {
+      *x = (int)(lscr->Width() - scrStrut.right - c->size.width);
     }
-    if ((*y - textHeight()) < (int)screen->strut.top &&
-        (*y - textHeight()) > ((int)screen->strut.top - EDGE_RESIST)) {
-      *y = (int)screen->strut.top + textHeight();
+    if ((*y - textHeight()) < (int)scrStrut.top &&
+        (*y - textHeight()) > ((int)scrStrut.top - EDGE_RESIST)) {
+      *y = (int)scrStrut.top + textHeight();
     }
-    if ((*y + c->size.height) >
-            (int)(screen->display_height - screen->strut.bottom) &&
-        (*y + c->size.height) < (int)(screen->display_height -
-                                      screen->strut.bottom + EDGE_RESIST)) {
-      *y =
-          (int)(screen->display_height - screen->strut.bottom - c->size.height);
+    if ((*y + c->size.height) > (int)(lscr->Height() - scrStrut.bottom) &&
+        (*y + c->size.height) <
+            (int)(lscr->Height() - scrStrut.bottom + EDGE_RESIST)) {
+      *y = (int)(lscr->Height() - scrStrut.bottom - c->size.height);
     }
   }
 
@@ -390,21 +350,20 @@ static std::string makeSizeString(int x, int y) {
 
 void Client_SizeFeedback() {
   /* Make the popup 10% wider than the widest string it needs to show. */
-  popup_width = textWidth(makeSizeString(screen->display_width,
-                                         screen->display_height));
+  popup_width = textWidth(makeSizeString(LScr::I->Width(), LScr::I->Height()));
   popup_width += popup_width / 10;
-  
+
   /* Put the popup in the right place to report on the window's size. */
   const MousePos mp = getMousePosition();
-  XMoveResizeWindow(dpy, screen->popup, mp.x + 8, mp.y + 8, popup_width,
+  XMoveResizeWindow(dpy, LScr::I->Popup(), mp.x + 8, mp.y + 8, popup_width,
                     textHeight() + 1);
-  XMapRaised(dpy, screen->popup);
+  XMapRaised(dpy, LScr::I->Popup());
 
   /*
-  * Ensure that the popup contents get redrawn. Eventually, the function
-  * size_expose will get called to do the actual redraw.
-  */
-  XClearArea(dpy, screen->popup, 0, 0, 0, 0, true);
+   * Ensure that the popup contents get redrawn. Eventually, the function
+   * size_expose will get called to do the actual redraw.
+   */
+  XClearArea(dpy, LScr::I->Popup(), 0, 0, 0, 0, true);
 }
 
 void size_expose() {
@@ -430,13 +389,13 @@ void size_expose() {
   if (current->size.height_inc != 0) {
     height /= current->size.height_inc;
   }
-  
+
   const std::string text = makeSizeString(width, height);
   const int x = (popup_width - textWidth(text)) / 2;
-  drawString(screen->popup, x, g_font->ascent + 1, text, &g_font_black);
+  drawString(LScr::I->Popup(), x, g_font->ascent + 1, text, &g_font_black);
 }
 
-static void Client_OpaquePrimitive(Client *c, Edge edge) {
+static void Client_OpaquePrimitive(Client* c, Edge edge) {
   if (c == 0) {
     return;
   }
@@ -445,9 +404,10 @@ static void Client_OpaquePrimitive(Client *c, Edge edge) {
   const int sx = c->size.x - mp.x;
   const int sy = c->size.y - mp.y;
 
-  Cursor cursor = getEdgeCursor(edge);
-  XChangeActivePointerGrab(dpy, ButtonMask | PointerMotionHintMask |
-                                    ButtonMotionMask | OwnerGrabButtonMask,
+  Cursor cursor = LScr::I->Cursors()->ForEdge(edge);
+  XChangeActivePointerGrab(dpy,
+                           ButtonMask | PointerMotionHintMask |
+                               ButtonMotionMask | OwnerGrabButtonMask,
                            cursor, CurrentTime);
 
   /*
@@ -461,7 +421,7 @@ static void Client_OpaquePrimitive(Client *c, Edge edge) {
   ewmh_set_client_list();
 }
 
-void Client_Lower(Client *c) {
+void Client_Lower(Client* c) {
   if (c == 0) {
     return;
   }
@@ -472,7 +432,7 @@ void Client_Lower(Client *c) {
   ewmh_set_client_list();
 }
 
-void Client_Raise(Client *c) {
+void Client_Raise(Client* c) {
   if (c == 0) {
     return;
   }
@@ -481,20 +441,20 @@ void Client_Raise(Client *c) {
   }
   XRaiseWindow(dpy, c->window);
 
-  for (Client *trans = clients; trans != NULL; trans = trans->next) {
-    if (trans->trans != c->window &&
-        !(c->framed && trans->trans == c->parent)) {
+  for (auto it : LScr::I->Clients()) {
+    Client* tr = it.second;
+    if (tr->trans != c->window && !(c->framed && tr->trans == c->parent)) {
       continue;
     }
-    if (trans->framed) {
-      XRaiseWindow(dpy, trans->parent);
+    if (tr->framed) {
+      XRaiseWindow(dpy, tr->parent);
     }
-    XRaiseWindow(dpy, trans->window);
+    XRaiseWindow(dpy, tr->window);
   }
   ewmh_set_client_list();
 }
 
-void Client_Close(Client *c) {
+void Client_Close(Client* c) {
   if (c == 0) {
     return;
   }
@@ -508,7 +468,7 @@ void Client_Close(Client *c) {
   }
 }
 
-void Client_SetState(Client *c, int state) {
+void Client_SetState(Client* c, int state) {
   long data[2];
 
   data[0] = (long)state;
@@ -516,7 +476,7 @@ void Client_SetState(Client *c, int state) {
 
   c->state = state;
   XChangeProperty(dpy, c->window, wm_state, wm_state, 32, PropModeReplace,
-                  (unsigned char *)data, 2);
+                  (unsigned char*)data, 2);
   ewmh_set_state(c);
 }
 
@@ -529,24 +489,26 @@ static void sendClientMessage(Window w, Atom a, long data0, long data1) {
   ev.xclient.format = 32;
   ev.xclient.data.l[0] = data0;
   ev.xclient.data.l[1] = data1;
-  const long mask = (getScreenFromRoot(w) != 0) ? SubstructureRedirectMask : 0L;
+  const long mask = (w == LScr::I->Root()) ? SubstructureRedirectMask : 0L;
   XSendEvent(dpy, w, false, mask, &ev);
 }
 
 extern void Client_ResetAllCursors() {
-  for (Client *c = clients; c; c = c->next) {
+  for (auto it : LScr::I->Clients()) {
+    Client* c = it.second;
     if (!c->framed) {
       continue;
     }
     XSetWindowAttributes attr;
-    attr.cursor = screen->root_cursor;
+    attr.cursor = LScr::I->Cursors()->Root();
     XChangeWindowAttributes(dpy, c->parent, CWCursor, &attr);
     c->cursor = ENone;
   }
 }
 
 extern void Client_FreeAll() {
-  for (Client *c = clients; c; c = c->next) {
+  for (auto it : LScr::I->Clients()) {
+    Client* c = it.second;
     int not_mapped = !normal(c);
 
     /* elliott thinks leaving window unmapped causes the x server
@@ -560,7 +522,7 @@ extern void Client_FreeAll() {
     XUnmapWindow(dpy, c->window);
 
     /* Reparent it, and then push it to the bottom if it was hidden. */
-    XReparentWindow(dpy, c->window, screen->root, c->size.x, c->size.y);
+    XReparentWindow(dpy, c->window, LScr::I->Root(), c->size.x, c->size.y);
     if (not_mapped) {
       XLowerWindow(dpy, c->window);
     }
@@ -572,8 +534,9 @@ extern void Client_FreeAll() {
   }
 }
 
-extern void Client_ColourMap(XEvent *e) {
-  for (Client *c = clients; c; c = c->next) {
+extern void Client_ColourMap(XEvent* e) {
+  for (auto it : LScr::I->Clients()) {
+    Client* c = it.second;
     for (int i = 0; i < c->ncmapwins; i++) {
       if (c->cmapwins[i] == e->xcolormap.window) {
         c->wmcmaps[i] = e->xcolormap.colormap;
@@ -586,46 +549,56 @@ extern void Client_ColourMap(XEvent *e) {
   }
 }
 
-extern void Client_ReshapeEdge(Client *c, Edge e) {
+extern void Client_ReshapeEdge(Client* c, Edge e) {
   Client_OpaquePrimitive(c, e);
 }
 
-extern void Client_Move(Client *c) { Client_OpaquePrimitive(c, ENone); }
+extern void Client_Move(Client* c) {
+  Client_OpaquePrimitive(c, ENone);
+}
 
-extern int hidden(Client *c) { return c->state == IconicState; }
+extern int hidden(Client* c) {
+  return c->state == IconicState;
+}
 
-extern int withdrawn(Client *c) { return c->state == WithdrawnState; }
+extern int withdrawn(Client* c) {
+  return c->state == WithdrawnState;
+}
 
-extern int normal(Client *c) { return c->state == NormalState; }
+extern int normal(Client* c) {
+  return c->state == NormalState;
+}
 
-extern void Client_EnterFullScreen(Client *c) {
+extern void Client_EnterFullScreen(Client* c) {
   XWindowChanges fs;
 
   memcpy(&c->return_size, &c->size, sizeof(XSizeHints));
+  const int scrWidth = LScr::I->Width();
+  const int scrHeight = LScr::I->Height();
   if (c->framed) {
     c->size.x = fs.x = -borderWidth();
     c->size.y = fs.y = -borderWidth();
-    c->size.width = fs.width = screen->display_width + 2 * borderWidth();
-    c->size.height = fs.height = screen->display_height + 2 * borderWidth();
+    c->size.width = fs.width = scrWidth + 2 * borderWidth();
+    c->size.height = fs.height = scrHeight + 2 * borderWidth();
     XConfigureWindow(dpy, c->parent, CWX | CWY | CWWidth | CWHeight, &fs);
 
     fs.x = borderWidth();
     fs.y = borderWidth();
-    fs.width = screen->display_width;
-    fs.height = screen->display_height;
+    fs.width = scrWidth;
+    fs.height = scrHeight;
     XConfigureWindow(dpy, c->window, CWX | CWY | CWWidth | CWHeight, &fs);
     XRaiseWindow(dpy, c->parent);
   } else {
     c->size.x = c->size.y = fs.x = fs.y = 0;
-    c->size.width = fs.width = screen->display_width;
-    c->size.height = fs.height = screen->display_height;
+    c->size.width = fs.width = scrWidth;
+    c->size.height = fs.height = scrHeight;
     XConfigureWindow(dpy, c->window, CWX | CWY | CWWidth | CWHeight, &fs);
     XRaiseWindow(dpy, c->window);
   }
   sendConfigureNotify(c);
 }
 
-extern void Client_ExitFullScreen(Client *c) {
+extern void Client_ExitFullScreen(Client* c) {
   XWindowChanges fs;
 
   memcpy(&c->size, &c->return_size, sizeof(XSizeHints));
@@ -651,10 +624,10 @@ extern void Client_ExitFullScreen(Client *c) {
   sendConfigureNotify(c);
 }
 
-extern void Client_Focus(Client *c, Time time) {
+extern void Client_Focus(Client* c, Time time) {
   if (current) {
     setactive(current, 0, 0L);
-    XDeleteProperty(dpy, screen->root, ewmh_atom[_NET_ACTIVE_WINDOW]);
+    XDeleteProperty(dpy, LScr::I->Root(), ewmh_atom[_NET_ACTIVE_WINDOW]);
   }
 
   // If c != NULL, and we have a current window, store current as being the
@@ -671,11 +644,12 @@ extern void Client_Focus(Client *c, Time time) {
   current = c;
   if (c) {
     setactive(current, 1, time);
-    XChangeProperty(dpy, screen->root, ewmh_atom[_NET_ACTIVE_WINDOW], XA_WINDOW,
-                    32, PropModeReplace, (unsigned char *)&current->window, 1);
+    XChangeProperty(dpy, LScr::I->Root(), ewmh_atom[_NET_ACTIVE_WINDOW],
+                    XA_WINDOW, 32, PropModeReplace,
+                    (unsigned char*)&current->window, 1);
   }
 }
 
-void Client::SetName(const char *c, int len) {
+void Client::SetName(const char* c, int len) {
   name_ = (c && len) ? std::string(c, len) : "";
 }

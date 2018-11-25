@@ -68,10 +68,10 @@ enum Mode {
 enum IState { IPendingReparenting, INormal };
 
 /**
-* Window edge, used in resizing. The `edge' ENone is used to signify a
-* window move rather than a resize. The code is sufficiently similar that
-* this isn't a special case to be treated separately.
-*/
+ * Window edge, used in resizing. The `edge' ENone is used to signify a
+ * window move rather than a resize. The code is sufficiently similar that
+ * this isn't a special case to be treated separately.
+ */
 enum Edge {
   ETopLeft,
   ETop,
@@ -86,8 +86,8 @@ enum Edge {
 };
 
 /**
-* EWMH direction for _NET_WM_MOVERESIZE
-*/
+ * EWMH direction for _NET_WM_MOVERESIZE
+ */
 enum EWMHDirection {
   DSizeTopLeft,
   DSizeTop,
@@ -103,10 +103,10 @@ enum EWMHDirection {
 };
 
 /**
-* EWMH window type. See section 5.6 of the EWMH specification (1.2).
-* WTypeNone indicates that no EWMH window type as been set and MOTIF
-* hints should be used instead.
-*/
+ * EWMH window type. See section 5.6 of the EWMH specification (1.2).
+ * WTypeNone indicates that no EWMH window type as been set and MOTIF
+ * hints should be used instead.
+ */
 enum EWMHWindowType {
   WTypeDesktop,
   WTypeDock,
@@ -120,10 +120,10 @@ enum EWMHWindowType {
 };
 
 /**
-* EWMH window state, See section 5.7 of the EWMH specification (1.2).
-* lwm does not support all states. _NET_WM_STATE_HIDDEN is taken from
-* Client.hidden.
-*/
+ * EWMH window state, See section 5.7 of the EWMH specification (1.2).
+ * lwm does not support all states. _NET_WM_STATE_HIDDEN is taken from
+ * Client.hidden.
+ */
 struct EWMHWindowState {
   bool skip_taskbar;
   bool skip_pager;
@@ -133,43 +133,14 @@ struct EWMHWindowState {
 };
 
 /**
-* EWMH "strut", or area on each edge of the screen reserved for docking
-* bars/panels.
-*/
+ * EWMH "strut", or area on each edge of the screen reserved for docking
+ * bars/panels.
+ */
 struct EWMHStrut {
   unsigned int left;
   unsigned int right;
   unsigned int top;
   unsigned int bottom;
-};
-
-/**
-* Screen information.
-*/
-struct ScreenInfo {
-  Window root;
-  Window popup;
-  Window ewmh_compat;
-
-  int display_width;  /* The width of the screen. */
-  int display_height; /* The height of the screen. */
-  EWMHStrut strut;    /* reserved areas */
-
-  GC gc;      /* The default GC. */
-  GC gc_thin; /* The default GC but with thinner lines. */
-  GC menu_gc; /* The GC for the popup window (menu). */
-  GC size_gc; /* The GC for the popup window (sizing). */
-
-  unsigned long black; /* Black pixel value. */
-  unsigned long white; /* White pixel value. */
-  unsigned long gray;  /* Gray pixel value. */
-
-  Cursor root_cursor;
-  Cursor box_cursor;
-
-  Cursor cursor_map[E_LAST];
-
-  bool ewmh_set_client_list; /* hack to prevent recursion */
 };
 
 class Client {
@@ -179,7 +150,6 @@ class Client {
         parent(parent),
         trans(0),
         framed(false),
-        next(nullptr),
         border(0),
         state(WithdrawnState),
         hidden(false),
@@ -206,58 +176,56 @@ class Client {
       free(wmcmaps);
     }
   }
-  
+
   void SetName(const char* c, int len);
   const std::string& Name() const { return name_; }
   std::string MenuName() const;
-  
-  Window window;     /* Client's window. */
-  Window parent;     /* Window manager frame. */
-  Window trans;      /* Window that client is a transient for. */
 
-  bool framed; /* true is lwm is maintaining a frame */
+  Window window;  // Client's window.
+  Window parent;  // Window manager frame.
+  Window trans;   // Window that client is a transient for.
 
-  Client *next; /* Next window in client list. */
+  bool framed;  // true is lwm is maintaining a frame
 
-  int border; /* Client's original border width. */
+  int border;  // Client's original border width.
 
-  XSizeHints size;        /* Client's current geometry information. */
-  XSizeHints return_size; /* Client's old geometry information. */
-  int state;              /* Window state. See ICCCM and <X11/Xutil.h> */
+  XSizeHints size;         // Client's current geometry information.
+  XSizeHints return_size;  // Client's old geometry information.
+  int state;               // Window state. See ICCCM and <X11/Xutil.h>
 
-  bool hidden; /* true if this client is hidden. */
+  bool hidden;  // true if this client is hidden.
   IState internal_state;
   int proto;
 
-  bool accepts_focus; /* Does this window want keyboard events? */
+  bool accepts_focus;  // Does this window want keyboard events?
 
-  Edge cursor; /* indicates which cursor is being used for parent window */
+  Edge cursor;  // indicates which cursor is being used for parent window
 
   EWMHWindowType wtype;
   EWMHWindowState wstate;
-  EWMHStrut strut; /* reserved areas */
+  EWMHStrut strut;  // reserved areas
 
-  /* Colourmap scum. */
+  // Colourmap scum.
   Colormap cmap;
   int ncmapwins;
-  Window *cmapwins;
-  Colormap *wmcmaps;
+  Window* cmapwins;
+  Colormap* wmcmaps;
 
  private:
-  std::string name_;       // Name used for title in frame.
-  
-  Client(const Client &) = delete;
-  Client &operator=(const Client &) = delete;
+  std::string name_;  // Name used for title in frame.
+
+  Client(const Client&) = delete;
+  Client& operator=(const Client&) = delete;
 };
 
 class CursorMap {
  public:
-  explicit CursorMap(Display *dpy);
-  
+  explicit CursorMap(Display* dpy);
+
   Cursor Root() const { return root_; }
   Cursor Box() const { return box_; }
   Cursor ForEdge(Edge e) const;
-  
+
  private:
   Cursor root_;
   Cursor box_;
@@ -267,53 +235,89 @@ class CursorMap {
 // Screen information.
 class LScr {
  public:
-  explicit LScr(Display *dpy);
-  
-  Display *Dpy() const { return dpy_; }
-  Window Root() const { return RootWindow(dpy_, kOnlyScreenIndex); }
-  int Width() const { return DisplayWidth(dpy_, kOnlyScreenIndex); }
-  int Height() const { return DisplayHeight(dpy_, kOnlyScreenIndex); }
+  explicit LScr(Display* dpy);
+
+  // Init must be called once, immediately after the global LScr::I instance
+  // has been assigned to this instance.
+  void Init();
+
+  Display* Dpy() const { return dpy_; }
+  Window Root() const { return root_; }
+  Window Popup() const { return popup_; }
+
+  int Width() const { return width_; }
+  int Height() const { return height_; }
+  void ChangeScreenDimensions(int nScrWidth, int nScrHeight);
+
   unsigned long Black() const { return BlackPixel(dpy_, kOnlyScreenIndex); }
   unsigned long White() const { return WhitePixel(dpy_, kOnlyScreenIndex); }
   unsigned long Grey() const { return grey_; }
-  CursorMap *Cursors() const { return cursor_map_; }
-  
-  // ScanWindowTree queries all currently-manageable windows, and ensures the
-  // clients_ map is up-to-date.
-  void ScanWindowTree();
-  
+  CursorMap* Cursors() const { return cursor_map_; }
+  GC GetGC() { return gc_; }
+  GC GetMenuGC() { return menu_gc_; }
+
+  // Expose the utf8 string atom. This is used by ewmh.cc. Not sure why it can't
+  // go in the main enumerated set of atoms, and indeed this whole atom support
+  // looks like it needs refactoring. For now, though, ugly hack here:
+  Atom GetUTF8StringAtom() const { return utf8_string_atom_; }
+
+  const EWMHStrut& Strut() const { return strut_; }
+  // ChangeStrut returns true if the new struts are different from the old.
+  bool ChangeStrut(const EWMHStrut& strut);
+
   // GetClient returns the Client which owns the given window (including if w
   // is a sub-window of the main client window). Returns nullptr if there is
   // no client allocated for this window.
-  Client *GetClient(Window w) const;
-  
+  Client* GetClient(Window w) const;
+
+  // GetOrAddClient either returns the existing client, or creates a new one
+  // and generates relevant window furniture. This may return nullptr if the
+  // window should not be owned.
+  Client* GetOrAddClient(Window w);
+
+  void Furnish(Client* c);
+
   void Remove(Client* client);
-  
+
+  // Clients() returns the map of all clients, for iteration.
+  const std::map<Window, Client*>& Clients() const { return clients_; }
+
   // This is used as a static pointer to the global LScr instance, initialised
   // on start-up in lwm.cc.
   static LScr* I;
-  
+
  private:
-  Display *dpy_ = nullptr;
-  CursorMap *cursor_map_;
-  std::map<Window, Client*> clients_;
+  void initEWMH();
+  void scanWindowTree();
+  Client* addClient(Window w);
   
+  Display* dpy_ = nullptr;
+  Window root_ = 0;
+  int width_ = 0;
+  int height_ = 0;
+  CursorMap* cursor_map_;
+
+  // The clients_ map is keyed by the top-level client Window ID. The values
+  // are owned.
+  std::map<Window, Client*> clients_;
+
+  // The parents_ map is keyed by the LWM furniture windows when they are
+  // created. It does not own the values (they're just pointers to the same
+  // clients as in the clients_ map).
+  std::map<Window, Client*> parents_;
+
+  Atom utf8_string_atom_;
+
   static constexpr int kOnlyScreenIndex = 0;
   Window popup_ = 0;
   Window ewmh_compat_ = 0;
-  
-  EWMHStrut strut_;    /* reserved areas */
-  
+
+  EWMHStrut strut_; /* reserved areas */
+
   GC gc_;
-  
-  unsigned long grey_ = 0;  /* Gray pixel value. */
-  
-  Cursor root_cursor;
-  Cursor box_cursor;
-  
-  Cursor cursor_map[E_LAST];
-  
-  bool ewmh_set_client_list = false; /* hack to prevent recursion */
+  GC menu_gc_;
+
+  unsigned long grey_ = 0; /* Gray pixel value. */
 };
 
 /*
@@ -332,8 +336,7 @@ enum { Pdelete = 1, Ptakefocus = 2 };
 extern Mode mode;
 extern int start_x;
 extern int start_y;
-extern Display *dpy;
-extern ScreenInfo *screen;
+extern Display* dpy;
 
 // New, pretty fonts:
 extern XftFont* g_font;
@@ -344,9 +347,12 @@ extern XftColor g_font_black;
 // Functions for dealing with new pretty fonts:
 extern int textHeight();
 extern int textWidth(const std::string& s);
-extern void drawString(Window w, int x, int y, const std::string& s,
-                       XftColor *c);
-  
+extern void drawString(Window w,
+                       int x,
+                       int y,
+                       const std::string& s,
+                       XftColor* c);
+
 extern Atom _mozilla_url;
 extern Atom motif_wm_hints;
 extern Atom wm_state;
@@ -358,12 +364,10 @@ extern Atom wm_colormaps;
 extern Atom compound_text;
 extern bool shape;
 extern int shape_event;
-extern char *argv0;
+extern char* argv0;
 extern bool forceRestart;
 extern void shell(int);
-extern void sendConfigureNotify(Client *);
-extern ScreenInfo *getScreenFromRoot(Window);
-//extern void scanWindowTree();
+extern void sendConfigureNotify(Client*);
 
 // Debugging support (in lwm.cc).
 extern bool debug_configure_notify;  // -d=c
@@ -371,7 +375,7 @@ extern bool debug_all_events;        // -d=e
 extern bool debug_focus;             // -d=f
 extern bool debug_map;               // -d=m
 extern bool debug_property_notify;   // -d=p
-extern bool printDebugPrefix(char const *filename, int line);
+extern bool printDebugPrefix(char const* filename, int line);
 
 #define DBGF_IF(cond, fmt, ...)                         \
   do {                                                  \
@@ -393,62 +397,54 @@ extern bool printDebugPrefix(char const *filename, int line);
 #define DBGF(fmt, ...) DBGF_IF(1, fmt, ##__VA_ARGS__)
 
 /* client.cc */
-extern Client *client_head();
 extern Edge interacting_edge;
-extern Client *Client_Get(Window);
-//extern Client *Client_Add(Window, Window);
-extern void Client_MakeSane(Client *, Edge, int *, int *, int *, int *);
-extern void Client_DrawBorder(Client *, int);
-extern void setactive(Client *, int, long);
+extern void Client_MakeSane(Client*, Edge, int*, int*, int*, int*);
+extern void Client_DrawBorder(Client*, int);
+extern void setactive(Client*, int, long);
 extern void Client_SizeFeedback();
 extern void size_expose();
-extern void Client_ReshapeEdge(Client *, Edge);
-extern void Client_Move(Client *);
-extern void Client_SetState(Client *, int);
-extern void Client_Raise(Client *);
-extern void Client_Lower(Client *);
-extern void Client_Close(Client *);
-extern void Client_Remove(Client *);
+extern void Client_ReshapeEdge(Client*, Edge);
+extern void Client_Move(Client*);
+extern void Client_SetState(Client*, int);
+extern void Client_Raise(Client*);
+extern void Client_Lower(Client*);
+extern void Client_Close(Client*);
+extern void Client_Remove(Client*);
 extern void Client_FreeAll();
-extern void Client_ColourMap(XEvent *);
-extern void Client_EnterFullScreen(Client *c);
-extern void Client_ExitFullScreen(Client *c);
-extern void Client_Focus(Client *c, Time time);
+extern void Client_ColourMap(XEvent*);
+extern void Client_EnterFullScreen(Client* c);
+extern void Client_ExitFullScreen(Client* c);
+extern void Client_Focus(Client* c, Time time);
 extern void Client_ResetAllCursors();
-extern int hidden(Client *);
-extern int withdrawn(Client *);
-extern int normal(Client *);
-extern void update_client_list(ScreenInfo *screen);
-extern Client *current;
-
-/* cursor.cc */
-extern Cursor getEdgeCursor(Edge edge);
-extern void initialiseCursors();
+extern int hidden(Client*);
+extern int withdrawn(Client*);
+extern int normal(Client*);
+extern Client* current;
 
 /* disp.cc */
-extern void dispatch(XEvent *);
-extern void reshaping_motionnotify(XEvent *);
+extern void dispatch(XEvent*);
+extern void reshaping_motionnotify(XEvent*);
 // We expose pendingClient externally, so the Client_Remove function in
 // client.cc can nullify it if and when the window in question is closed.
 // Otherwise the pendingClient handling can crash due to its using a freed
 // Client*.
 // TODO: This is rather a trappanation style; make it nicer.
-extern Client *pendingClient;
+extern Client* pendingClient;
 
 /* error.cc */
 extern int ignore_badwindow;
-extern int errorHandler(Display *, XErrorEvent *);
-extern void panic(const char *);
+extern int errorHandler(Display*, XErrorEvent*);
+extern void panic(const char*);
 
 /* manage.cc */
-extern void getWindowName(Client *);
-extern void getNormalHints(Client *);
-extern bool motifWouldDecorate(Client *);
-extern void manage(Client *);
-extern void withdraw(Client *);
-extern void cmapfocus(Client *);
-extern void getColourmaps(Client *);
-extern void getTransientFor(Client *);
+extern void getWindowName(Client*);
+extern void getNormalHints(Client*);
+extern bool motifWouldDecorate(Client*);
+extern void manage(Client*);
+extern void withdraw(Client*);
+extern void cmapfocus(Client*);
+extern void getColourmaps(Client*);
+extern void getTransientFor(Client*);
 extern void Terminate(int);
 
 /* mouse.cc */
@@ -461,20 +457,20 @@ struct MousePos {
 };
 
 extern MousePos getMousePosition();
-extern void hide(Client *);
-extern void unhidec(Client *, int);
+extern void hide(Client*);
+extern void unhidec(Client*, int);
 extern int menu_whichitem(int, int);
-extern void menuhit(XButtonEvent *);
+extern void menuhit(XButtonEvent*);
 extern void unhide(int, int);
 extern void menu_expose();
-extern void menu_motionnotify(XEvent *);
-extern void menu_buttonrelease(XEvent *);
+extern void menu_motionnotify(XEvent*);
+extern void menu_buttonrelease(XEvent*);
 
 /* shape.cc */
-extern int shapeEvent(XEvent *);
+extern int shapeEvent(XEvent*);
 extern int serverSupportsShapes();
 extern int isShaped(Window);
-extern void setShape(Client *);
+extern void setShape(Client*);
 
 /* resource.cc */
 struct Resources {
@@ -485,7 +481,7 @@ struct Resources {
 };
 
 // Parses, or returns a cached copy, of the resources.
-Resources *resources();
+Resources* resources();
 
 // Handy accessors which parse resources if necessary, and return the relevant
 // bit of config info.
@@ -493,26 +489,26 @@ int borderWidth();
 
 /* session.cc */
 extern int ice_fd;
-extern void session_init(int argc, char *argv[]);
+extern void session_init(int argc, char* argv[]);
 extern void session_process();
 extern void session_end();
 
 /* ewmh.cc */
 extern Atom ewmh_atom[];
 extern void ewmh_init();
-extern void ewmh_init_screen();
 extern EWMHWindowType ewmh_get_window_type(Window w);
-extern bool ewmh_get_window_name(Client *c);
-extern bool ewmh_hasframe(Client *c);
-extern void ewmh_set_state(Client *c);
-extern void ewmh_get_state(Client *c);
-extern void ewmh_change_state(Client *c, unsigned long action,
+extern bool ewmh_get_window_name(Client* c);
+extern bool ewmh_hasframe(Client* c);
+extern void ewmh_set_state(Client* c);
+extern void ewmh_get_state(Client* c);
+extern void ewmh_change_state(Client* c,
+                              unsigned long action,
                               unsigned long atom);
-extern void ewmh_set_allowed(Client *c);
+extern void ewmh_set_allowed(Client* c);
 extern void ewmh_set_client_list();
-extern void ewmh_get_strut(Client *c);
+extern void ewmh_get_strut(Client* c);
 extern void ewmh_set_strut();
-extern char const *ewmh_atom_name(Atom at);
+extern char const* ewmh_atom_name(Atom at);
 
 // geometry.cc
 extern bool isLeftEdge(Edge e);
@@ -520,4 +516,4 @@ extern bool isRightEdge(Edge e);
 extern bool isTopEdge(Edge e);
 extern bool isBottomEdge(Edge e);
 
-#endif // LWM_LWM_H_included
+#endif  // LWM_LWM_H_included

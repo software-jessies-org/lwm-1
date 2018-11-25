@@ -35,12 +35,12 @@
 
 #include "lwm.h"
 
-static int getProperty(Window, Atom, Atom, long, unsigned char **);
-static int getWindowState(Window, int *);
-static void applyGravity(Client *);
+static int getProperty(Window, Atom, Atom, long, unsigned char**);
+static int getWindowState(Window, int*);
+static void applyGravity(Client*);
 
 /*ARGSUSED*/
-void manage(Client *c) {
+void manage(Client* c) {
   /* get the EWMH window type, as this might overrule some hints */
   c->wtype = ewmh_get_window_type(c->window);
   /* get in the initial EWMH state */
@@ -68,7 +68,7 @@ void manage(Client *c) {
    * Get the hints, window name, and normal hints (see ICCCM
    * section 4.1.2.3).
    */
-  XWMHints *hints = XGetWMHints(dpy, c->window);
+  XWMHints* hints = XGetWMHints(dpy, c->window);
 
   getWindowName(c);
   getNormalHints(c);
@@ -91,7 +91,7 @@ void manage(Client *c) {
    * protocols that we understand the client is prepared to
    * participate in. (See ICCCM section 4.1.2.7.)
    */
-  Atom *protocols;
+  Atom* protocols;
   int num_protocols;
   if (XGetWMProtocols(dpy, c->window, &protocols, &num_protocols) != 0) {
     for (int p = 0; p < num_protocols; p++) {
@@ -195,50 +195,50 @@ void manage(Client *c) {
 
       /* firstly, make sure auto_x and auto_y are outside
        * strut */
-      if (auto_x < screen->strut.left) {
-        auto_x = screen->strut.left;
+      if (auto_x < LScr::I->Strut().left) {
+        auto_x = LScr::I->Strut().left;
       }
-      if (auto_y < screen->strut.top) {
-        auto_y = screen->strut.top;
+      if (auto_y < LScr::I->Strut().top) {
+        auto_y = LScr::I->Strut().top;
       }
 
       if ((auto_x + c->size.width) >
-              (screen->display_width - screen->strut.right) &&
-          (c->size.width <= (screen->display_width - screen->strut.left -
-                             screen->strut.right))) {
+              (LScr::I->Width() - LScr::I->Strut().right) &&
+          (c->size.width <= (LScr::I->Width() - LScr::I->Strut().left -
+                             LScr::I->Strut().right))) {
         /*
          * If the window wouldn't fit using normal
          * auto-placement but is small enough to fit
          * horizontally, then centre the window
          * horizontally.
          */
-        c->size.x = (screen->display_width - c->size.width) / 2;
-        auto_x = screen->strut.left + 20;
+        c->size.x = (LScr::I->Width() - c->size.width) / 2;
+        auto_x = LScr::I->Strut().left + 20;
       } else {
         c->size.x = auto_x;
         auto_x += 10;
-        if (auto_x > (screen->display_width / 2)) {
-          auto_x = screen->strut.left + 20;
+        if (auto_x > (LScr::I->Width() / 2)) {
+          auto_x = LScr::I->Strut().left + 20;
         }
       }
 
       if (((auto_y + c->size.height) >
-           (screen->display_height - screen->strut.bottom)) &&
-          (c->size.height <= (screen->display_height - screen->strut.top -
-                              screen->strut.bottom))) {
+           (LScr::I->Height() - LScr::I->Strut().bottom)) &&
+          (c->size.height <= (LScr::I->Height() - LScr::I->Strut().top -
+                              LScr::I->Strut().bottom))) {
         /*
          * If the window wouldn't fit using normal
          * auto-placement but is small enough to fit
          * vertically, then centre the window
          * vertically.
          */
-        c->size.y = (screen->display_height - c->size.height) / 2;
-        auto_y = screen->strut.top + 20;
+        c->size.y = (LScr::I->Height() - c->size.height) / 2;
+        auto_y = LScr::I->Strut().top + 20;
       } else {
         c->size.y = auto_y;
         auto_y += 10;
-        if (auto_y > (screen->display_height / 2)) {
-          auto_y = screen->strut.top + 20;
+        if (auto_y > (LScr::I->Height() / 2)) {
+          auto_y = LScr::I->Strut().top + 20;
         }
       }
     }
@@ -248,23 +248,8 @@ void manage(Client *c) {
     XFree(hints);
   }
 
-  /*
-   * Do all the reparenting and stuff.
-   */
-
   if (c->framed) {
-    c->parent = XCreateSimpleWindow(
-        dpy, screen->root, c->size.x, c->size.y - textHeight(), c->size.width,
-        c->size.height + textHeight(), 1, screen->black, screen->white);
-
-    XSetWindowAttributes attr;
-    attr.event_mask = ExposureMask | EnterWindowMask | ButtonMask |
-                      SubstructureRedirectMask | SubstructureNotifyMask |
-                      PointerMotionMask;
-    XChangeWindowAttributes(dpy, c->parent, CWEventMask, &attr);
-
-    XResizeWindow(dpy, c->window, c->size.width - 2 * borderWidth(),
-                  c->size.height - 2 * borderWidth());
+    LScr::I->Furnish(c);
   }
 
   /*
@@ -316,36 +301,36 @@ void manage(Client *c) {
   }
 }
 
-static void applyGravity(Client *c) {
+static void applyGravity(Client* c) {
   if (!c->framed) {
-    return; // Only required for framed windows.
+    return;  // Only required for framed windows.
   }
   if (c->size.flags & PWinGravity) {
     switch (c->size.win_gravity) {
-    case NorthEastGravity:
-      c->size.x -= 2 * borderWidth();
-      break;
-    case SouthWestGravity:
-      c->size.y -= 2 * borderWidth();
-      break;
-    case SouthEastGravity:
-      c->size.x -= 2 * borderWidth();
-      c->size.y -= 2 * borderWidth();
-      break;
+      case NorthEastGravity:
+        c->size.x -= 2 * borderWidth();
+        break;
+      case SouthWestGravity:
+        c->size.y -= 2 * borderWidth();
+        break;
+      case SouthEastGravity:
+        c->size.x -= 2 * borderWidth();
+        c->size.y -= 2 * borderWidth();
+        break;
     }
   }
 }
 
-void getTransientFor(Client *c) {
+void getTransientFor(Client* c) {
   Window trans = None;
   XGetTransientForHint(dpy, c->window, &trans);
   c->trans = trans;
 }
 
-void withdraw(Client *c) {
-  if (c->parent != screen->root) {
+void withdraw(Client* c) {
+  if (c->parent != LScr::I->Root()) {
     XUnmapWindow(dpy, c->parent);
-    XReparentWindow(dpy, c->parent, screen->root, c->size.x, c->size.y);
+    XReparentWindow(dpy, c->parent, LScr::I->Root(), c->size.x, c->size.y);
   }
 
   XRemoveFromSaveSet(dpy, c->window);
@@ -368,8 +353,8 @@ static void installColourmap(Colormap cmap) {
   XInstallColormap(dpy, cmap);
 }
 
-void cmapfocus(Client *c) {
-  Client *cc;
+void cmapfocus(Client* c) {
+  Client* cc;
   if (c == 0) {
     installColourmap(None);
   } else if (c->ncmapwins != 0) {
@@ -383,7 +368,7 @@ void cmapfocus(Client *c) {
     if (!found) {
       installColourmap(c->cmap);
     }
-  } else if (c->trans != None && (cc = Client_Get(c->trans)) != 0 &&
+  } else if (c->trans != None && (cc = LScr::I->GetClient(c->trans)) != 0 &&
              cc->ncmapwins != 0) {
     cmapfocus(cc);
   } else {
@@ -391,13 +376,13 @@ void cmapfocus(Client *c) {
   }
 }
 
-void getColourmaps(Client *c) {
+void getColourmaps(Client* c) {
   if (c == 0) {
     return;
   }
-  Window *cw = nullptr;
+  Window* cw = nullptr;
   int n = getProperty(c->window, wm_colormaps, XA_WINDOW, 100L,
-                      (unsigned char **)&cw);
+                      (unsigned char**)&cw);
   if (c->ncmapwins != 0) {
     XFree(c->cmapwins);
     free(c->wmcmaps);
@@ -409,7 +394,7 @@ void getColourmaps(Client *c) {
   c->ncmapwins = n;
   c->cmapwins = cw;
 
-  c->wmcmaps = (Colormap *)malloc(n * sizeof(Colormap));
+  c->wmcmaps = (Colormap*)malloc(n * sizeof(Colormap));
   for (int i = 0; i < n; i++) {
     if (cw[i] == c->window) {
       c->wmcmaps[i] = c->cmap;
@@ -444,8 +429,11 @@ void Terminate(int signal) {
   }
 }
 
-static int getProperty(Window w, Atom a, Atom type, long len,
-                       unsigned char **p) {
+static int getProperty(Window w,
+                       Atom a,
+                       Atom type,
+                       long len,
+                       unsigned char** p) {
   Atom real_type = 0;
   int format = 0;
   unsigned long n = 0;
@@ -466,7 +454,7 @@ static int getProperty(Window w, Atom a, Atom type, long len,
   return n;
 }
 
-void getWindowName(Client *c) {
+void getWindowName(Client* c) {
   if (!c) {
     return;
   }
@@ -477,7 +465,7 @@ void getWindowName(Client *c) {
   }
 }
 
-void getNormalHints(Client *c) {
+void getNormalHints(Client* c) {
   /* We have to be a little careful here. The ICCCM says that the x, y
    * and width, height components aren't used. So we use them. That means
    * that we need to save and restore them whenever we fill the size
@@ -495,9 +483,9 @@ void getNormalHints(Client *c) {
 
   if (c->framed) {
     /*
-    * Correct the minimum allowable size of this client to take
-    * account of the window border.
-    */
+     * Correct the minimum allowable size of this client to take
+     * account of the window border.
+     */
     if (c->size.flags & PMinSize) {
       c->size.min_width += 2 * borderWidth();
       c->size.min_height += 2 * borderWidth();
@@ -512,9 +500,9 @@ void getNormalHints(Client *c) {
     }
 
     /*
-    * Correct the maximum allowable size of this client to take
-    * account of the window border.
-    */
+     * Correct the maximum allowable size of this client to take
+     * account of the window border.
+     */
     if (c->size.flags & PMaxSize) {
       c->size.max_width += 2 * borderWidth();
       c->size.max_height += 2 * borderWidth();
@@ -550,10 +538,10 @@ void getNormalHints(Client *c) {
   c->size.height = h;
 }
 
-static int getWindowState(Window w, int *state) {
-  long *p = 0;
+static int getWindowState(Window w, int* state) {
+  long* p = 0;
 
-  if (getProperty(w, wm_state, wm_state, 2L, (unsigned char **)&p) <= 0) {
+  if (getProperty(w, wm_state, wm_state, 2L, (unsigned char**)&p) <= 0) {
     return 0;
   }
   *state = (int)*p;
@@ -561,12 +549,12 @@ static int getWindowState(Window w, int *state) {
   return 1;
 }
 
-extern bool motifWouldDecorate(Client *c) {
-  unsigned long *p = 0;
+extern bool motifWouldDecorate(Client* c) {
+  unsigned long* p = 0;
   bool ret = true; /* if all else fails - decorate */
 
   if (getProperty(c->window, motif_wm_hints, motif_wm_hints, 5L,
-                  (unsigned char **)&p) <= 0) {
+                  (unsigned char**)&p) <= 0) {
     return ret;
   }
   if ((p[0] & MWM_HINTS_DECORATIONS) &&

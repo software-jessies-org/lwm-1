@@ -54,7 +54,7 @@ extern int shapeEvent(XEvent *ev) {
 #ifdef SHAPE
   if (shape && ev->type == shape_event) {
     XShapeEvent *e = (XShapeEvent *)ev;
-    Client *c = Client_Get(e->window);
+    Client *c = LScr::I->GetClient(e->window);
     if (c != 0) {
       setShape(c);
     }

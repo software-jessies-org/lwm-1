@@ -1,4 +1,4 @@
-#include "xlib.h"
+#include "lwm.h"
 
 WindowTree WindowTree::Query(Display *dpy, Window w) {
   WindowTree res = {};
