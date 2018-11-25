@@ -26,7 +26,7 @@
  */
 
 enum EWMHAtom {
-  /* root window properties */
+  // root window properties
   _NET_SUPPORTED,
   _NET_CLIENT_LIST,
   _NET_CLIENT_LIST_STACKING,
@@ -41,11 +41,11 @@ enum EWMHAtom {
   _NET_VIRTUAL_ROOTS,
   _NET_DESKTOP_LAYOUT,
   _NET_SHOWING_DESKTOP,
-  /* other root window messages */
+  // other root window messages
   _NET_CLOSE_WINDOW,
   _NET_MOVERESIZE_WINDOW,
   _NET_WM_MOVERESIZE,
-  /* application window properties */
+  // application window properties
   _NET_WM_NAME,
   _NET_WM_VISIBLE_NAME,
   _NET_WM_ICON_NAME,
@@ -59,7 +59,7 @@ enum EWMHAtom {
   _NET_WM_ICON,
   _NET_WM_PID,
   _NET_WM_HANDLED_ICONS,
-  /* window types for _NET_WM_WINDOW_TYPE */
+  // window types for _NET_WM_WINDOW_TYPE
   _NET_WM_WINDOW_TYPE_DESKTOP,
   _NET_WM_WINDOW_TYPE_DOCK,
   _NET_WM_WINDOW_TYPE_TOOLBAR,
@@ -68,7 +68,7 @@ enum EWMHAtom {
   _NET_WM_WINDOW_TYPE_SPLASH,
   _NET_WM_WINDOW_TYPE_DIALOG,
   _NET_WM_WINDOW_TYPE_NORMAL,
-  /* window states for _NET_WM_STATE */
+  // window states for _NET_WM_STATE
   _NET_WM_STATE_MODAL,
   _NET_WM_STATE_STICKY,
   _NET_WM_STATE_MAXIMISED_VERT,
@@ -80,7 +80,7 @@ enum EWMHAtom {
   _NET_WM_STATE_FULLSCREEN,
   _NET_WM_STATE_ABOVE,
   _NET_WM_STATE_BELOW,
-  /* allowed actions for _NET_WM_ALLOWED_ACTIONS */
+  // allowed actions for _NET_WM_ALLOWED_ACTIONS
   _NET_WM_ACTION_MOVE,
   _NET_WM_ACTION_RESIZE,
   _NET_WM_ACTION_MINIMIZE,

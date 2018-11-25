@@ -41,18 +41,17 @@ static void applyGravity(Client*);
 
 /*ARGSUSED*/
 void manage(Client* c) {
-  /* get the EWMH window type, as this might overrule some hints */
+  // get the EWMH window type, as this might overrule some hints
   c->wtype = ewmh_get_window_type(c->window);
-  /* get in the initial EWMH state */
+  // get in the initial EWMH state
   ewmh_get_state(c);
-  /* set EWMH allowable actions, now we intend to manage this window */
+  // set EWMH allowable actions, now we intend to manage this window
   ewmh_set_allowed(c);
-  /* is this window to have a frame? */
+  // is this window to have a frame?
   if (c->wtype == WTypeNone) {
-    /* this breaks the ewmh spec (section 5.6) because in the
-     * absence of a _NET_WM_WINDOW_TYPE, _WM_WINDOW_TYPE_NORMAL
-     * must be taken. bummer.
-     */
+    // this breaks the ewmh spec (section 5.6) because in the
+    // absence of a _NET_WM_WINDOW_TYPE, _WM_WINDOW_TYPE_NORMAL
+    // must be taken. bummer.
     c->framed = motifWouldDecorate(c);
   } else {
     c->framed = ewmh_hasframe(c);
@@ -61,36 +60,29 @@ void manage(Client* c) {
     c->framed = false;
   }
 
-  /* get the EWMH strut - if there is one */
+  // get the EWMH strut - if there is one
   ewmh_get_strut(c);
 
-  /*
-   * Get the hints, window name, and normal hints (see ICCCM
-   * section 4.1.2.3).
-   */
+  // Get the hints, window name, and normal hints (see ICCCM section 4.1.2.3).
   XWMHints* hints = XGetWMHints(dpy, c->window);
 
   getWindowName(c);
   getNormalHints(c);
 
-  /*
-   * Get the colourmaps associated with this window. Get the window
-   * attribute colourmap first, then look to see if the
-   * WM_COLORMAP_WINDOWS property has been used to specify
-   * windows needing colourmaps that differ from the top-level
-   * colourmap. (See ICCCM section 4.1.8.)
-   */
+  // Get the colourmaps associated with this window. Get the window
+  // attribute colourmap first, then look to see if the
+  // WM_COLORMAP_WINDOWS property has been used to specify
+  // windows needing colourmaps that differ from the top-level
+  // colourmap. (See ICCCM section 4.1.8.)
   XWindowAttributes current_attr;
   XGetWindowAttributes(dpy, c->window, &current_attr);
   c->cmap = current_attr.colormap;
 
   getColourmaps(c);
 
-  /*
-   * Scan the list of atoms on WM_PROTOCOLS to see which of the
-   * protocols that we understand the client is prepared to
-   * participate in. (See ICCCM section 4.1.2.7.)
-   */
+  // Scan the list of atoms on WM_PROTOCOLS to see which of the
+  // protocols that we understand the client is prepared to
+  // participate in. (See ICCCM section 4.1.2.7.)
   Atom* protocols;
   int num_protocols;
   if (XGetWMProtocols(dpy, c->window, &protocols, &num_protocols) != 0) {
@@ -101,19 +93,18 @@ void manage(Client* c) {
         c->proto |= Ptakefocus;
       }
     }
-
     XFree(protocols);
   }
 
-  /* Get the WM_TRANSIENT_FOR property (see ICCCM section 4.1.2.6). */
+  // Get the WM_TRANSIENT_FOR property (see ICCCM section 4.1.2.6).
   getTransientFor(c);
 
-  /* Work out details for the Client structure from the hints. */
+  // Work out details for the Client structure from the hints.
   if (hints && (hints->flags & InputHint)) {
     c->accepts_focus = hints->input;
   }
   if (c->proto | Ptakefocus) {
-    /* WM_TAKE_FOCUS overrides normal hints */
+    // WM_TAKE_FOCUS overrides normal hints
     c->accepts_focus = true;
   }
 
@@ -122,9 +113,7 @@ void manage(Client* c) {
     state = hints ? hints->initial_state : NormalState;
   }
 
-  /*
-   * Sort out the window's position.
-   */
+  // Sort out the window's position.
   {
     Window root_window;
     int x, y;
@@ -134,12 +123,10 @@ void manage(Client* c) {
     XGetGeometry(dpy, c->window, &root_window, &x, &y, &w, &h, &border_width,
                  &depth);
 
-    /*
-     * Do the size first.
-     *
-     * "The size specifiers refer to the width and height of the
-     * client excluding borders" -- ICCCM 4.1.2.3.
-     */
+    // Do the size first.
+    //
+    // "The size specifiers refer to the width and height of the
+    // client excluding borders" -- ICCCM 4.1.2.3.
     c->size.width = w;
     c->size.height = h;
     if (c->framed) {
@@ -147,12 +134,10 @@ void manage(Client* c) {
       c->size.height += 2 * borderWidth();
     }
 
-    /*
-     * THIS IS A HACK!
-     *
-     * OpenGL programs have a habit of appearing smaller than their
-     * minimum sizes, which they don't like.
-     */
+    // THIS IS A HACK!
+    //
+    // OpenGL programs have a habit of appearing smaller than their
+    // minimum sizes, which they don't like.
     if (c->size.width < c->size.min_width) {
       c->size.width = c->size.min_width;
     }
@@ -160,30 +145,26 @@ void manage(Client* c) {
       c->size.height = c->size.min_height;
     }
 
-    /* Do the position next. */
+    // Do the position next.
 
-    /*
-     * If we have a user-specified position for a top-level window,
-     * or a program-specified position for a dialogue box, we'll
-     * take it. We'll also just take it during initialisation,
-     * since the previous manage probably placed its windows
-     * sensibly.
-     */
+    // If we have a user-specified position for a top-level window,
+    // or a program-specified position for a dialogue box, we'll
+    // take it. We'll also just take it during initialisation,
+    // since the previous manage probably placed its windows
+    // sensibly.
     if (c->trans != None && c->size.flags & PPosition) {
-      /* It's a "dialogue box". Trust it. */
+      // It's a "dialogue box". Trust it.
       c->size.x = x;
       c->size.y = y;
     } else if ((c->size.flags & USPosition) || !c->framed ||
                mode == wm_initialising) {
-      /* Use the specified window position. */
+      // Use the specified window position.
       c->size.x = x;
       c->size.y = y;
 
-      /*
-       * We need to be careful of the right-hand edge and
-       * bottom. We can use the window gravity (if specified)
-       * to handle this. (See section 4.1.2.3 of the ICCCM.)
-       */
+      // We need to be careful of the right-hand edge and
+      // bottom. We can use the window gravity (if specified)
+      // to handle this. (See section 4.1.2.3 of the ICCCM.)
       applyGravity(c);
     } else {
       // No position was specified: use the auto-placement heuristics.
@@ -193,8 +174,7 @@ void manage(Client* c) {
       static unsigned int auto_x = 100;
       static unsigned int auto_y = 100;
 
-      /* firstly, make sure auto_x and auto_y are outside
-       * strut */
+      // firstly, make sure auto_x and auto_y are outside strut
       if (auto_x < LScr::I->Strut().left) {
         auto_x = LScr::I->Strut().left;
       }
@@ -206,12 +186,8 @@ void manage(Client* c) {
               (LScr::I->Width() - LScr::I->Strut().right) &&
           (c->size.width <= (LScr::I->Width() - LScr::I->Strut().left -
                              LScr::I->Strut().right))) {
-        /*
-         * If the window wouldn't fit using normal
-         * auto-placement but is small enough to fit
-         * horizontally, then centre the window
-         * horizontally.
-         */
+        // If the window wouldn't fit using normal auto-placement but is small
+        // enough to fit horizontally, then centre the window horizontally.
         c->size.x = (LScr::I->Width() - c->size.width) / 2;
         auto_x = LScr::I->Strut().left + 20;
       } else {
@@ -226,12 +202,8 @@ void manage(Client* c) {
            (LScr::I->Height() - LScr::I->Strut().bottom)) &&
           (c->size.height <= (LScr::I->Height() - LScr::I->Strut().top -
                               LScr::I->Strut().bottom))) {
-        /*
-         * If the window wouldn't fit using normal
-         * auto-placement but is small enough to fit
-         * vertically, then centre the window
-         * vertically.
-         */
+        // If the window wouldn't fit using normal auto-placement but is small
+        // enough to fit vertically, then centre the window vertically.
         c->size.y = (LScr::I->Height() - c->size.height) / 2;
         auto_y = LScr::I->Strut().top + 20;
       } else {
@@ -252,13 +224,11 @@ void manage(Client* c) {
     LScr::I->Furnish(c);
   }
 
-  /*
-   * Stupid X11 doesn't let us change border width in the above
-   * call. It's a window attribute, but it's somehow second-class.
-   *
-   * As pointed out by Adrian Colley, we can't change the window
-   * border width at all for InputOnly windows.
-   */
+  // Stupid X11 doesn't let us change border width in the above
+  // call. It's a window attribute, but it's somehow second-class.
+  //
+  // As pointed out by Adrian Colley, we can't change the window
+  // border width at all for InputOnly windows.
   if (current_attr.c_class != InputOnly) {
     XSetWindowBorderWidth(dpy, c->window, 0);
   }
@@ -284,7 +254,7 @@ void manage(Client* c) {
   if (state == IconicState) {
     hide(c);
   } else {
-    /* Map the new window in the relevant state. */
+    // Map the new window in the relevant state.
     c->hidden = false;
     XMapWindow(dpy, c->parent);
     XMapWindow(dpy, c->window);
@@ -336,11 +306,9 @@ void withdraw(Client* c) {
   XRemoveFromSaveSet(dpy, c->window);
   Client_SetState(c, WithdrawnState);
 
-  /*
-   * Flush and ignore any errors. X11 sends us an UnmapNotify before it
-   * sends us a DestroyNotify. That means we can get here without knowing
-   * whether the relevant window still exists.
-   */
+  // Flush and ignore any errors. X11 sends us an UnmapNotify before it
+  // sends us a DestroyNotify. That means we can get here without knowing
+  // whether the relevant window still exists.
   ignore_badwindow = 1;
   XSync(dpy, false);
   ignore_badwindow = 0;
@@ -409,10 +377,10 @@ void getColourmaps(Client* c) {
 
 /*ARGSUSED*/
 void Terminate(int signal) {
-  /* Set all clients free. */
+  // Set all clients free.
   Client_FreeAll();
 
-  /* Give up the input focus and the colourmap. */
+  // Give up the input focus and the colourmap.
   XSetInputFocus(dpy, PointerRoot, RevertToPointerRoot, CurrentTime);
   installColourmap(None);
 
@@ -448,9 +416,7 @@ static int getProperty(Window w,
   if (n == 0 && p) {
     XFree(*p);
   }
-  /*
-   * could check real_type, format, extra here...
-   */
+  // could check real_type, format, extra here...
   return n;
 }
 
@@ -466,26 +432,24 @@ void getWindowName(Client* c) {
 }
 
 void getNormalHints(Client* c) {
-  /* We have to be a little careful here. The ICCCM says that the x, y
-   * and width, height components aren't used. So we use them. That means
-   * that we need to save and restore them whenever we fill the size
-   * struct. */
+  // We have to be a little careful here. The ICCCM says that the x, y
+  // and width, height components aren't used. So we use them. That means
+  // that we need to save and restore them whenever we fill the size
+  // struct.
   int x = c->size.x;
   int y = c->size.y;
   int w = c->size.width;
   int h = c->size.height;
 
-  /* Do the get. */
+  // Do the get.
   long msize;
   if (XGetWMNormalHints(dpy, c->window, &c->size, &msize) == 0) {
     c->size.flags = 0;
   }
 
   if (c->framed) {
-    /*
-     * Correct the minimum allowable size of this client to take
-     * account of the window border.
-     */
+    // Correct the minimum allowable size of this client to take
+    // account of the window border.
     if (c->size.flags & PMinSize) {
       c->size.min_width += 2 * borderWidth();
       c->size.min_height += 2 * borderWidth();
@@ -499,20 +463,16 @@ void getNormalHints(Client* c) {
       }
     }
 
-    /*
-     * Correct the maximum allowable size of this client to take
-     * account of the window border.
-     */
+    // Correct the maximum allowable size of this client to take
+    // account of the window border.
     if (c->size.flags & PMaxSize) {
       c->size.max_width += 2 * borderWidth();
       c->size.max_height += 2 * borderWidth();
     }
   }
 
-  /*
-   * Ensure that the base width & height and the width & height increments
-   * are set correctly so that we don't have to do this in MakeSane.
-   */
+  // Ensure that the base width & height and the width & height increments
+  // are set correctly so that we don't have to do this in MakeSane.
   if (!(c->size.flags & PBaseSize)) {
     c->size.base_width = c->size.base_height = 0;
   }
@@ -520,10 +480,8 @@ void getNormalHints(Client* c) {
     c->size.width_inc = c->size.height_inc = 1;
   }
 
-  /*
-   * If the client gives identical minimum and maximum sizes, we don't
-   * want the user to resize in that direction.
-   */
+  // If the client gives identical minimum and maximum sizes, we don't
+  // want the user to resize in that direction.
   if (c->size.min_width == c->size.max_width) {
     c->size.width_inc = 0;
   }
@@ -531,7 +489,7 @@ void getNormalHints(Client* c) {
     c->size.height_inc = 0;
   }
 
-  /* Restore the window-manager bits. */
+  // Restore the window-manager bits.
   c->size.x = x;
   c->size.y = y;
   c->size.width = w;
@@ -551,7 +509,7 @@ static int getWindowState(Window w, int* state) {
 
 extern bool motifWouldDecorate(Client* c) {
   unsigned long* p = 0;
-  bool ret = true; /* if all else fails - decorate */
+  bool ret = true; // if all else fails - decorate
 
   if (getProperty(c->window, motif_wm_hints, motif_wm_hints, 5L,
                   (unsigned char**)&p) <= 0) {

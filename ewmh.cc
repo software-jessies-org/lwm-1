@@ -279,7 +279,7 @@ void ewmh_change_state(Client* c, unsigned long action, unsigned long atom) {
   }
   ewmh_set_state(c);
 
-  /* may have to shuffle windows in the stack after a change of state */
+  // may have to shuffle windows in the stack after a change of state
   ewmh_set_client_list();
 }
 
@@ -319,9 +319,8 @@ void ewmh_set_state(Client* c) {
 }
 
 void ewmh_set_allowed(Client* c) {
-  /* FIXME: this is dumb - the allowed actions should be calculated
-   * but for now, anything goes.
-   */
+  // FIXME: this is dumb - the allowed actions should be calculated
+  // but for now, anything goes.
   Atom action[4];
 
   action[0] = ewmh_atom[_NET_WM_ACTION_MOVE];
@@ -333,7 +332,7 @@ void ewmh_set_allowed(Client* c) {
 }
 
 void ewmh_set_strut() {
-  /* find largest reserved areas */
+  // find largest reserved areas
   EWMHStrut strut;
   strut.left = 0;
   strut.right = 0;
@@ -359,7 +358,7 @@ void ewmh_set_strut() {
     return;  // No change; we're done.
   }
 
-  /* set the new workarea */
+  // set the new workarea
   unsigned long data[4];
   data[0] = strut.left;
   data[1] = strut.top;
@@ -368,7 +367,7 @@ void ewmh_set_strut() {
   XChangeProperty(dpy, LScr::I->Root(), ewmh_atom[_NET_WORKAREA], XA_CARDINAL,
                   32, PropModeReplace, (unsigned char*)data, 4);
 
-  /* ensure no window fully occupy reserved areas */
+  // ensure no window fully occupy reserved areas
   for (auto it : LScr::I->Clients()) {
     Client* c = it.second;
     int x = c->size.x;
@@ -393,12 +392,10 @@ void ewmh_set_strut() {
   }
 }
 
-/*
- * get _NET_WM_STRUT and if it is available recalculate the screens
- * reserved areas. the EWMH spec isn't clear about what we should do
- * about hidden windows. It seems silly to reserve space for an invisible
- * window, but the spec allows it. Ho Hum...		jfc
- */
+// get _NET_WM_STRUT and if it is available recalculate the screens
+// reserved areas. the EWMH spec isn't clear about what we should do
+// about hidden windows. It seems silly to reserve space for an invisible
+// window, but the spec allows it. Ho Hum...		jfc
 void ewmh_get_strut(Client* c) {
   if (c == NULL) {
     return;
@@ -425,16 +422,14 @@ void ewmh_get_strut(Client* c) {
   ewmh_set_strut();
 }
 
-/* fix stack forces each window on the screen to be in the right place in
- * the window stack as indicated in the EWMH spec version 1.2 (section 7.10).
- */
+// fix stack forces each window on the screen to be in the right place in
+// the window stack as indicated in the EWMH spec version 1.2 (section 7.10).
 static void fix_stack() {
-  /* this is pretty dumb. we should query the tree and only move
-   * those windows that require it. doing it regardless like this
-   * causes the desktop to flicker
-   */
+  // this is pretty dumb. we should query the tree and only move
+  // those windows that require it. doing it regardless like this
+  // causes the desktop to flicker
 
-  /* first lower clients with _NET_WM_STATE_BELOW */
+  // first lower clients with _NET_WM_STATE_BELOW
   for (auto it : LScr::I->Clients()) {
     Client* c = it.second;
     if (!c->wstate.below) {
@@ -443,19 +438,18 @@ static void fix_stack() {
     Client_Lower(c);
   }
 
-  /* lower desktops - they are always the lowest */
+  // lower desktops - they are always the lowest
   for (auto it : LScr::I->Clients()) {
     Client* c = it.second;
     if (c->wtype != WTypeDesktop) {
       continue;
     }
     Client_Lower(c);
-    break; /* only one desktop, surely */
+    break; // only one desktop, surely
   }
 
-  /* raise clients with _NET_WM_STATE_ABOVE and docks
-   * (unless marked with _NET_WM_STATE_BELOW)
-   */
+  // raise clients with _NET_WM_STATE_ABOVE and docks
+  // (unless marked with _NET_WM_STATE_BELOW)
   for (auto it : LScr::I->Clients()) {
     Client* c = it.second;
     if (!(c->wstate.above || (c->wtype == WTypeDock && !c->wstate.below))) {
@@ -464,13 +458,12 @@ static void fix_stack() {
     Client_Raise(c);
   }
 
-  /* raise fullscreens - they're always on top */
-  /* Misam Saki reports problems with this and believes fullscreens
-   * should not be automatically raised.
-   *
-   * However if the code below is removed then the panel is raised above
-   * fullscreens, which is not desirable.
-   */
+  // raise fullscreens - they're always on top
+  // Misam Saki reports problems with this and believes fullscreens
+  // should not be automatically raised.
+  //
+  // However if the code below is removed then the panel is raised above
+  // fullscreens, which is not desirable.
   for (auto it : LScr::I->Clients()) {
     Client* c = it.second;
     if (!c->wstate.fullscreen) {
@@ -484,13 +477,11 @@ static bool valid_for_client_list(Client* c) {
   return c->state != WithdrawnState;
 }
 
-/*
- * update_client_list updates the properties on the root window used by
- * task lists and pagers.
- *
- * it should be called whenever the window stack is modified, or when clients
- * are hidden or unhidden.
- */
+// update_client_list updates the properties on the root window used by
+// task lists and pagers.
+//
+// it should be called whenever the window stack is modified, or when clients
+// are hidden or unhidden.
 void ewmh_set_client_list() {
   static bool recursion_stop;
   if (recursion_stop) {
@@ -509,7 +500,7 @@ void ewmh_set_client_list() {
   Window* stacked_client_list = NULL;
   if (no_clients > 0) {
     client_list = (Window*)malloc(sizeof(Window) * no_clients);
-    int i = no_clients - 1; /* array starts with oldest */
+    int i = no_clients - 1; // array starts with oldest
     for (auto it : LScr::I->Clients()) {
       Client* c = it.second;
       if (valid_for_client_list(c)) {

@@ -31,21 +31,21 @@
 #include "lwm.h"
 #include "xlib.h"
 
-Mode mode;   /* The window manager's mode. (See "lwm.h".) */
-int start_x; /* The X position where the mode changed. */
-int start_y; /* The Y position where the mode changed. */
+Mode mode;    // The window manager's mode. (See "lwm.h".)
+int start_x;  // The X position where the mode changed.
+int start_y;  // The Y position where the mode changed.
 
-Display *dpy;        /* The connection to the X server. */
+Display* dpy;  // The connection to the X server.
 
 XftFont* g_font;
 XftColor g_font_white;
 XftColor g_font_pale_grey;
 XftColor g_font_black;
 
-bool shape;      /* Does server have Shape Window extension? */
-int shape_event; /* ShapeEvent event type. */
+bool shape;       // Does server have Shape Window extension?
+int shape_event;  // ShapeEvent event type.
 
-/* Atoms we're interested in. See the ICCCM for more information. */
+// Atoms we're interested in. See the ICCCM for more information.
 Atom wm_state;
 Atom wm_change_state;
 Atom wm_protocols;
@@ -54,39 +54,39 @@ Atom wm_take_focus;
 Atom wm_colormaps;
 Atom compound_text;
 
-/** Netscape uses this to give information about the URL it's displaying. */
+// Netscape uses this to give information about the URL it's displaying.
 Atom _mozilla_url;
 
 // Debugging support.
 static void setDebugArg(char ch) {
   switch (ch) {
-  case 'c':
-    debug_configure_notify = true;
-    break;
-  case 'e':
-    debug_all_events = true;
-    break;
-  case 'f':
-    debug_focus = true;
-    break;
-  case 'm':
-    debug_map = true;
-    break;
-  case 'p':
-    debug_property_notify = true;
-    break;
-  default:
-    fprintf(stderr, "Unrecognised debug option: '%c'\n", ch);
+    case 'c':
+      debug_configure_notify = true;
+      break;
+    case 'e':
+      debug_all_events = true;
+      break;
+    case 'f':
+      debug_focus = true;
+      break;
+    case 'm':
+      debug_map = true;
+      break;
+    case 'p':
+      debug_property_notify = true;
+      break;
+    default:
+      fprintf(stderr, "Unrecognised debug option: '%c'\n", ch);
   }
 }
 
-bool debug_configure_notify; // -d=c
-bool debug_all_events;       // -d=e
-bool debug_focus;            // -d=f
-bool debug_map;              // -d=m
-bool debug_property_notify;  // -d=p
+bool debug_configure_notify;  // -d=c
+bool debug_all_events;        // -d=e
+bool debug_focus;             // -d=f
+bool debug_map;               // -d=m
+bool debug_property_notify;   // -d=p
 
-bool printDebugPrefix(char const *file, int line) {
+bool printDebugPrefix(char const* file, int line) {
   char buf[16];
   time_t t;
   time(&t);
@@ -96,21 +96,19 @@ bool printDebugPrefix(char const *file, int line) {
   return true;
 }
 
-/*
- * if we're really short of a clue we might look at motif hints, and
- * we're not going to link with motif, so we'll have to do it by hand
- */
+// if we're really short of a clue we might look at motif hints, and
+// we're not going to link with motif, so we'll have to do it by hand
 Atom motif_wm_hints;
 
 bool forceRestart;
-char *argv0;
+char* argv0;
 
 static void initScreen();
 
-static void rrScreenChangeNotify(XEvent *ev);
+static void rrScreenChangeNotify(XEvent* ev);
 
 /*ARGSUSED*/
-extern int main(int argc, char *argv[]) {
+extern int main(int argc, char* argv[]) {
   argv0 = argv[0];
   for (int i = 1; i < argc; i++) {
     if (!strncmp(argv[i], "-d=", 3)) {
@@ -124,21 +122,21 @@ extern int main(int argc, char *argv[]) {
 
   setlocale(LC_ALL, "");
 
-  /* Open a connection to the X server. */
+  // Open a connection to the X server.
   dpy = XOpenDisplay(NULL);
   if (dpy == 0) {
     panic("can't open display.");
   }
 
-  /* Set up an error handler. */
+  // Set up an error handler.
   XSetErrorHandler(errorHandler);
 
-  /* Set up signal handlers. */
+  // Set up signal handlers.
   signal(SIGTERM, Terminate);
   signal(SIGINT, Terminate);
   signal(SIGHUP, Terminate);
 
-  /* Ignore SIGCHLD. */
+  // Ignore SIGCHLD.
   struct sigaction sa;
   sa.sa_handler = SIG_IGN;
 #ifdef SA_NOCLDWAIT
@@ -149,7 +147,7 @@ extern int main(int argc, char *argv[]) {
   sigemptyset(&sa.sa_mask);
   sigaction(SIGCHLD, &sa, 0);
 
-  /* Internalize useful atoms. */
+  // Internalize useful atoms.
   wm_state = XInternAtom(dpy, "WM_STATE", false);
   wm_change_state = XInternAtom(dpy, "WM_CHANGE_STATE", false);
   wm_protocols = XInternAtom(dpy, "WM_PROTOCOLS", false);
@@ -183,9 +181,9 @@ extern int main(int argc, char *argv[]) {
   xrc = {0, 0, 0, 0xffff};
   XftColorAllocValue(dpy, DefaultVisual(dpy, screenID),
                      DefaultColormap(dpy, screenID), &xrc, &g_font_black);
-  
+
   initScreen();
-  //ewmh_init_screen();
+  // ewmh_init_screen();
   session_init(argc, argv);
 
   // Do we need to support XRandR?
@@ -195,18 +193,14 @@ extern int main(int argc, char *argv[]) {
     XRRSelectInput(dpy, LScr::I->Root(), RRScreenChangeNotifyMask);
   }
 
-  /* See if the server has the Shape Window extension. */
+  // See if the server has the Shape Window extension.
   shape = serverSupportsShapes();
 
-  /*
-   * Initialisation is finished, but we start off not interacting with the
-   * user.
-   */
+  // Initialisation is finished, but we start off not interacting with the
+  // user.
   mode = wm_idle;
 
-  /*
-   * The main event loop.
-   */
+  // The main event loop.
   int dpy_fd = ConnectionNumber(dpy);
   int max_fd = dpy_fd + 1;
   if (ice_fd > dpy_fd) {
@@ -244,8 +238,8 @@ extern int main(int argc, char *argv[]) {
   execvp(argv0, argv);
 }
 
-static void rrScreenChangeNotify(XEvent *ev) {
-  XRRScreenChangeNotifyEvent *rrev = (XRRScreenChangeNotifyEvent *)ev;
+static void rrScreenChangeNotify(XEvent* ev) {
+  XRRScreenChangeNotifyEvent* rrev = (XRRScreenChangeNotifyEvent*)ev;
   const int nScrWidth = rrev->width;
   const int nScrHeight = rrev->height;
   // If my laptop is connected to a screen that is switched off, of I try
@@ -264,7 +258,7 @@ static void rrScreenChangeNotify(XEvent *ev) {
   LScr::I->ChangeScreenDimensions(nScrWidth, nScrHeight);
 }
 
-void sendConfigureNotify(Client *c) {
+void sendConfigureNotify(Client* c) {
   XConfigureEvent ce;
   ce.type = ConfigureNotify;
   ce.event = c->window;
@@ -284,7 +278,7 @@ void sendConfigureNotify(Client *c) {
   }
   ce.above = None;
   ce.override_redirect = 0;
-  XSendEvent(dpy, c->window, false, StructureNotifyMask, (XEvent *)&ce);
+  XSendEvent(dpy, c->window, false, StructureNotifyMask, (XEvent*)&ce);
 }
 
 /*ARGSUSED*/
@@ -299,40 +293,46 @@ extern void shell(int button) {
     return;
   }
 
-  const char *sh = getenv("SHELL");
+  const char* sh = getenv("SHELL");
   if (!sh) {
     sh = "/bin/sh";
   }
   const char* display_str = DisplayString(dpy);
 
   switch (fork()) {
-  case 0: /* Child. */
-    close(ConnectionNumber(dpy));
-    if (display_str) {
-      const int len = strlen(display_str) + 9;
-      char* str = (char*) malloc(len);
-      snprintf(str, len, "DISPLAY=%s", display_str);
-      putenv(str);
-    }
-    execl(sh, sh, "-c", command.c_str(), NULL);
-    fprintf(stderr, "%s: can't exec \"%s -c %s\"\n", argv0, sh,
-            command.c_str());
-    execlp("xterm", "xterm", NULL);
-    exit(EXIT_FAILURE);
-  case -1: /* Error. */
-    fprintf(stderr, "%s: couldn't fork\n", argv0);
-    break;
+    case 0:  // Child.
+      close(ConnectionNumber(dpy));
+      if (display_str) {
+        const int len = strlen(display_str) + 9;
+        char* str = (char*)malloc(len);
+        snprintf(str, len, "DISPLAY=%s", display_str);
+        putenv(str);
+      }
+      execl(sh, sh, "-c", command.c_str(), NULL);
+      fprintf(stderr, "%s: can't exec \"%s -c %s\"\n", argv0, sh,
+              command.c_str());
+      execlp("xterm", "xterm", NULL);
+      exit(EXIT_FAILURE);
+    case -1:  // Error.
+      fprintf(stderr, "%s: couldn't fork\n", argv0);
+      break;
   }
 }
 
-extern int textHeight() { return g_font->height; }
+extern int textHeight() {
+  return g_font->height;
+}
 
-extern void drawString(Window w, int x, int y, const std::string& s, XftColor *c) {
+extern void drawString(Window w,
+                       int x,
+                       int y,
+                       const std::string& s,
+                       XftColor* c) {
   int screenID = DefaultScreen(dpy);
-  XftDraw *draw = XftDrawCreate(dpy, w, DefaultVisual(dpy, screenID),
+  XftDraw* draw = XftDrawCreate(dpy, w, DefaultVisual(dpy, screenID),
                                 DefaultColormap(dpy, screenID));
   XftDrawStringUtf8(draw, c, g_font, x, y,
-                    reinterpret_cast<const FcChar8 *>(s.c_str()), s.size());
+                    reinterpret_cast<const FcChar8*>(s.c_str()), s.size());
   XftDrawDestroy(draw);
 }
 
@@ -345,11 +345,12 @@ extern int textWidth(const std::string& s) {
 }
 
 static void initScreen() {
-  /* Find out how many screens we've got, and allocate space for their info. */
+  // Find out how many screens we've got, and allocate space for their info.
   const int num = ScreenCount(dpy);
   if (num != 1) {
-    fprintf(stderr, "Sorry, LWM no longer supports multiple screens, and you "
-                    "have %d set up.\nPlease consider using xrandr.\n",
+    fprintf(stderr,
+            "Sorry, LWM no longer supports multiple screens, and you "
+            "have %d set up.\nPlease consider using xrandr.\n",
             num);
   }
   LScr::I = new LScr(dpy);

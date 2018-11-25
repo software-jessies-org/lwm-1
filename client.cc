@@ -175,7 +175,7 @@ void Client_Remove(Client* c) {
   const bool wasLastFocus = (current == NULL && c == last_focus);
   current = last_focus = pendingClient = nullptr;
 
-  /* A deleted window can no longer be the current window. */
+  // A deleted window can no longer be the current window.
   if (wasCurrent || wasLastFocus) {
     Client* focus = NULL;
 

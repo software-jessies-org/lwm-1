@@ -64,7 +64,7 @@ void LScr::initEWMH() {
                   utf8_string_atom_, XA_CURSOR, PropModeReplace,
                   (const unsigned char*)"lwm", 3);
 
-  /* set root window properties */
+  // set root window properties
   XChangeProperty(dpy_, root_, ewmh_atom[_NET_SUPPORTED], XA_ATOM, 32,
                   PropModeReplace, (unsigned char*)ewmh_atom, EWMH_ATOM_LAST);
 
