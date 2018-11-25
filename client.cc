@@ -32,7 +32,7 @@
 Client* current;
 Client* last_focus = NULL;
 
-static int popup_width; /* The width of the size-feedback window. */
+static int popup_width; // The width of the size-feedback window.
 
 Edge interacting_edge;
 
@@ -116,7 +116,7 @@ void setactive(Client* c, int on, long timestamp) {
     cmapfocus(c);
   }
 
-  /* FIXME: is this sensible? */
+  // FIXME: is this sensible?
   if (on && !c->accepts_focus) {
     XSetInputFocus(dpy, None, RevertToPointerRoot, CurrentTime);
   }
@@ -138,13 +138,13 @@ void Client_DrawBorder(Client* c, int active) {
   XSetWindowBackground(dpy, c->parent, active ? lscr->Black() : lscr->Grey());
   XClearWindow(dpy, c->parent);
 
-  /* Draw the ``box''. */
+  // Draw the ``box''.
   if (active) {
     XDrawRectangle(dpy, c->parent, lscr->GetGC(), quarter + 2, quarter,
                    2 * quarter, 2 * quarter);
   }
 
-  /* Draw window title. */
+  // Draw window title.
   int x = borderWidth() + 2 + (3 * quarter);
   int y = borderWidth() / 2 + g_font->ascent;
   XftColor* color = active ? &g_font_white : &g_font_pale_grey;
@@ -156,7 +156,7 @@ void Client_Remove(Client* c) {
     return;
   }
 
-  /* Remove it from the hidden list if it's hidden. */
+  // Remove it from the hidden list if it's hidden.
   if (hidden(c)) {
     unhidec(c, 0);
     /* Al Smith points out that you also want to get rid of the menu
@@ -179,8 +179,8 @@ void Client_Remove(Client* c) {
   if (wasCurrent || wasLastFocus) {
     Client* focus = NULL;
 
-    /* As pointed out by J. Han, if a window disappears while it's
-     * being reshaped you need to get rid of the size indicator. */
+    // As pointed out by J. Han, if a window disappears while it's
+    // being reshaped you need to get rid of the size indicator.
     if (wasCurrent && mode == wm_reshaping) {
       XUnmapWindow(dpy, LScr::I->Popup());
       mode = wm_idle;
@@ -201,9 +201,7 @@ void Client_MakeSane(Client* c, Edge edge, int* x, int* y, int* dx, int* dy) {
   bool vertical_ok = true;
 
   if (edge != ENone) {
-    /*
-     * Make sure we're not making the window too small.
-     */
+    // Make sure we're not making the window too small.
     if (*dx < c->size.min_width) {
       horizontal_ok = false;
     }
@@ -211,9 +209,7 @@ void Client_MakeSane(Client* c, Edge edge, int* x, int* y, int* dx, int* dy) {
       vertical_ok = false;
     }
 
-    /*
-     * Make sure we're not making the window too large.
-     */
+    // Make sure we're not making the window too large.
     if (c->size.flags & PMaxSize) {
       if (*dx > c->size.max_width) {
         horizontal_ok = false;
@@ -223,10 +219,8 @@ void Client_MakeSane(Client* c, Edge edge, int* x, int* y, int* dx, int* dy) {
       }
     }
 
-    /*
-     * Make sure the window's width & height are multiples of
-     * the width & height increments (not including the base size).
-     */
+    // Make sure the window's width & height are multiples of
+    // the width & height increments (not including the base size).
     if (c->size.width_inc > 1) {
       int apparent_dx = *dx - 2 * borderWidth() - c->size.base_width;
       int x_fix = apparent_dx % c->size.width_inc;
@@ -251,9 +245,7 @@ void Client_MakeSane(Client* c, Edge edge, int* x, int* y, int* dx, int* dy) {
       }
     }
 
-    /*
-     * Check that we may change the client horizontally and vertically.
-     */
+    // Check that we may change the client horizontally and vertically.
     if (c->size.width_inc == 0) {
       horizontal_ok = false;
     }
@@ -297,11 +289,9 @@ void Client_MakeSane(Client* c, Edge edge, int* x, int* y, int* dx, int* dy) {
   // Edge resistance is only useful for moves anyway, so simply disable the code
   // for resizes to avoid the bug.
   if (edge == ENone) {
-    /*
-     * Introduce a resistance to the workarea edge, so that windows may
-     * be "thrown" to the edge of the workarea without precise mousing,
-     * as requested by MAD.
-     */
+    // Introduce a resistance to the workarea edge, so that windows may
+    // be "thrown" to the edge of the workarea without precise mousing,
+    // as requested by MAD.
     if (*x<(int)scrStrut.left&& * x>((int)scrStrut.left - EDGE_RESIST)) {
       *x = (int)scrStrut.left;
     }
@@ -321,9 +311,7 @@ void Client_MakeSane(Client* c, Edge edge, int* x, int* y, int* dx, int* dy) {
     }
   }
 
-  /*
-   * Update that part of the client information that we're happy with.
-   */
+  // Update that part of the client information that we're happy with.
   if (interacting_edge != ENone) {
     if (horizontal_ok) {
       c->size.x = *x;
@@ -350,20 +338,18 @@ static std::string makeSizeString(int x, int y) {
 }
 
 void Client_SizeFeedback() {
-  /* Make the popup 10% wider than the widest string it needs to show. */
+  // Make the popup 10% wider than the widest string it needs to show.
   popup_width = textWidth(makeSizeString(LScr::I->Width(), LScr::I->Height()));
   popup_width += popup_width / 10;
 
-  /* Put the popup in the right place to report on the window's size. */
+  // Put the popup in the right place to report on the window's size.
   const MousePos mp = getMousePosition();
   XMoveResizeWindow(dpy, LScr::I->Popup(), mp.x + 8, mp.y + 8, popup_width,
                     textHeight() + 1);
   XMapRaised(dpy, LScr::I->Popup());
 
-  /*
-   * Ensure that the popup contents get redrawn. Eventually, the function
-   * size_expose will get called to do the actual redraw.
-   */
+  // Ensure that the popup contents get redrawn. Eventually, the function
+  // size_expose will get called to do the actual redraw.
   XClearArea(dpy, LScr::I->Popup(), 0, 0, 0, 0, true);
 }
 
@@ -371,8 +357,8 @@ void size_expose() {
   int width = current->size.width - 2 * borderWidth();
   int height = current->size.height - 2 * borderWidth();
 
-  /* This dance ensures that we report 80x24 for an xterm even when
-   * it has a scrollbar. */
+  // This dance ensures that we report 80x24 for an xterm even when
+  // it has a scrollbar.
   if (current->size.flags & (PMinSize | PBaseSize) &&
       current->size.flags & PResizeInc) {
     if (current->size.flags & PBaseSize) {
@@ -400,7 +386,7 @@ static void Client_OpaquePrimitive(Client* c, Edge edge) {
   if (c == 0) {
     return;
   }
-  /* Find out where we've got hold of the window. */
+  // Find out where we've got hold of the window.
   MousePos mp = getMousePosition();
   const int sx = c->size.x - mp.x;
   const int sy = c->size.y - mp.y;
@@ -411,10 +397,8 @@ static void Client_OpaquePrimitive(Client* c, Edge edge) {
                                ButtonMotionMask | OwnerGrabButtonMask,
                            cursor, CurrentTime);
 
-  /*
-   * Store some state so that we can get back into the main event
-   * dispatching thing.
-   */
+  // Store some state so that we can get back into the main event
+  // dispatching thing.
   interacting_edge = edge;
   start_x = sx;
   start_y = sy;
@@ -459,9 +443,7 @@ void Client_Close(Client* c) {
   if (c == 0) {
     return;
   }
-  /*
-   * Terminate the client nicely if possible. Be brutal otherwise.
-   */
+  // Terminate the client nicely if possible. Be brutal otherwise.
   if (c->proto & Pdelete) {
     sendClientMessage(c->window, wm_protocols, wm_delete, CurrentTime);
   } else {
@@ -512,23 +494,22 @@ extern void Client_FreeAll() {
     Client* c = it.second;
     int not_mapped = !normal(c);
 
-    /* elliott thinks leaving window unmapped causes the x server
-     * to lose them when the window manager quits. it doesn't
-     * happen to me with XFree86's Xnest, but unmapping the
-     * windows stops gtk window generating an extra window when
-     * the window manager quits.
-     * who is right? only time will tell....
-     */
+    // elliott thinks leaving window unmapped causes the x server
+    // to lose them when the window manager quits. it doesn't
+    // happen to me with XFree86's Xnest, but unmapping the
+    // windows stops gtk window generating an extra window when
+    // the window manager quits.
+    // who is right? only time will tell....
     XUnmapWindow(dpy, c->parent);
     XUnmapWindow(dpy, c->window);
 
-    /* Reparent it, and then push it to the bottom if it was hidden. */
+    // Reparent it, and then push it to the bottom if it was hidden.
     XReparentWindow(dpy, c->window, LScr::I->Root(), c->size.x, c->size.y);
     if (not_mapped) {
       XLowerWindow(dpy, c->window);
     }
 
-    /* Give it back its initial border width. */
+    // Give it back its initial border width.
     XWindowChanges wc;
     wc.border_width = c->border;
     XConfigureWindow(dpy, c->window, CWBorderWidth, &wc);

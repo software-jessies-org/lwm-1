@@ -20,47 +20,45 @@
 #include "ewmh.h"
 #include "lwm.h"
 
-/*
- * Dispatcher for main event loop.
- */
+// Dispatcher for main event loop.
 struct Disp {
   int type;
-  char const *const name;
-  void (*handler)(XEvent *);
-  void (*debug)(XEvent *, char const *);
+  char const* const name;
+  void (*handler)(XEvent*);
+  void (*debug)(XEvent*, char const*);
 };
 
-static void expose(XEvent *);
-static void buttonpress(XEvent *);
-static void buttonrelease(XEvent *);
-static void focuschange(XEvent *);
-static void maprequest(XEvent *);
-static void configurereq(XEvent *);
-static void unmap(XEvent *);
-static void destroy(XEvent *);
-static void clientmessage(XEvent *);
-static void colormap(XEvent *);
-static void property(XEvent *);
-static void reparent(XEvent *);
-static void enter(XEvent *);
-static void circulaterequest(XEvent *);
-static void motionnotify(XEvent *);
+static void expose(XEvent*);
+static void buttonpress(XEvent*);
+static void buttonrelease(XEvent*);
+static void focuschange(XEvent*);
+static void maprequest(XEvent*);
+static void configurereq(XEvent*);
+static void unmap(XEvent*);
+static void destroy(XEvent*);
+static void clientmessage(XEvent*);
+static void colormap(XEvent*);
+static void property(XEvent*);
+static void reparent(XEvent*);
+static void enter(XEvent*);
+static void circulaterequest(XEvent*);
+static void motionnotify(XEvent*);
 
-void reshaping_motionnotify(XEvent *);
+void reshaping_motionnotify(XEvent*);
 
 //
 // Code for decoding events and printing them out in an understandable way.
 //
 
 // Helper functions for decoding specific types of X integers.
-#define CASE_STR(x)                                                            \
-  case x:                                                                      \
+#define CASE_STR(x) \
+  case x:           \
     return #x
-#define WEIRD(x)                                                               \
-  default:                                                                     \
+#define WEIRD(x) \
+  default:       \
     return "Weird" #x
 
-static char const *debugFocusType(int v) {
+static char const* debugFocusType(int v) {
   switch (v) {
     CASE_STR(FocusIn);
     CASE_STR(FocusOut);
@@ -68,7 +66,7 @@ static char const *debugFocusType(int v) {
   }
 }
 
-static char const *debugPropertyState(int v) {
+static char const* debugPropertyState(int v) {
   switch (v) {
     CASE_STR(PropertyNewValue);
     CASE_STR(PropertyDelete);
@@ -76,7 +74,7 @@ static char const *debugPropertyState(int v) {
   }
 }
 
-static char const *debugFocusMode(int v) {
+static char const* debugFocusMode(int v) {
   switch (v) {
     CASE_STR(NotifyNormal);
     CASE_STR(NotifyGrab);
@@ -85,7 +83,7 @@ static char const *debugFocusMode(int v) {
   }
 }
 
-static char const *debugFocusDetail(int v) {
+static char const* debugFocusDetail(int v) {
   switch (v) {
     CASE_STR(NotifyAncestor);
     CASE_STR(NotifyVirtual);
@@ -103,40 +101,40 @@ static char const *debugFocusDetail(int v) {
 #undef CASE_STR
 #undef WEIRD
 
-static void debugGeneric(XEvent *ev, char const *evName) {
+static void debugGeneric(XEvent* ev, char const* evName) {
   if (debug_all_events) {
     DBGF("%s: window 0x%lx", evName, ev->xany.window);
   }
 }
 
-static void debugConfigureNotify(XEvent *ev, char const *evName) {
+static void debugConfigureNotify(XEvent* ev, char const* evName) {
   if (debug_all_events || debug_configure_notify) {
-    XConfigureEvent *xc = &(ev->xconfigure);
+    XConfigureEvent* xc = &(ev->xconfigure);
     DBGF("%s: ev window 0x%lx, window 0x%lx; pos %d, %d; size %d, %d", evName,
          xc->event, xc->window, xc->x, xc->y, xc->width, xc->height);
   }
 }
 
-static void debugPropertyNotify(XEvent *ev, char const *evName) {
+static void debugPropertyNotify(XEvent* ev, char const* evName) {
   if (debug_all_events || debug_property_notify) {
-    XPropertyEvent *xp = &(ev->xproperty);
+    XPropertyEvent* xp = &(ev->xproperty);
     DBGF("%s: window 0x%lx, atom %ld (%s); state %s", evName, xp->window,
          xp->atom, ewmh_atom_name(xp->atom), debugPropertyState(xp->state));
   }
 }
 
-static void debugFocusChange(XEvent *ev, char const *evName) {
+static void debugFocusChange(XEvent* ev, char const* evName) {
   if (debug_all_events || debug_focus) {
-    XFocusChangeEvent *xf = &(ev->xfocus);
+    XFocusChangeEvent* xf = &(ev->xfocus);
     DBGF("%s: %s, window 0x%lx, mode=%s, detail=%s", evName,
          debugFocusType(xf->type), xf->window, debugFocusMode(xf->mode),
          debugFocusDetail(xf->detail));
   }
 }
 
-static void debugMapRequest(XEvent *ev, char const *evName) {
+static void debugMapRequest(XEvent* ev, char const* evName) {
   if (debug_all_events || debug_map) {
-    XMapRequestEvent *e = &ev->xmaprequest;
+    XMapRequestEvent* e = &ev->xmaprequest;
     DBGF("%s: window 0x%lx, parent 0x%lx, send=%d, serial=%lu", evName,
          e->window, e->parent, e->send_event, e->serial);
   }
@@ -146,7 +144,7 @@ static void debugMapRequest(XEvent *ev, char const *evName) {
 // End of all the debugging support.
 //
 
-#define REG_DISP(ev, hand, dbg)                                                \
+#define REG_DISP(ev, hand, dbg) \
   { ev, #ev, hand, dbg }
 static Disp disps[] = {
     REG_DISP(Expose, expose, debugGeneric),
@@ -181,10 +179,10 @@ static Disp disps[] = {
 // pendingClient is the client in which an action has been started by a mouse
 // press and we are waiting for the button to be released before performing
 // the action.
-Client *pendingClient = NULL;
+Client* pendingClient = NULL;
 
-extern void dispatch(XEvent *ev) {
-  for (Disp *p = disps; p < disps + sizeof(disps) / sizeof(disps[0]); p++) {
+extern void dispatch(XEvent* ev) {
+  for (Disp* p = disps; p < disps + sizeof(disps) / sizeof(disps[0]); p++) {
     if (p->type == ev->type) {
       p->debug(ev, p->name);
       if (p->handler) {
@@ -198,23 +196,21 @@ extern void dispatch(XEvent *ev) {
   }
 }
 
-static void expose(XEvent *ev) {
-  /* Only handle the last in a group of Expose events. */
+static void expose(XEvent* ev) {
+  // Only handle the last in a group of Expose events.
   if (ev->xexpose.count != 0) {
     return;
   }
 
   Window w = ev->xexpose.window;
 
-  /*
-  * We don't draw on the root window so that people can have
-  * their favourite Spice Girls backdrop...
-  */
+  // We don't draw on the root window so that people can have
+  // their favourite Spice Girls backdrop...
   if (w == LScr::I->Root()) {
     return;
   }
 
-  /* Decide what needs redrawing: window frame or menu? */
+  // Decide what needs redrawing: window frame or menu?
   if (w == LScr::I->Popup()) {
     if (mode == wm_menu_up) {
       menu_expose();
@@ -222,49 +218,47 @@ static void expose(XEvent *ev) {
       size_expose();
     }
   } else {
-    Client *c = LScr::I->GetClient(w);
+    Client* c = LScr::I->GetClient(w);
     if (c != 0) {
       Client_DrawBorder(c, c == current);
     }
   }
 }
 
-static void buttonpress(XEvent *ev) {
-  /* If we're getting it already, we're not in the market for more. */
+static void buttonpress(XEvent* ev) {
+  // If we're getting it already, we're not in the market for more.
   if (mode != wm_idle) {
-    /* but allow a button press to cancel a move/resize,
-     * to satify the EWMH advisory to allow a second mechanism
-     * of completing move/resize operations, due to a race.
-     * (section 4.3) sucky!
-     */
+    // but allow a button press to cancel a move/resize,
+    // to satify the EWMH advisory to allow a second mechanism
+    // of completing move/resize operations, due to a race.
+    // (section 4.3) sucky!
     if (mode == wm_reshaping) {
       mode = wm_idle;
     }
     return;
   }
 
-  XButtonEvent *e = &ev->xbutton;
-  Client *c = LScr::I->GetClient(e->window);
+  XButtonEvent* e = &ev->xbutton;
+  Client* c = LScr::I->GetClient(e->window);
 
-  /*move this test up to disable scroll to focus*/
+  // move this test up to disable scroll to focus
   if (e->button >= 4 && e->button <= 7) {
     return;
   }
 
   if (c && c == current && (e->window == c->parent)) {
-    /* Click went to our frame around a client. */
+    // Click went to our frame around a client.
 
-    /* The ``box''. */
+    // The ``box''.
     int quarter = (borderWidth() + textHeight()) / 4;
     if (e->x > (quarter + 2) && e->x < (3 + 3 * quarter) && e->y > quarter &&
         e->y <= 3 * quarter) {
-      /*Client_Close(c);*/
       pendingClient = c;
       mode = wm_closing_window;
       return;
     }
 
-    /* Somewhere in the rest of the frame. */
+    // Somewhere in the rest of the frame.
     if (e->button == HIDE_BUTTON) {
       pendingClient = c;
       mode = wm_hiding_window;
@@ -278,7 +272,7 @@ static void buttonpress(XEvent *ev) {
       XMapWindow(dpy, c->parent);
       Client_Raise(c);
 
-      /* Lasciate ogni speranza voi ch'entrate...  */
+      // Lasciate ogni speranza voi ch'entrate...
       const int border = borderWidth();
       if (e->x <= border && e->y <= border) {
         Client_ReshapeEdge(c, ETopLeft);
@@ -311,7 +305,7 @@ static void buttonpress(XEvent *ev) {
     return;
   }
 
-  /* Deal with root window button presses. */
+  // Deal with root window button presses.
   if (e->window == e->root) {
     if (e->button == Button3) {
       cmapfocus(0);
@@ -322,14 +316,14 @@ static void buttonpress(XEvent *ev) {
   }
 }
 
-static void buttonrelease(XEvent *ev) {
-  XButtonEvent *e = &ev->xbutton;
+static void buttonrelease(XEvent* ev) {
+  XButtonEvent* e = &ev->xbutton;
   if (mode == wm_menu_up) {
     menu_buttonrelease(ev);
   } else if (mode == wm_reshaping) {
     XUnmapWindow(dpy, LScr::I->Popup());
   } else if (mode == wm_closing_window) {
-    /* was the button released within the window's box?*/
+    // was the button released within the window's box?
     int quarter = (borderWidth() + textHeight()) / 4;
     if (pendingClient != NULL && (e->window == pendingClient->parent) &&
         (e->x > (quarter + 2) && e->x < (3 + 3 * quarter) && e->y > quarter &&
@@ -338,7 +332,7 @@ static void buttonrelease(XEvent *ev) {
     }
     pendingClient = NULL;
   } else if (mode == wm_hiding_window) {
-    /* was the button release within the window's frame? */
+    // was the button release within the window's frame?
     if (pendingClient != NULL && (e->window == pendingClient->parent) &&
         (e->x >= 0) && (e->y >= 0) && (e->x <= pendingClient->size.width) &&
         (e->y <= (pendingClient->size.height + textHeight()))) {
@@ -353,9 +347,9 @@ static void buttonrelease(XEvent *ev) {
   mode = wm_idle;
 }
 
-static void circulaterequest(XEvent *ev) {
-  XCirculateRequestEvent *e = &ev->xcirculaterequest;
-  Client *c = LScr::I->GetClient(e->window);
+static void circulaterequest(XEvent* ev) {
+  XCirculateRequestEvent* e = &ev->xcirculaterequest;
+  Client* c = LScr::I->GetClient(e->window);
   if (c == 0) {
     if (e->place == PlaceOnTop) {
       XRaiseWindow(e->display, e->window);
@@ -371,10 +365,10 @@ static void circulaterequest(XEvent *ev) {
   }
 }
 
-static void maprequest(XEvent *ev) {
-  XMapRequestEvent *e = &ev->xmaprequest;
-  Client *c = LScr::I->GetOrAddClient(e->window);
-  DBGF_IF(debug_map, "in maprequest, client %p", (void*) c);
+static void maprequest(XEvent* ev) {
+  XMapRequestEvent* e = &ev->xmaprequest;
+  Client* c = LScr::I->GetOrAddClient(e->window);
+  DBGF_IF(debug_map, "in maprequest, client %p", (void*)c);
   if (!c) {
     DBGF("MapRequest for non-existent window: %lx!", c->window);
     return;
@@ -383,80 +377,75 @@ static void maprequest(XEvent *ev) {
   unhidec(c, 1);
 
   switch (c->state) {
-  case WithdrawnState:
-    DBGF_IF(debug_map, "in maprequest, WithdrawnState %d", c->state);
-    if (c->parent == LScr::I->Root()) {
-      DBGF_IF(debug_map, "in maprequest, taking over management of window %lx.",
-              c->parent);
-      manage(c);
+    case WithdrawnState:
+      DBGF_IF(debug_map, "in maprequest, WithdrawnState %d", c->state);
+      if (c->parent == LScr::I->Root()) {
+        DBGF_IF(debug_map,
+                "in maprequest, taking over management of window %lx.",
+                c->parent);
+        manage(c);
+        break;
+      }
+      if (c->framed) {
+        XReparentWindow(dpy, c->window, c->parent, borderWidth(),
+                        borderWidth() + textHeight());
+      } else {
+        XReparentWindow(dpy, c->window, c->parent, c->size.x, c->size.y);
+      }
+      XAddToSaveSet(dpy, c->window);
+      // FALLTHROUGH
+    case NormalState:
+      DBG_IF(debug_map, "in maprequest, NormalState");
+      XMapWindow(dpy, c->parent);
+      XMapWindow(dpy, c->window);
+      Client_Raise(c);
+      Client_SetState(c, NormalState);
       break;
-    }
-    if (c->framed) {
-      XReparentWindow(dpy, c->window, c->parent, borderWidth(),
-                      borderWidth() + textHeight());
-    } else {
-      XReparentWindow(dpy, c->window, c->parent, c->size.x, c->size.y);
-    }
-    XAddToSaveSet(dpy, c->window);
-  /*FALLTHROUGH*/
-  case NormalState:
-    DBG_IF(debug_map, "in maprequest, NormalState");
-    XMapWindow(dpy, c->parent);
-    XMapWindow(dpy, c->window);
-    Client_Raise(c);
-    Client_SetState(c, NormalState);
-    break;
   }
   ewmh_set_client_list();
 }
 
-static void unmap(XEvent *ev) {
-  XUnmapEvent *e = &ev->xunmap;
-  Client *c = LScr::I->GetClient(e->window);
+static void unmap(XEvent* ev) {
+  XUnmapEvent* e = &ev->xunmap;
+  Client* c = LScr::I->GetClient(e->window);
   if (c == 0) {
     return;
   }
 
-  /*
-   * In the description of the ReparentWindow request we read: "If the window
-   * is mapped, an UnmapWindow request is performed automatically first". This
-   * might seem stupid, but it's the way it is. While a reparenting is pending
-   * we ignore UnmapWindow requests.
-   */
+  // In the description of the ReparentWindow request we read: "If the window
+  // is mapped, an UnmapWindow request is performed automatically first". This
+  // might seem stupid, but it's the way it is. While a reparenting is pending
+  // we ignore UnmapWindow requests.
   if (c->internal_state == IPendingReparenting) {
     c->internal_state = INormal;
     return;
   }
 
-  /* "This time it's the real thing." */
+  // "This time it's the real thing."
 
   if (c->state == IconicState) {
-    /*
-     * Is this a hidden window disappearing? If not, then we
-     * aren't interested because it's an unmap request caused
-     * by our hiding a window.
-     */
+    // Is this a hidden window disappearing? If not, then we
+    // aren't interested because it's an unmap request caused
+    // by our hiding a window.
     if (e->send_event) {
-      unhidec(c, 0); /* It's a hidden window disappearing. */
+      unhidec(c, 0);  // It's a hidden window disappearing.
     }
   } else {
-    /* This is a plain unmap, so withdraw the window. */
+    // This is a plain unmap, so withdraw the window.
     withdraw(c);
   }
   c->internal_state = INormal;
 }
 
-static void configurereq(XEvent *ev) {
+static void configurereq(XEvent* ev) {
   XWindowChanges wc;
-  XConfigureRequestEvent *e = &ev->xconfigurerequest;
-  Client *c = LScr::I->GetClient(e->window);
+  XConfigureRequestEvent* e = &ev->xconfigurerequest;
+  Client* c = LScr::I->GetClient(e->window);
 
   if (c && c->window == e->window) {
-    /*
-    * ICCCM section 4.1.5 says that the x and y coordinates here
-    * will have been "adjusted for the border width".
-    * NOTE: this may not be the only place to bear this in mind.
-    */
+    // ICCCM section 4.1.5 says that the x and y coordinates here
+    // will have been "adjusted for the border width".
+    // NOTE: this may not be the only place to bear this in mind.
     if (e->value_mask & CWBorderWidth) {
       e->x -= e->border_width;
       e->y -= e->border_width;
@@ -535,9 +524,9 @@ static void configurereq(XEvent *ev) {
   }
 }
 
-static void destroy(XEvent *ev) {
+static void destroy(XEvent* ev) {
   Window w = ev->xdestroywindow.window;
-  Client *c = LScr::I->GetClient(w);
+  Client* c = LScr::I->GetClient(w);
   if (c == 0) {
     return;
   }
@@ -547,9 +536,9 @@ static void destroy(XEvent *ev) {
   ignore_badwindow = 0;
 }
 
-static void clientmessage(XEvent *ev) {
-  XClientMessageEvent *e = &ev->xclient;
-  Client *c = LScr::I->GetClient(e->window);
+static void clientmessage(XEvent* ev) {
+  XClientMessageEvent* e = &ev->xclient;
+  Client* c = LScr::I->GetClient(e->window);
   if (c == 0) {
     return;
   }
@@ -565,12 +554,11 @@ static void clientmessage(XEvent *ev) {
     return;
   }
   if (e->message_type == ewmh_atom[_NET_ACTIVE_WINDOW] && e->format == 32) {
-    /* An EWMH enabled application has asked for this client
-     * to be made the active window. The window is raised, and
-     * focus given if the focus mode is click (focusing on a
-     * window other than the one the pointer is in makes no
-     * sense when the focus mode is enter).
-     */
+    // An EWMH enabled application has asked for this client
+    // to be made the active window. The window is raised, and
+    // focus given if the focus mode is click (focusing on a
+    // window other than the one the pointer is in makes no
+    // sense when the focus mode is enter).
     if (hidden(c)) {
       unhidec(c, 1);
     }
@@ -585,7 +573,7 @@ static void clientmessage(XEvent *ev) {
   if (e->message_type == ewmh_atom[_NET_MOVERESIZE_WINDOW] && e->format == 32) {
     XEvent ev;
 
-    /* FIXME: ok, so this is a bit of a hack */
+    // FIXME: ok, so this is a bit of a hack
     ev.xconfigurerequest.window = e->window;
     ev.xconfigurerequest.x = e->data.l[1];
     ev.xconfigurerequest.y = e->data.l[2];
@@ -611,72 +599,73 @@ static void clientmessage(XEvent *ev) {
     Edge edge = E_LAST;
     EWMHDirection direction = (EWMHDirection)e->data.l[2];
 
-    /* before we can do any resizing, make the window visible */
+    // before we can do any resizing, make the window visible
     if (hidden(c)) {
       unhidec(c, 1);
     }
     XMapWindow(dpy, c->parent);
     Client_Raise(c);
-    /* FIXME: we're ignoring x_root, y_root and button! */
+    // FIXME: we're ignoring x_root, y_root and button!
     switch (direction) {
-    case DSizeTopLeft:
-      edge = ETopLeft;
-      break;
-    case DSizeTop:
-      edge = ETop;
-      break;
-    case DSizeTopRight:
-      edge = ETopRight;
-      break;
-    case DSizeRight:
-      edge = ERight;
-      break;
-    case DSizeBottomRight:
-      edge = EBottomRight;
-      break;
-    case DSizeBottom:
-      edge = EBottom;
-      break;
-    case DSizeBottomLeft:
-      edge = EBottomLeft;
-      break;
-    case DSizeLeft:
-      edge = ELeft;
-      break;
-    case DMove:
-      edge = ENone;
-      break;
-    case DSizeKeyboard:
-      /* FIXME: don't know how to deal with this */
-      edge = E_LAST;
-      break;
-    case DMoveKeyboard:
-      edge = E_LAST;
-      break;
-    default:
-      edge = E_LAST;
-      fprintf(stderr, "%s: received _NET_WM_MOVERESIZE"
-                      " with bad direction",
-              argv0);
-      break;
+      case DSizeTopLeft:
+        edge = ETopLeft;
+        break;
+      case DSizeTop:
+        edge = ETop;
+        break;
+      case DSizeTopRight:
+        edge = ETopRight;
+        break;
+      case DSizeRight:
+        edge = ERight;
+        break;
+      case DSizeBottomRight:
+        edge = EBottomRight;
+        break;
+      case DSizeBottom:
+        edge = EBottom;
+        break;
+      case DSizeBottomLeft:
+        edge = EBottomLeft;
+        break;
+      case DSizeLeft:
+        edge = ELeft;
+        break;
+      case DMove:
+        edge = ENone;
+        break;
+      case DSizeKeyboard:
+        // FIXME: don't know how to deal with this
+        edge = E_LAST;
+        break;
+      case DMoveKeyboard:
+        edge = E_LAST;
+        break;
+      default:
+        edge = E_LAST;
+        fprintf(stderr,
+                "%s: received _NET_WM_MOVERESIZE"
+                " with bad direction",
+                argv0);
+        break;
     }
     switch (edge) {
-    case E_LAST:
-      break;
-    case ENone:
-      Client_Move(c);
-      break;
-    default:
-      Client_ReshapeEdge(c, edge);
-      break;
+      case E_LAST:
+        break;
+      case ENone:
+        Client_Move(c);
+        break;
+      default:
+        Client_ReshapeEdge(c, edge);
+        break;
     }
   }
 }
 
-static void colormap(XEvent *ev) {
-  XColormapEvent *e = &ev->xcolormap;
+static void colormap(XEvent* ev) {
+  XColormapEvent* e = &ev->xcolormap;
   if (e->c_new) {
-    Client *c = LScr::I->GetClient(e->window);
+    Client* c = LScr::I->GetClient(e->window);
     if (c) {
       c->cmap = e->colormap;
       if (c == current) {
@@ -688,9 +677,9 @@ static void colormap(XEvent *ev) {
   }
 }
 
-static void property(XEvent *ev) {
-  XPropertyEvent *e = &ev->xproperty;
-  Client *c = LScr::I->GetClient(e->window);
+static void property(XEvent* ev) {
+  XPropertyEvent* e = &ev->xproperty;
+  Client* c = LScr::I->GetClient(e->window);
   if (c == 0) {
     return;
   }
@@ -722,20 +711,20 @@ static void property(XEvent *ev) {
   }
 }
 
-static void reparent(XEvent *ev) {
-  XReparentEvent *e = &ev->xreparent;
+static void reparent(XEvent* ev) {
+  XReparentEvent* e = &ev->xreparent;
   if (e->event != LScr::I->Root() || e->override_redirect ||
       e->parent == LScr::I->Root()) {
     return;
   }
 
-  Client *c = LScr::I->GetClient(e->window);
+  Client* c = LScr::I->GetClient(e->window);
   if (c != 0 && (c->parent == LScr::I->Root() || withdrawn(c))) {
     Client_Remove(c);
   }
 }
 
-static void focuschange(XEvent *ev) {
+static void focuschange(XEvent* ev) {
   if (ev->type == FocusOut) {
     return;
   }
@@ -748,14 +737,14 @@ static void focuschange(XEvent *ev) {
     }
     return;
   }
-  Client *c = LScr::I->GetClient(focus_window);
+  Client* c = LScr::I->GetClient(focus_window);
   if (c && c != current) {
     Client_Focus(c, CurrentTime);
   }
 }
 
-static void enter(XEvent *ev) {
-  Client *c = LScr::I->GetClient(ev->xcrossing.window);
+static void enter(XEvent* ev) {
+  Client* c = LScr::I->GetClient(ev->xcrossing.window);
   if (c == 0 || mode != wm_idle) {
     return;
   }
@@ -768,24 +757,24 @@ static void enter(XEvent *ev) {
     c->cursor = ENone;
   }
   if (c != current && !c->hidden) {
-    /* Entering a new window in enter focus mode, so take focus */
+    // Entering a new window in enter focus mode, so take focus
     Client_Focus(c, ev->xcrossing.time);
   }
 }
 
-static void motionnotify(XEvent *ev) {
+static void motionnotify(XEvent* ev) {
   if (mode == wm_reshaping) {
     reshaping_motionnotify(ev);
   } else if (mode == wm_menu_up) {
     menu_motionnotify(ev);
   } else if (mode == wm_idle) {
-    XMotionEvent *e = &ev->xmotion;
-    Client *c = LScr::I->GetClient(e->window);
+    XMotionEvent* e = &ev->xmotion;
+    Client* c = LScr::I->GetClient(e->window);
     Edge edge = ENone;
 
     if (c && (e->window == c->parent) && (e->subwindow != c->window) &&
         mode == wm_idle) {
-      /* mouse moved in a frame we manage - check cursor */
+      // mouse moved in a frame we manage - check cursor
       const int border = borderWidth();
       int quarter = (border + textHeight()) / 4;
       if (e->x > (quarter + 2) && e->x < (3 + 3 * quarter) && e->y > quarter &&
@@ -835,16 +824,16 @@ static void motionnotify(XEvent *ev) {
 }
 
 /*ARGSUSED*/
-void reshaping_motionnotify(XEvent *ev) {
+void reshaping_motionnotify(XEvent* ev) {
   ev = ev;
-  int nx;  /* New x. */
-  int ny;  /* New y. */
-  int ox;  /* Original x. */
-  int oy;  /* Original y. */
-  int ndx; /* New width. */
-  int ndy; /* New height. */
-  int odx; /* Original width. */
-  int ody; /* Original height. */
+  int nx;  // New x.
+  int ny;  // New y.
+  int ox;  // Original x.
+  int oy;  // Original y.
+  int ndx; // New width.
+  int ndy; // New height.
+  int odx; // Original width.
+  int ody; // Original height.
 
   if (mode != wm_reshaping || !current) {
     return;
@@ -874,7 +863,7 @@ void reshaping_motionnotify(XEvent *ev) {
 
     Client_SizeFeedback();
 
-    /* Vertical. */
+    // Vertical.
     if (isTopEdge(interacting_edge)) {
       mp.y += textHeight();
       ndy += (current->size.y - mp.y);
@@ -884,7 +873,7 @@ void reshaping_motionnotify(XEvent *ev) {
       ndy = mp.y - current->size.y;
     }
 
-    /* Horizontal. */
+    // Horizontal.
     if (isRightEdge(interacting_edge)) {
       ndx = mp.x - current->size.x;
     }
