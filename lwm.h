@@ -291,6 +291,8 @@ class Hider {
  private:
   int itemAt(int x, int y) const;
   void drawHighlight(int itemIndex);
+  void showHighlightBox(int itemIndex);
+  void hideHighlightBox();
 
   struct Item {
     Item(Window w, bool hidden) : w(w), hidden(hidden) {}
@@ -312,6 +314,11 @@ class Hider {
   int height_ = 0;
   int current_item_ = 0;  // Index of currently-selected item.
   std::vector<Item> open_content_;
+  
+  Window highlightL = 0;
+  Window highlightR = 0;
+  Window highlightT = 0;
+  Window highlightB = 0;
 };
 
 // Screen information.
@@ -366,7 +373,9 @@ class LScr {
 
   // Clients() returns the map of all clients, for iteration.
   const std::map<Window, Client*>& Clients() const { return clients_; }
-
+  
+  unsigned long MakeColour(const char* name) const;
+  
   // This is used as a static pointer to the global LScr instance, initialised
   // on start-up in lwm.cc.
   static LScr* I;
@@ -375,7 +384,6 @@ class LScr {
   void initEWMH();
   void scanWindowTree();
   Client* addClient(Window w);
-  unsigned long makeColour(const char* name) const;
   unsigned long black() const { return BlackPixel(dpy_, kOnlyScreenIndex); }
   unsigned long white() const { return WhitePixel(dpy_, kOnlyScreenIndex); }
 

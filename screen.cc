@@ -19,7 +19,7 @@ LScr::LScr(Display* dpy)
       utf8_string_atom_(XInternAtom(dpy, "UTF8_STRING", false)),
       strut_{0, 0, 0, 0} {}
       
-unsigned long LScr::makeColour(const char* name) const {
+unsigned long LScr::MakeColour(const char* name) const {
   XColor colour, exact;
   XAllocNamedColor(dpy_, DefaultColormap(dpy_, kOnlyScreenIndex), name,
                    &colour, &exact);
@@ -27,8 +27,8 @@ unsigned long LScr::makeColour(const char* name) const {
 }
       
 void LScr::Init() {
-  active_border_ = makeColour(kActiveBorderColour);
-  inactive_border_ = makeColour(kInactiveBorderColour);
+  active_border_ = MakeColour(kActiveBorderColour);
+  inactive_border_ = MakeColour(kInactiveBorderColour);
   
   // The graphics context used for the menu is a simple exclusive OR which will
   // toggle pixels between black and white. This allows us to implement
@@ -55,7 +55,7 @@ void LScr::Init() {
   XSetLineAttributes(dpy, gc_, 2, LineSolid, CapProjecting, JoinMiter);
   
   // The title bar.
-  gv.foreground = makeColour(kTitleBarBackgroundColour);
+  gv.foreground = MakeColour(kTitleBarBackgroundColour);
   title_gc_ = XCreateGC(
       dpy_, root_,
       GCForeground | GCBackground | GCFunction | GCLineWidth | GCSubwindowMode,

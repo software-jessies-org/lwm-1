@@ -42,6 +42,54 @@ static Window hiddenIDFor(const Client* c) {
   return c->parent;
 }
 
+static void mapAndRaise(Window w, int xmin, int ymin, int width, int height) {
+  XMoveResizeWindow(dpy, w, xmin, ymin, width, height);
+  XMapRaised(dpy, w);
+}
+
+void Hider::showHighlightBox(int itemIndex) {
+  // If itemIndex isn't an item, actually hide the box.
+  if (itemIndex < 0 || itemIndex >= open_content_.size()) {
+    hideHighlightBox();
+    return;
+  }
+  if (!highlightL) {
+    // No highlight windows created yet; create them now.
+    Display *dpy = LScr::I->Dpy();
+    const Window root = LScr::I->Root();
+    const unsigned long red = LScr::I->MakeColour("red");
+    highlightL = XCreateSimpleWindow(dpy, root, 0, 0, 1, 1, 1, red, red);
+    highlightR = XCreateSimpleWindow(dpy, root, 0, 0, 1, 1, 1, red, red);
+    highlightT = XCreateSimpleWindow(dpy, root, 0, 0, 1, 1, 1, red, red);
+    highlightB = XCreateSimpleWindow(dpy, root, 0, 0, 1, 1, 1, red, red);
+  }
+  Client *c = LScr::I->GetClient(open_content_[itemIndex].w);
+  if (!c) {
+    // Client has probably gone away in the meantime; no highlight to show.
+    hideHighlightBox();
+    return;
+  }
+  const int xmin = c->size.x;
+  const int ymin = c->size.y - textHeight();
+  const int width = c->size.width;
+  const int height = c->size.height + textHeight();
+  mapAndRaise(highlightL, xmin, ymin, 1, height);
+  mapAndRaise(highlightR, xmin + width, ymin, 1, height);
+  mapAndRaise(highlightT, xmin, ymin, width, 1);
+  mapAndRaise(highlightB, xmin, ymin + height, width, 1);
+}
+
+void Hider::hideHighlightBox() {
+  if (!highlightL) {
+    // No highlight windows created; that means we have nothing to hide.
+    return;
+  }
+  XUnmapWindow(dpy, highlightL);
+  XUnmapWindow(dpy, highlightR);
+  XUnmapWindow(dpy, highlightT);
+  XUnmapWindow(dpy, highlightB);
+}
+
 void Hider::Hide(Client* c) {
   hidden_.push_front(hiddenIDFor(c));
 
@@ -172,8 +220,8 @@ void Hider::OpenMenu(XButtonEvent* e) {
   y_min_ = clamp(e->y - menuItemHeight() / 2, LScr::I->Height() - height_);
 
   current_item_ = itemAt(e->x_root, e->y_root);
-  XMoveResizeWindow(dpy, LScr::I->Popup(), x_min_, y_min_, width_, height_);
-  XMapRaised(dpy, LScr::I->Popup());
+  showHighlightBox(current_item_);
+  mapAndRaise(LScr::I->Popup(), x_min_, y_min_, width_, height_);
   XChangeActivePointerGrab(dpy,
                            ButtonMask | ButtonMotionMask | OwnerGrabButtonMask,
                            None, CurrentTime);
@@ -192,6 +240,11 @@ int Hider::itemAt(int x, int y) const {
 }
 
 void Hider::Paint() {
+  // We have to repaint from scratch. While this can cause a little flickering,
+  // it's necessary to first blank the window background, so that we don't
+  // corrupt our display when the red highlight box windows open and close over
+  // the top of the menu.
+  XClearWindow(dpy, LScr::I->Popup());
   const int itemHeight = menuItemHeight();
   const auto popup = LScr::I->Popup();
   const auto gc = LScr::I->GetMenuGC();
@@ -230,14 +283,21 @@ void Hider::MouseMotion(XEvent* ev) {
   const int old = current_item_;  // Old menu position.
   current_item_ = itemAt(ev->xbutton.x_root, ev->xbutton.y_root);
   if (current_item_ != old) {
-    // We paint using EOR, so just painting over the old and new highlights is
-    // enough to switch from one to the other correctly.
+    // In order to avoid too much flickering, and to avoid weird corruption
+    // in our popup window, we first make the red highlight box disappear,
+    // then update the menu item highlight (by EORing the old and new highlight
+    // positions), and then finally reopen the red highlight box in its new
+    // position. This seems to be the smoothest and least flickery/error-prone
+    // way of updating the menu.
+    hideHighlightBox();
     drawHighlight(old);
     drawHighlight(current_item_);
+    showHighlightBox(current_item_);
   }
 }
 
 void Hider::MouseRelease(XEvent* ev) {
+  hideHighlightBox();
   const int n = itemAt(ev->xbutton.x_root, ev->xbutton.y_root);
   XUnmapWindow(dpy, LScr::I->Popup());  // Hide popup window.
   if (n < 0) {
