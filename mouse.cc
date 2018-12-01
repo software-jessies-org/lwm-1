@@ -17,39 +17,13 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
 
+#include <iostream>
+#include <set>
+
 #include "ewmh.h"
 #include "lwm.h"
 
-static int current_item; // Last known selected menu item. -1 if none.
-
-struct menuitem {
-  Client* client;
-  menuitem* next;
-};
-
-static menuitem* hidden_menu = 0;
-
-// Left and right margins on the hidden window menu.
-#define MENU_MARGIN 20
 #define MENU_Y_PADDING 6
-
-static void getMenuDimensions(int* width, int* height, int* length) {
-  *length = 0;
-  int w = 0;  // Widest string so far.
-  for (auto it : LScr::I->Clients()) {
-    Client* c = it.second;
-    if (!c->framed) {
-      continue;
-    }
-    (*length)++;
-    int tw = textWidth(c->MenuName()) + 2 * MENU_MARGIN;
-    if (tw > w) {
-      w = tw;
-    }
-  }
-  *width = w + borderWidth();
-  *height = textHeight() + MENU_Y_PADDING;
-}
 
 MousePos getMousePosition() {
   Window root, child;
@@ -61,78 +35,15 @@ MousePos getMousePosition() {
   return res;
 }
 
-int menu_whichitem(int x, int y) {
-  int width;   // Width of menu.
-  int height;  // Height of each menu item.
-  int length;  // Number of items on the menu.
-
-  getMenuDimensions(&width, &height, &length);
-
-  // Translate to popup window coordinates. We do this ourselves to avoid
-  // a round trip to the server.
-  x -= start_x;
-  y -= start_y;
-
-  // Are we outside the menu?
-  if (x < 0 || x > width || y < 0 || y >= length * height) {
-    return -1;
-  }
-  return y / height;
+// hiddenIDFor returns the parent Window ID for the given client. We have a
+// specially-named function for this so that we don't get confused about which
+// Window ID we're using, as this is used in both Hide and OpenMenu.
+static Window hiddenIDFor(const Client* c) {
+  return c->parent;
 }
 
-void menuhit(XButtonEvent* e) {
-  Client_ResetAllCursors();
-
-  int width;   // Width of menu.
-  int height;  // Height of each menu item.
-  int length;  // Number of menu items.
-  getMenuDimensions(&width, &height, &length);
-  if (length == 0) {
-    return;
-  }
-
-  // Arrange for centre of first menu item to be under pointer,
-  // unless that would put the menu offscreen.
-  start_x = e->x - width / 2;
-  start_y = e->y - height / 2;
-
-  if (start_x + width > LScr::I->Width()) {
-    start_x = LScr::I->Width() - width;
-  }
-  if (start_x < 0) {
-    start_x = 0;
-  }
-  if (start_y + (height * length) > LScr::I->Height()) {
-    start_y = LScr::I->Height() - (height * length);
-  }
-  if (start_y < 0) {
-    start_y = 0;
-  }
-
-  current_item = menu_whichitem(e->x_root, e->y_root);
-  XMoveResizeWindow(dpy, LScr::I->Popup(), start_x, start_y, width,
-                    length * height);
-  XMapRaised(dpy, LScr::I->Popup());
-  XChangeActivePointerGrab(dpy,
-                           ButtonMask | ButtonMotionMask | OwnerGrabButtonMask,
-                           None, CurrentTime);
-
-  mode = wm_menu_up;
-}
-
-void hide(Client* c) {
-  if (c == 0) {
-    return;
-  }
-
-  // Create new menu item, and thread it on the menu.
-  menuitem* newitem = (menuitem*)malloc(sizeof(menuitem));
-  if (newitem == 0) {
-    return;
-  }
-  newitem->client = c;
-  newitem->next = hidden_menu;
-  hidden_menu = newitem;
+void Hider::Hide(Client* c) {
+  hidden_.push_front(hiddenIDFor(c));
 
   // Actually hide the window.
   XUnmapWindow(dpy, c->parent);
@@ -144,154 +55,201 @@ void hide(Client* c) {
   if (c == current) {
     Client_Focus(NULL, CurrentTime);
   }
-  Client_SetState(c, IconicState);
+  c->SetState(IconicState);
 }
 
-void unhide(int n, int map) {
-  // Find the nth client, first by checking those which are hidden (they appear
-  // at the top of the menu), and then checking the unhidden windows (which
-  // appear below the dotted line).
-  if (n < 0) {
-    return;
+void Hider::Unhide(Client* c) {
+  // If anyone ever hides so many windows that we notice the O(n) scan, they're
+  // doing something wrong.
+  for (auto it = hidden_.begin(); it != hidden_.end(); ++it) {
+    if (*it == c->parent) {
+      hidden_.erase(it);
+      c->hidden = false;
+      break;
+    }
   }
+  // Always raise and give focus if we're trying to unhide, even if it wasn't
+  // hidden.
+  XMapWindow(dpy, c->parent);
+  XMapWindow(dpy, c->window);
+  Client_Raise(c);
+  c->SetState(NormalState);
+  // It feels right that the unhidden window gets focus always.
+  Client_Focus(c, CurrentTime);
+}
 
-  menuitem* prev = 0;
-  menuitem* m = hidden_menu;
-  while (n > 0 && m != 0) {
-    prev = m;
-    m = m->next;
-    n--;
+static int menuItemHeight() {
+  return textHeight() + MENU_Y_PADDING;
+}
+
+static int menuIconYPad() {
+  return 1;
+}
+
+static int menuIconXPad() {
+  return 5;
+}
+
+static int menuIconSize() {
+  return menuItemHeight() - menuIconYPad() * 2;
+}
+
+static int menuLMargin() {
+  return menuItemHeight() + menuIconXPad() * 2;
+}
+
+static int menuRMargin() {
+  return menuItemHeight();
+}
+
+static int menuMargins() {
+  return menuLMargin() + menuRMargin();
+}
+
+// Returns val unless it's larger than max, in which case it returns max.
+// If either val or max is < 0, returns 0.
+static int clamp(int val, int max) {
+  if (val > max) {
+    val = max;
   }
-  Client* c = NULL;
-  if (m != 0) {
-    c = m->client;
+  return val < 0 ? 0 : val;
+}
 
-    // Remove the item from the menu, and dispose of it.
-    if (prev == 0) {
-      hidden_menu = m->next;
+void Hider::OpenMenu(XButtonEvent* e) {
+  Client_ResetAllCursors();
+  open_content_.clear();
+  width_ = 0;
+
+  // Add all hidden windows.
+  std::set<Window> added;
+  // It's possible for a client to disappear while hidden, for example if you
+  // run 'sleep 5; exit' in an xterm, then hide it, you end up with a hidden
+  // item with no Client. So while iterating over the hidden windows, we
+  // also clean up any that have gone away.
+  // Note: we have to handle the iteration carefully, as the 'erase' function
+  // essentially iterates for us.
+  for (std::list<Window>::iterator it = hidden_.begin(); it != hidden_.end();) {
+    const Window w = *it;
+    if (LScr::I->GetClient(w)) {
+      open_content_.push_back(Item(w, true));
+      added.insert(w);
+      ++it;
     } else {
-      prev->next = m->next;
-    }
-    free(m);
-
-    c->hidden = false;
-  } else {
-    // It's not a hidden item, so try to find it in the list of non-hidden
-    // clients.
-    for (auto it : LScr::I->Clients()) {
-      Client* c = it.second;
-      if (!c->framed || c->hidden) {
-        continue;
-      }
-      if (n-- == 0) {
-        break;
-      }
+      it = hidden_.erase(it);  // Implicitly increments 'it'.
     }
   }
 
-  // If we found a client, unhide it.
-  if (map && c) {
-    XMapWindow(dpy, c->parent);
-    XMapWindow(dpy, c->window);
-    Client_Raise(c);
-    Client_SetState(c, NormalState);
-    // It feels right that the unhidden window gets focus always.
-    Client_Focus(c, CurrentTime);
-  }
-}
-
-void unhidec(Client* c, int map) {
-  if (c == 0) {
-    return;
-  }
-
-  // My goodness, how the world sucks.
-  int i = 0;
-  for (menuitem* m = hidden_menu; m != 0; m = m->next, i++) {
-    if (m->client == c) {
-      unhide(i, map);
-      return;
-    }
-  }
-}
-
-static void draw_menu_item(Client* c, int i, int height) {
-  int ty = i * height + g_font->ascent;
-  drawString(LScr::I->Popup(), MENU_MARGIN, ty + MENU_Y_PADDING / 2,
-             c->MenuName(), &g_font_black);
-}
-
-void menu_expose() {
-  int width;   // Width of each item.
-  int height;  // Height of each item.
-  int length;  // Number of menu items.
-  getMenuDimensions(&width, &height, &length);
-
-  // Redraw the labels.
-  int i = 0;
-  for (menuitem* m = hidden_menu; m != 0; m = m->next, i++) {
-    draw_menu_item(m->client, i, height);
-  }
-
-  // Draw a dashed line between the hidden and non-hidden items.
-  XSetLineAttributes(dpy, LScr::I->GetMenuGC(), 1, LineOnOffDash, CapButt,
-                     JoinMiter);
-  XDrawLine(dpy, LScr::I->Popup(), LScr::I->GetMenuGC(), 0, height * i, width,
-            height * i);
-
-  // Draw the labels for non-hidden items.
-  for (auto it : LScr::I->Clients()) {
-    Client* c = it.second;
-    if (!c->framed || c->hidden) {
+  // Add all other clients which haven't already been added.
+  for (const auto& it : LScr::I->Clients()) {
+    const Client* c = it.second;
+    const Window w = hiddenIDFor(c);
+    if (!c->framed || added.count(w)) {
       continue;
     }
-    draw_menu_item(c, i++, height);
+    open_content_.push_back(Item(w, false));
+    added.insert(w);
   }
 
-  // Highlight current item if there is one.
-  if (current_item >= 0 && current_item < length) {
-    XFillRectangle(dpy, LScr::I->Popup(), LScr::I->GetMenuGC(), 0,
-                   current_item * height, width, height);
+  // Now we've got all clients in open_content_ in the right order, go through
+  // and fill in their names, and find the longest.
+  for (int i = 0; i < open_content_.size(); i++) {
+    const Client* c = LScr::I->GetClient(open_content_[i].w);
+    if (!c) {
+      continue;
+    }
+    open_content_[i].name = c->MenuName();
+    const int tw = textWidth(open_content_[i].name) + menuMargins();
+    if (tw > width_) {
+      width_ = tw;
+    }
   }
+
+  height_ = open_content_.size() * menuItemHeight();
+
+  // Arrange for centre of first menu item to be under pointer,
+  // unless that would put the menu off-screen.
+  x_min_ = clamp(e->x - width_ / 2, LScr::I->Width() - width_);
+  y_min_ = clamp(e->y - menuItemHeight() / 2, LScr::I->Height() - height_);
+
+  current_item_ = itemAt(e->x_root, e->y_root);
+  XMoveResizeWindow(dpy, LScr::I->Popup(), x_min_, y_min_, width_, height_);
+  XMapRaised(dpy, LScr::I->Popup());
+  XChangeActivePointerGrab(dpy,
+                           ButtonMask | ButtonMotionMask | OwnerGrabButtonMask,
+                           None, CurrentTime);
+  // This is how we tell disp.cc to direct messages our way.
+  // TODO: try to figure out a nicer way to do this.
+  mode = wm_menu_up;
 }
 
-void menu_motionnotify(XEvent* ev) {
-  int width;   // Width of menu.
-  int height;  // Height of each menu item.
-  int length;  // Number of menu items.
-  getMenuDimensions(&width, &height, &length);
+int Hider::itemAt(int x, int y) const {
+  x -= x_min_;
+  y -= y_min_;
+  if (x < 0 || y < 0 || x >= width_ || y >= height_) {
+    return -1;
+  }
+  return y / menuItemHeight();
+}
 
-  int old = current_item;  // Old menu position.
-  XButtonEvent* e = &ev->xbutton;
-  current_item = menu_whichitem(e->x_root, e->y_root);
+void Hider::Paint() {
+  const int itemHeight = menuItemHeight();
+  const auto popup = LScr::I->Popup();
+  const auto gc = LScr::I->GetMenuGC();
+  for (int i = 0; i < open_content_.size(); i++) {
+    const int y = i * itemHeight;
+    const int textY = y + g_font->ascent + MENU_Y_PADDING / 2;
+    drawString(popup, menuLMargin(), textY, open_content_[i].name,
+               &g_font_black);
+    // Show a dotted line to separate the last hidden window from the first
+    // non-hidden one.
+    if (!open_content_[i].hidden && (i == 0 || open_content_[i - 1].hidden)) {
+      XSetLineAttributes(dpy, gc, 1, LineOnOffDash, CapButt, JoinMiter);
+      XDrawLine(dpy, popup, gc, 0, y, width_, y);
+    }
 
-  if (current_item == old) {
+    Client* c = LScr::I->GetClient(open_content_[i].w);
+    if (c && c->Icon()) {
+      c->Icon()->Paint(popup, menuIconXPad(), y + menuIconYPad(),
+                       menuIconSize(), menuIconSize());
+    }
+  }
+  drawHighlight(current_item_);
+}
+
+void Hider::drawHighlight(int itemIndex) {
+  if (itemIndex == -1) {
     return;
   }
+  const int ih = menuItemHeight();
+  const int y = itemIndex * ih;
+  XFillRectangle(dpy, LScr::I->Popup(), LScr::I->GetMenuGC(), menuLMargin(), y,
+                 width_ - menuMargins(), ih);
+}
 
-  // Unhighlight the old position, if it was on the menu.
-  if (old >= 0 && old < length) {
-    XFillRectangle(dpy, LScr::I->Popup(), LScr::I->GetMenuGC(), 0, old * height,
-                   width, height);
-  }
-
-  // Highlight the new position, if it's on the menu.
-  if (current_item >= 0 && current_item < length) {
-    XFillRectangle(dpy, LScr::I->Popup(), LScr::I->GetMenuGC(), 0,
-                   current_item * height, width, height);
+void Hider::MouseMotion(XEvent* ev) {
+  const int old = current_item_;  // Old menu position.
+  current_item_ = itemAt(ev->xbutton.x_root, ev->xbutton.y_root);
+  if (current_item_ != old) {
+    // We paint using EOR, so just painting over the old and new highlights is
+    // enough to switch from one to the other correctly.
+    drawHighlight(old);
+    drawHighlight(current_item_);
   }
 }
 
-void menu_buttonrelease(XEvent* ev) {
-  // Work out which menu item the button was released over.
-  int n = menu_whichitem(ev->xbutton.x_root, ev->xbutton.y_root);
-
-  // Hide the menu until it's needed again.
-  XUnmapWindow(dpy, LScr::I->Popup());  // BUG?
-
-  // Do the menu thing (of unhiding windows).
-  unhide(n, 1);
-
+void Hider::MouseRelease(XEvent* ev) {
+  const int n = itemAt(ev->xbutton.x_root, ev->xbutton.y_root);
+  XUnmapWindow(dpy, LScr::I->Popup());  // Hide popup window.
+  if (n < 0) {
+    return;  // User just released the mouse without having selected anything.
+  }
+  Client* c = LScr::I->GetClient(open_content_[n].w);
+  if (c == nullptr) {
+    return;  // Window must have disappeared, and we've lost the client.
+  }
+  Unhide(c);
+  // Colourmap scum? Is the following really needed? I'd imagine this is the
+  // wrong place for this to be done, anyway.
   if (current) {
     cmapfocus(current);
   }

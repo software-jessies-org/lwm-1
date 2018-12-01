@@ -290,7 +290,7 @@ void ewmh_set_state(Client* c) {
 #define MAX_ATOMS 6
   Atom a[MAX_ATOMS];
   int atoms = 0;
-  if (c->state != WithdrawnState) {
+  if (!c->IsWithdrawn()) {
     if (c->hidden) {
       a[atoms++] = ewmh_atom[_NET_WM_STATE_HIDDEN];
     }
@@ -474,7 +474,7 @@ static void fix_stack() {
 }
 
 static bool valid_for_client_list(Client* c) {
-  return c->state != WithdrawnState;
+  return !c->IsWithdrawn();
 }
 
 // update_client_list updates the properties on the root window used by

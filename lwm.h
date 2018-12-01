@@ -19,6 +19,7 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
 
+#include <list>
 #include <map>
 #include <string>
 
@@ -82,6 +83,8 @@ enum Edge {
   EBottomLeft,
   EBottom,
   EBottomRight,
+  EClose,     // Special 'Edge' to denote the close icon.
+  EContents,  // Special again: not any action, it's the client window.
   E_LAST
 };
 
@@ -143,6 +146,20 @@ struct EWMHStrut {
   unsigned int bottom;
 };
 
+struct Rect {
+  int xMin;
+  int yMin;
+  int xMax;
+  int yMax;
+  
+  bool contains(int x, int y) const {
+    return x >= xMin && y >= yMin && x <= xMax && y <= yMax;
+  }
+  
+  int width() { return xMax - xMin; }
+  int height() { return yMax - yMin; }
+};
+
 class Client {
  public:
   Client(Window w, Window parent)
@@ -151,7 +168,7 @@ class Client {
         trans(0),
         framed(false),
         border(0),
-        state(WithdrawnState),
+        state_(WithdrawnState),
         hidden(false),
         internal_state(INormal),
         proto(0),
@@ -175,11 +192,19 @@ class Client {
       XFree(cmapwins);
       free(wmcmaps);
     }
+    delete icon_;
   }
 
   void SetName(const char* c, int len);
   const std::string& Name() const { return name_; }
   std::string MenuName() const;
+
+  // Returns the edge corresponding to the action to be performed on the window.
+  // The special cases 'EClose' and
+  Edge EdgeAt(Window w, int x, int y) const;
+
+  void Hide();
+  void Unhide();
 
   Window window;  // Client's window.
   Window parent;  // Window manager frame.
@@ -191,8 +216,15 @@ class Client {
 
   XSizeHints size;         // Client's current geometry information.
   XSizeHints return_size;  // Client's old geometry information.
-  int state;               // Window state. See ICCCM and <X11/Xutil.h>
-
+  
+  int State() const { return state_; }
+  void SetState(int state);
+  bool IsHidden() const { return state_ == IconicState; }
+  bool IsWithdrawn() const { return state_ == WithdrawnState; }
+  bool IsNormal() const { return state_ == NormalState; }
+ private:
+  int state_;               // Window state. See ICCCM and <X11/Xutil.h>
+ public:
   bool hidden;  // true if this client is hidden.
   IState internal_state;
   int proto;
@@ -210,10 +242,16 @@ class Client {
   int ncmapwins;
   Window* cmapwins;
   Colormap* wmcmaps;
-
+  
+  void SetIconPixmap(Pixmap icon, Pixmap mask);
+  ImageIcon* Icon() { return icon_; }
+  
  private:
+  Rect edgeBounds(Edge e) const;
+  
   std::string name_;  // Name used for title in frame.
-
+  ImageIcon* icon_ = nullptr;
+  
   Client(const Client&) = delete;
   Client& operator=(const Client&) = delete;
 };
@@ -221,15 +259,59 @@ class Client {
 class CursorMap {
  public:
   explicit CursorMap(Display* dpy);
-
+  
+  // Root() returns the standard pointer cursor we use most places, including
+  // over the root window.
   Cursor Root() const { return root_; }
-  Cursor Box() const { return box_; }
+  
+  // ForEdge returns the cursor appropriate to the given edge. This may be
+  // arrows for the resizing areas, or a nice big 'X' for EClose.
+  // Returns the same as Root() if there's no specific cursor for some edge.
   Cursor ForEdge(Edge e) const;
 
  private:
   Cursor root_;
-  Cursor box_;
   std::map<Edge, Cursor> edges_;
+};
+
+// Hider implements all the logic to do with hiding and unhiding windows, and
+// providing the unhide menu.
+class Hider {
+ public:
+  Hider() = default;
+
+  void Hide(Client* c);
+  void Unhide(Client* c);
+
+  void OpenMenu(XButtonEvent* ev);
+  void Paint();
+  void MouseMotion(XEvent* ev);
+  void MouseRelease(XEvent* ev);
+
+ private:
+  int itemAt(int x, int y) const;
+  void drawHighlight(int itemIndex);
+
+  struct Item {
+    Item(Window w, bool hidden) : w(w), hidden(hidden) {}
+
+    Window w;
+    std::string name;
+    bool hidden;
+  };
+
+  // hidden_ is updated any time a window is hidden or unhidden.
+  std::list<Window> hidden_;
+
+  // The following fields are changed when the menu is opened, and then used
+  // to display the menu, handle mouse events etc. It is not changed by windows
+  // opening and closing while the hide menu is open.
+  int x_min_ = 0;
+  int y_min_ = 0;
+  int width_ = 0;
+  int height_ = 0;
+  int current_item_ = 0;  // Index of currently-selected item.
+  std::vector<Item> open_content_;
 };
 
 // Screen information.
@@ -249,12 +331,13 @@ class LScr {
   int Height() const { return height_; }
   void ChangeScreenDimensions(int nScrWidth, int nScrHeight);
 
-  unsigned long Black() const { return BlackPixel(dpy_, kOnlyScreenIndex); }
-  unsigned long White() const { return WhitePixel(dpy_, kOnlyScreenIndex); }
-  unsigned long Grey() const { return grey_; }
+  unsigned long InactiveBorder() const { return inactive_border_; }
+  unsigned long ActiveBorder() const { return active_border_; }
   CursorMap* Cursors() const { return cursor_map_; }
+
   GC GetGC() { return gc_; }
   GC GetMenuGC() { return menu_gc_; }
+  GC GetTitleGC() { return title_gc_; }
 
   // Expose the utf8 string atom. This is used by ewmh.cc. Not sure why it can't
   // go in the main enumerated set of atoms, and indeed this whole atom support
@@ -279,6 +362,8 @@ class LScr {
 
   void Remove(Client* client);
 
+  Hider* GetHider() { return &hider_; }
+
   // Clients() returns the map of all clients, for iteration.
   const std::map<Window, Client*>& Clients() const { return clients_; }
 
@@ -290,12 +375,17 @@ class LScr {
   void initEWMH();
   void scanWindowTree();
   Client* addClient(Window w);
-  
+  unsigned long makeColour(const char* name) const;
+  unsigned long black() const { return BlackPixel(dpy_, kOnlyScreenIndex); }
+  unsigned long white() const { return WhitePixel(dpy_, kOnlyScreenIndex); }
+
   Display* dpy_ = nullptr;
   Window root_ = 0;
   int width_ = 0;
   int height_ = 0;
   CursorMap* cursor_map_;
+
+  Hider hider_;
 
   // The clients_ map is keyed by the top-level client Window ID. The values
   // are owned.
@@ -312,12 +402,15 @@ class LScr {
   Window popup_ = 0;
   Window ewmh_compat_ = 0;
 
-  EWMHStrut strut_; /* reserved areas */
+  EWMHStrut strut_;  // reserved areas
 
   GC gc_;
   GC menu_gc_;
+  GC title_gc_;
 
-  unsigned long grey_ = 0; /* Gray pixel value. */
+  // Extra colours.
+  unsigned long inactive_border_ = 0;
+  unsigned long active_border_ = 0;
 };
 
 /*
@@ -405,7 +498,6 @@ extern void Client_SizeFeedback();
 extern void size_expose();
 extern void Client_ReshapeEdge(Client*, Edge);
 extern void Client_Move(Client*);
-extern void Client_SetState(Client*, int);
 extern void Client_Raise(Client*);
 extern void Client_Lower(Client*);
 extern void Client_Close(Client*);
@@ -416,9 +508,6 @@ extern void Client_EnterFullScreen(Client* c);
 extern void Client_ExitFullScreen(Client* c);
 extern void Client_Focus(Client* c, Time time);
 extern void Client_ResetAllCursors();
-extern int hidden(Client*);
-extern int withdrawn(Client*);
-extern int normal(Client*);
 extern Client* current;
 
 /* disp.cc */
@@ -457,14 +546,6 @@ struct MousePos {
 };
 
 extern MousePos getMousePosition();
-extern void hide(Client*);
-extern void unhidec(Client*, int);
-extern int menu_whichitem(int, int);
-extern void menuhit(XButtonEvent*);
-extern void unhide(int, int);
-extern void menu_expose();
-extern void menu_motionnotify(XEvent*);
-extern void menu_buttonrelease(XEvent*);
 
 /* shape.cc */
 extern int shapeEvent(XEvent*);

@@ -30,15 +30,17 @@ static Cursor colouredCursor(Display* dpy,
   return res;
 }
 
-CursorMap::CursorMap(Display* dpy) {
-  XColor red, white, exact;
-  Colormap cmp = DefaultColormap(dpy, 0);  // 0 = screen index 0.
-  XAllocNamedColor(dpy, cmp, "red", &red, &exact);
-  XAllocNamedColor(dpy, cmp, "white", &white, &exact);
-  root_ = colouredCursor(dpy, XC_left_ptr, &red, &white);
-  box_ = colouredCursor(dpy, XC_draped_box, &red, &white);
+static const char kCursorFG[] = "Black"; //"Medium Turquoise";
+static const char kCursorBG[] = "White"; //"Navy Blue";
 
-#define MC(e, s) edges_[e] = colouredCursor(dpy, s, &red, &white)
+CursorMap::CursorMap(Display* dpy) {
+  XColor cursorFG, cursorBG, exact;
+  Colormap cmp = DefaultColormap(dpy, 0);  // 0 = screen index 0.
+  XAllocNamedColor(dpy, cmp, kCursorFG, &cursorFG, &exact);
+  XAllocNamedColor(dpy, cmp, kCursorBG, &cursorBG, &exact);
+  root_ = colouredCursor(dpy, XC_left_ptr, &cursorFG, &cursorBG);
+
+#define MC(e, s) edges_[e] = colouredCursor(dpy, s, &cursorFG, &cursorBG)
   MC(ETopLeft, XC_top_left_corner);
   MC(ETop, XC_top_side);
   MC(ETopRight, XC_top_right_corner);
@@ -48,6 +50,7 @@ CursorMap::CursorMap(Display* dpy) {
   MC(EBottomLeft, XC_bottom_left_corner);
   MC(EBottom, XC_bottom_side);
   MC(EBottomRight, XC_bottom_right_corner);
+  MC(EClose, XC_X_cursor);
 #undef MC
 }
 

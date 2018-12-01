@@ -32,11 +32,50 @@
 Client* current;
 Client* last_focus = NULL;
 
-static int popup_width; // The width of the size-feedback window.
+static int popup_width;  // The width of the size-feedback window.
 
 Edge interacting_edge;
 
 static void sendClientMessage(Window, Atom, long, long);
+
+Rect closeBounds() {
+  const int quarter = (borderWidth() + textHeight()) / 4;
+  const int cMin = quarter + 2;
+  const int cMax = 3 * quarter;
+  return Rect{cMin, cMin, cMax, cMax};
+}
+
+// Returns the total height, in pixels, of the window title bar.
+int titleBarHeight() {
+  return textHeight() + borderWidth();
+}
+
+Rect titleBarBounds(int windowWidth) {
+  const int x = titleBarHeight();
+  const int w = windowWidth - 2 * x;
+  return Rect{x, 0, w, titleBarHeight()};
+}
+
+Rect Client::edgeBounds(Edge e) const {
+  const int inset = titleBarHeight();
+  const int wh = size.height + textHeight();
+  Rect res{inset, inset, size.width - inset, wh - inset};
+  if (isLeftEdge(e)) {
+    res.xMin = 0;
+    res.xMax = inset;
+  } else if (isRightEdge(e)) {
+    res.xMin = size.width - inset;
+    res.xMax = size.width;
+  }
+  if (isTopEdge(e)) {
+    res.yMin = 0;
+    res.yMax = inset;
+  } else if (isBottomEdge(e)) {
+    res.yMin = wh - inset;
+    res.yMax = wh;
+  }
+  return res;
+}
 
 // Truncate names to this many characters (UTF8 characters, naturally). Much
 // simpler than trying to calculate the 'best' length based on the render text
@@ -76,6 +115,38 @@ std::string Client::MenuName() const {
   return name_;
 }
 
+void Client::Hide() {
+  LScr::I->GetHider()->Hide(this);
+}
+
+void Client::Unhide() {
+  LScr::I->GetHider()->Unhide(this);
+}
+
+Edge Client::EdgeAt(Window w, int x, int y) const {
+  if (w != parent) {
+    return EContents;
+  }
+  if (closeBounds().contains(x, y)) {
+    return EClose;
+  }
+  if (titleBarBounds(size.width).contains(x, y)) {
+    return ENone;  // Rename to ETitleBar.
+  }
+  const std::vector<Edge> movementEdges{
+      ETopLeft, ETopRight, ERight, ELeft, EBottomLeft, EBottom, EBottomRight};
+  for (Edge e : movementEdges) {
+    if (edgeBounds(e).contains(x, y)) {
+      return e;
+    }
+  }
+  return ENone;
+}
+
+void Client::SetIconPixmap(Pixmap icon, Pixmap mask) {
+  icon_ = ImageIcon::Create(icon, mask);
+}
+
 static void focusChildrenOf(Window parent) {
   WindowTree wtree = WindowTree::Query(dpy, parent);
   for (Window win : wtree.children) {
@@ -88,7 +159,7 @@ static void focusChildrenOf(Window parent) {
 }
 
 void setactive(Client* c, int on, long timestamp) {
-  if (c == 0 || hidden(c)) {
+  if (c == 0 || c->IsHidden()) {
     return;
   }
 
@@ -127,7 +198,7 @@ void setactive(Client* c, int on, long timestamp) {
 }
 
 void Client_DrawBorder(Client* c, int active) {
-  const int quarter = (borderWidth() + textHeight()) / 4;
+  const int quarter = (titleBarHeight()) / 4;
 
   LScr* lscr = LScr::I;
   if (c->parent == lscr->Root() || c->parent == 0 || !c->framed ||
@@ -135,18 +206,36 @@ void Client_DrawBorder(Client* c, int active) {
     return;
   }
 
-  XSetWindowBackground(dpy, c->parent, active ? lscr->Black() : lscr->Grey());
+  XSetWindowBackground(dpy, c->parent,
+                       active ? lscr->ActiveBorder() : lscr->InactiveBorder());
   XClearWindow(dpy, c->parent);
 
-  // Draw the ``box''.
   if (active) {
-    XDrawRectangle(dpy, c->parent, lscr->GetGC(), quarter + 2, quarter,
-                   2 * quarter, 2 * quarter);
-  }
+    // Cross for the close icon.
+    const Rect r = closeBounds();
+    XDrawLine(dpy, c->parent, lscr->GetGC(), r.xMin, r.yMin, r.xMax, r.yMax);
+    XDrawLine(dpy, c->parent, lscr->GetGC(), r.xMin, r.yMax, r.xMax, r.yMin);
 
-  // Draw window title.
+    // Give the title a nice background, and differentiate it from the
+    // rest of the furniture to show it acts differently (moves the window
+    // rather than resizing it).
+    const int x = borderWidth() + 3 * quarter;
+    const int w = c->size.width - 2 * x;
+    XFillRectangle(dpy, c->parent, lscr->GetTitleGC(), x, 0, w,
+                   textHeight() + borderWidth());
+  }
+  
+  // Find where the title stuff is going to go.
   int x = borderWidth() + 2 + (3 * quarter);
   int y = borderWidth() / 2 + g_font->ascent;
+  
+  // Do we have an icon? If so, draw it to the left of the title text.
+  if (c->Icon()) {
+    c->Icon()->Paint(c->parent, x, 0, titleBarHeight(), titleBarHeight());
+    x += titleBarHeight();  // Title bar text must come after.
+  }
+  
+  // Draw window title.
   XftColor* color = active ? &g_font_white : &g_font_pale_grey;
   drawString(c->parent, x, y, c->Name(), color);
 }
@@ -155,18 +244,10 @@ void Client_Remove(Client* c) {
   if (c == 0) {
     return;
   }
-
-  // Remove it from the hidden list if it's hidden.
-  if (hidden(c)) {
-    unhidec(c, 0);
-    /* Al Smith points out that you also want to get rid of the menu
-     * so you can be sure that if you let go on an item, you always
-     * get the corresponding window. */
-    if (mode == wm_menu_up) {
-      XUnmapWindow(dpy, LScr::I->Popup());
-      mode = wm_idle;
-    }
-  }
+  // Note: here was some code to unhide the menu (without unhiding it) to remove
+  // it from the linked list. This should no longer be required, as we just
+  // reference windows by their ID (and keep a copy of their name) in the menu
+  // structure itself.
 
   // Take note of any special status this window had, and then nullify all the
   // ugly global variables that currently point to it. This prevents the
@@ -382,7 +463,7 @@ void size_expose() {
   drawString(LScr::I->Popup(), x, g_font->ascent + 1, text, &g_font_black);
 }
 
-static void Client_OpaquePrimitive(Client* c, Edge edge) {
+extern void Client_ReshapeEdge(Client* c, Edge edge) {
   if (c == 0) {
     return;
   }
@@ -390,13 +471,13 @@ static void Client_OpaquePrimitive(Client* c, Edge edge) {
   MousePos mp = getMousePosition();
   const int sx = c->size.x - mp.x;
   const int sy = c->size.y - mp.y;
-
+  
   Cursor cursor = LScr::I->Cursors()->ForEdge(edge);
   XChangeActivePointerGrab(dpy,
                            ButtonMask | PointerMotionHintMask |
                                ButtonMotionMask | OwnerGrabButtonMask,
-                           cursor, CurrentTime);
-
+                               cursor, CurrentTime);
+  
   // Store some state so that we can get back into the main event
   // dispatching thing.
   interacting_edge = edge;
@@ -404,6 +485,10 @@ static void Client_OpaquePrimitive(Client* c, Edge edge) {
   start_y = sy;
   mode = wm_reshaping;
   ewmh_set_client_list();
+}
+
+extern void Client_Move(Client* c) {
+  Client_ReshapeEdge(c, ENone);
 }
 
 void Client_Lower(Client* c) {
@@ -451,16 +536,16 @@ void Client_Close(Client* c) {
   }
 }
 
-void Client_SetState(Client* c, int state) {
+void Client::SetState(int state) {
   long data[2];
 
   data[0] = (long)state;
   data[1] = (long)None;
 
-  c->state = state;
-  XChangeProperty(dpy, c->window, wm_state, wm_state, 32, PropModeReplace,
+  state_ = state;
+  XChangeProperty(dpy, window, wm_state, wm_state, 32, PropModeReplace,
                   (unsigned char*)data, 2);
-  ewmh_set_state(c);
+  ewmh_set_state(this);
 }
 
 static void sendClientMessage(Window w, Atom a, long data0, long data1) {
@@ -492,23 +577,16 @@ extern void Client_ResetAllCursors() {
 extern void Client_FreeAll() {
   for (auto it : LScr::I->Clients()) {
     Client* c = it.second;
-    int not_mapped = !normal(c);
-
-    // elliott thinks leaving window unmapped causes the x server
-    // to lose them when the window manager quits. it doesn't
-    // happen to me with XFree86's Xnest, but unmapping the
-    // windows stops gtk window generating an extra window when
-    // the window manager quits.
-    // who is right? only time will tell....
-    XUnmapWindow(dpy, c->parent);
-    XUnmapWindow(dpy, c->window);
-
-    // Reparent it, and then push it to the bottom if it was hidden.
+    
+    // Reparent the client window to the root, to elide our furniture window.
     XReparentWindow(dpy, c->window, LScr::I->Root(), c->size.x, c->size.y);
-    if (not_mapped) {
+    if (c->hidden) {
+      // The window was iconised, so map it back into view so it isn't lost
+      // forever, but lower it so it doesn't jump all over the foreground.
+      XMapWindow(dpy, c->window);
       XLowerWindow(dpy, c->window);
     }
-
+    
     // Give it back its initial border width.
     XWindowChanges wc;
     wc.border_width = c->border;
@@ -529,26 +607,6 @@ extern void Client_ColourMap(XEvent* e) {
       }
     }
   }
-}
-
-extern void Client_ReshapeEdge(Client* c, Edge e) {
-  Client_OpaquePrimitive(c, e);
-}
-
-extern void Client_Move(Client* c) {
-  Client_OpaquePrimitive(c, ENone);
-}
-
-extern int hidden(Client* c) {
-  return c->state == IconicState;
-}
-
-extern int withdrawn(Client* c) {
-  return c->state == WithdrawnState;
-}
-
-extern int normal(Client* c) {
-  return c->state == NormalState;
 }
 
 extern void Client_EnterFullScreen(Client* c) {

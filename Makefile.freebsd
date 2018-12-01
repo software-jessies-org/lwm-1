@@ -30,7 +30,7 @@ LDFLAGS = -lXext -lX11 -lICE -lSM -lstdc++ -lXrandr -lXft
 # -----------------------------------------------------------------------------
 
 OFILES = client.o cursor.o disp.o error.o ewmh.o geometry.o lwm.o manage.o \
-	mouse.o resource.o session.o shape.o xlib.o
+	mouse.o resource.o screen.o session.o shape.o xlib.o
 HFILES = lwm.h ewmh.h xlib.h
 
 # -----------------------------------------------------------------------------
@@ -46,4 +46,4 @@ install: lwm
 $(OFILES): $(HFILES)
 
 clean:
-	rm -f lwm *.o core
+	rm -f lwm *.o core lwm.core

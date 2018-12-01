@@ -19,8 +19,8 @@
 
 #include <signal.h>
 
-/* These are Motif definitions from Xm/MwmUtil.h, but Motif isn't available
-   everywhere. */
+// These are Motif definitions from Xm/MwmUtil.h, but Motif isn't available
+// everywhere.
 #define MWM_HINTS_FUNCTIONS (1L << 0)
 #define MWM_HINTS_DECORATIONS (1L << 1)
 #define MWM_HINTS_INPUT_MODE (1L << 2)
@@ -65,7 +65,10 @@ void manage(Client* c) {
 
   // Get the hints, window name, and normal hints (see ICCCM section 4.1.2.3).
   XWMHints* hints = XGetWMHints(dpy, c->window);
-
+  if (hints) {
+    c->SetIconPixmap(hints->icon_pixmap, hints->icon_mask);
+  }
+  
   getWindowName(c);
   getNormalHints(c);
 
@@ -252,14 +255,14 @@ void manage(Client* c) {
 
   XAddToSaveSet(dpy, c->window);
   if (state == IconicState) {
-    hide(c);
+    c->Hide();
   } else {
     // Map the new window in the relevant state.
     c->hidden = false;
     XMapWindow(dpy, c->parent);
     XMapWindow(dpy, c->window);
     setactive(c, 1, 0L);
-    Client_SetState(c, NormalState);
+    c->SetState(NormalState);
   }
 
   if (c->wstate.fullscreen) {
@@ -304,7 +307,7 @@ void withdraw(Client* c) {
   }
 
   XRemoveFromSaveSet(dpy, c->window);
-  Client_SetState(c, WithdrawnState);
+  c->SetState(WithdrawnState);
 
   // Flush and ignore any errors. X11 sends us an UnmapNotify before it
   // sends us a DestroyNotify. That means we can get here without knowing

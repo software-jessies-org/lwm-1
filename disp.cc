@@ -213,7 +213,7 @@ static void expose(XEvent* ev) {
   // Decide what needs redrawing: window frame or menu?
   if (w == LScr::I->Popup()) {
     if (mode == wm_menu_up) {
-      menu_expose();
+      LScr::I->GetHider()->Paint();
     } else if (mode == wm_reshaping && current != 0) {
       size_expose();
     }
@@ -226,123 +226,84 @@ static void expose(XEvent* ev) {
 }
 
 static void buttonpress(XEvent* ev) {
-  // If we're getting it already, we're not in the market for more.
   if (mode != wm_idle) {
-    // but allow a button press to cancel a move/resize,
-    // to satify the EWMH advisory to allow a second mechanism
-    // of completing move/resize operations, due to a race.
-    // (section 4.3) sucky!
-    if (mode == wm_reshaping) {
-      mode = wm_idle;
-    }
-    return;
+    return;  // We're already doing something, so ignore extra presses.
   }
-
   XButtonEvent* e = &ev->xbutton;
-  Client* c = LScr::I->GetClient(e->window);
-
-  // move this test up to disable scroll to focus
-  if (e->button >= 4 && e->button <= 7) {
-    return;
-  }
-
-  if (c && c == current && (e->window == c->parent)) {
-    // Click went to our frame around a client.
-
-    // The ``box''.
-    int quarter = (borderWidth() + textHeight()) / 4;
-    if (e->x > (quarter + 2) && e->x < (3 + 3 * quarter) && e->y > quarter &&
-        e->y <= 3 * quarter) {
-      pendingClient = c;
-      mode = wm_closing_window;
-      return;
-    }
-
-    // Somewhere in the rest of the frame.
-    if (e->button == HIDE_BUTTON) {
-      pendingClient = c;
-      mode = wm_hiding_window;
-      return;
-    }
-    if (e->button == MOVE_BUTTON) {
-      Client_Move(c);
-      return;
-    }
-    if (e->button == RESHAPE_BUTTON) {
-      XMapWindow(dpy, c->parent);
-      Client_Raise(c);
-
-      // Lasciate ogni speranza voi ch'entrate...
-      const int border = borderWidth();
-      if (e->x <= border && e->y <= border) {
-        Client_ReshapeEdge(c, ETopLeft);
-      } else if (e->x >= (c->size.width - border) && e->y <= border) {
-        Client_ReshapeEdge(c, ETopRight);
-      } else if (e->x >= (c->size.width - border) &&
-                 e->y >= (c->size.height + textHeight() - border)) {
-        Client_ReshapeEdge(c, EBottomRight);
-      } else if (e->x <= border &&
-                 e->y >= (c->size.height + textHeight() - border)) {
-        Client_ReshapeEdge(c, EBottomLeft);
-      } else if (e->x > border && e->x < (c->size.width - border) &&
-                 e->y < border) {
-        Client_ReshapeEdge(c, ETop);
-      } else if (e->x > border && e->x < (c->size.width - border) &&
-                 e->y >= border && e->y < (textHeight() + border)) {
-        Client_Move(c);
-      } else if (e->x > (c->size.width - border) && e->y > border &&
-                 e->y < (c->size.height + textHeight() - border)) {
-        Client_ReshapeEdge(c, ERight);
-      } else if (e->x > border && e->x < (c->size.width - border) &&
-                 e->y > (c->size.height - border)) {
-        Client_ReshapeEdge(c, EBottom);
-      } else if (e->x < border && e->y > border &&
-                 e->y < (c->size.height + textHeight() - border)) {
-        Client_ReshapeEdge(c, ELeft);
-      }
-      return;
-    }
-    return;
-  }
 
   // Deal with root window button presses.
   if (e->window == e->root) {
     if (e->button == Button3) {
       cmapfocus(0);
-      menuhit(e);
+      LScr::I->GetHider()->OpenMenu(e);
     } else {
       shell(e->button);
     }
+    return;
+  }
+
+  Client* c = LScr::I->GetClient(e->window);
+  if (c == nullptr) {
+    return;
+  }
+
+  // move this test up to disable scroll to focus
+  if (e->button >= 4 && e->button <= 7) {
+    return;
+  }
+  const Edge edge = c->EdgeAt(e->window, e->x, e->y);
+  if (edge == EContents) {
+    return;
+  }
+  if (edge == EClose) {
+    pendingClient = c;
+    mode = wm_closing_window;
+    return;
+  }
+
+  // Somewhere in the rest of the frame.
+  if (e->button == HIDE_BUTTON) {
+    pendingClient = c;
+    mode = wm_hiding_window;
+    return;
+  }
+  if (e->button == MOVE_BUTTON) {
+    Client_Move(c);
+    return;
+  }
+  if (e->button == RESHAPE_BUTTON) {
+    XMapWindow(dpy, c->parent);
+    Client_Raise(c);
+    Client_ReshapeEdge(c, edge);
   }
 }
 
 static void buttonrelease(XEvent* ev) {
   XButtonEvent* e = &ev->xbutton;
   if (mode == wm_menu_up) {
-    menu_buttonrelease(ev);
+    LScr::I->GetHider()->MouseRelease(ev);
   } else if (mode == wm_reshaping) {
     XUnmapWindow(dpy, LScr::I->Popup());
-  } else if (mode == wm_closing_window) {
-    // was the button released within the window's box?
-    int quarter = (borderWidth() + textHeight()) / 4;
-    if (pendingClient != NULL && (e->window == pendingClient->parent) &&
-        (e->x > (quarter + 2) && e->x < (3 + 3 * quarter) && e->y > quarter &&
-         e->y <= 3 * quarter)) {
+  } else if (mode == wm_closing_window && pendingClient) {
+    if (pendingClient->EdgeAt(e->window, e->x, e->y) == EClose) {
       Client_Close(pendingClient);
     }
-    pendingClient = NULL;
-  } else if (mode == wm_hiding_window) {
-    // was the button release within the window's frame?
-    if (pendingClient != NULL && (e->window == pendingClient->parent) &&
-        (e->x >= 0) && (e->y >= 0) && (e->x <= pendingClient->size.width) &&
+    pendingClient = nullptr;
+  } else if (mode == wm_hiding_window && pendingClient) {
+    // Was the button release within the window's frame?
+    // Note that x11 sends is buttonrelease events which match the window the
+    // mousedown event went to, even if we let go of the mouse while overing
+    // over the background.
+    if ((e->window == pendingClient->parent) && (e->x >= 0) && (e->y >= 0) &&
+        (e->x <= pendingClient->size.width) &&
         (e->y <= (pendingClient->size.height + textHeight()))) {
       if (e->state & ShiftMask) {
         Client_Lower(pendingClient);
       } else {
-        hide(pendingClient);
+        pendingClient->Hide();
       }
     }
-    pendingClient = NULL;
+    pendingClient = nullptr;
   }
   mode = wm_idle;
 }
@@ -373,12 +334,13 @@ static void maprequest(XEvent* ev) {
     DBGF("MapRequest for non-existent window: %lx!", c->window);
     return;
   }
+  
+  if (c->hidden) {
+    c->Unhide();
+  }
 
-  unhidec(c, 1);
-
-  switch (c->state) {
+  switch (c->State()) {
     case WithdrawnState:
-      DBGF_IF(debug_map, "in maprequest, WithdrawnState %d", c->state);
       if (c->parent == LScr::I->Root()) {
         DBGF_IF(debug_map,
                 "in maprequest, taking over management of window %lx.",
@@ -399,39 +361,23 @@ static void maprequest(XEvent* ev) {
       XMapWindow(dpy, c->parent);
       XMapWindow(dpy, c->window);
       Client_Raise(c);
-      Client_SetState(c, NormalState);
+      c->SetState(NormalState);
       break;
   }
   ewmh_set_client_list();
 }
 
 static void unmap(XEvent* ev) {
-  XUnmapEvent* e = &ev->xunmap;
-  Client* c = LScr::I->GetClient(e->window);
-  if (c == 0) {
+  Client* c = LScr::I->GetClient(ev->xunmap.window);
+  if (c == nullptr) {
     return;
   }
-
+  
   // In the description of the ReparentWindow request we read: "If the window
   // is mapped, an UnmapWindow request is performed automatically first". This
   // might seem stupid, but it's the way it is. While a reparenting is pending
   // we ignore UnmapWindow requests.
-  if (c->internal_state == IPendingReparenting) {
-    c->internal_state = INormal;
-    return;
-  }
-
-  // "This time it's the real thing."
-
-  if (c->state == IconicState) {
-    // Is this a hidden window disappearing? If not, then we
-    // aren't interested because it's an unmap request caused
-    // by our hiding a window.
-    if (e->send_event) {
-      unhidec(c, 0);  // It's a hidden window disappearing.
-    }
-  } else {
-    // This is a plain unmap, so withdraw the window.
+  if (c->internal_state != IPendingReparenting) {
     withdraw(c);
   }
   c->internal_state = INormal;
@@ -543,8 +489,8 @@ static void clientmessage(XEvent* ev) {
     return;
   }
   if (e->message_type == wm_change_state) {
-    if (e->format == 32 && e->data.l[0] == IconicState && normal(c)) {
-      hide(c);
+    if (e->format == 32 && e->data.l[0] == IconicState && c->IsNormal()) {
+      c->Hide();
     }
     return;
   }
@@ -554,16 +500,9 @@ static void clientmessage(XEvent* ev) {
     return;
   }
   if (e->message_type == ewmh_atom[_NET_ACTIVE_WINDOW] && e->format == 32) {
-    // An EWMH enabled application has asked for this client
-    // to be made the active window. The window is raised, and
-    // focus given if the focus mode is click (focusing on a
-    // window other than the one the pointer is in makes no
-    // sense when the focus mode is enter).
-    if (hidden(c)) {
-      unhidec(c, 1);
-    }
-    XMapWindow(dpy, c->parent);
-    Client_Raise(c);
+    // An EWMH enabled application has asked for this client to be made the
+    // active window. Unhide also raises and gives focus to the window.
+    c->Unhide();
     return;
   }
   if (e->message_type == ewmh_atom[_NET_CLOSE_WINDOW] && e->format == 32) {
@@ -600,8 +539,8 @@ static void clientmessage(XEvent* ev) {
     EWMHDirection direction = (EWMHDirection)e->data.l[2];
 
     // before we can do any resizing, make the window visible
-    if (hidden(c)) {
-      unhidec(c, 1);
+    if (c->IsHidden()) {
+      c->Unhide();
     }
     XMapWindow(dpy, c->parent);
     Client_Raise(c);
@@ -719,7 +658,7 @@ static void reparent(XEvent* ev) {
   }
 
   Client* c = LScr::I->GetClient(e->window);
-  if (c != 0 && (c->parent == LScr::I->Root() || withdrawn(c))) {
+  if (c != 0 && (c->parent == LScr::I->Root() || c->IsWithdrawn())) {
     Client_Remove(c);
   }
 }
@@ -766,56 +705,15 @@ static void motionnotify(XEvent* ev) {
   if (mode == wm_reshaping) {
     reshaping_motionnotify(ev);
   } else if (mode == wm_menu_up) {
-    menu_motionnotify(ev);
+    LScr::I->GetHider()->MouseMotion(ev);
   } else if (mode == wm_idle) {
     XMotionEvent* e = &ev->xmotion;
     Client* c = LScr::I->GetClient(e->window);
-    Edge edge = ENone;
-
-    if (c && (e->window == c->parent) && (e->subwindow != c->window) &&
-        mode == wm_idle) {
-      // mouse moved in a frame we manage - check cursor
-      const int border = borderWidth();
-      int quarter = (border + textHeight()) / 4;
-      if (e->x > (quarter + 2) && e->x < (3 + 3 * quarter) && e->y > quarter &&
-          e->y <= 3 * quarter) {
-        edge = E_LAST;
-      } else if (e->x <= border && e->y <= border) {
-        edge = ETopLeft;
-      } else if (e->x >= (c->size.width - border) && e->y <= border) {
-        edge = ETopRight;
-      } else if (e->x >= (c->size.width - border) &&
-                 e->y >= (c->size.height + textHeight() - border)) {
-        edge = EBottomRight;
-      } else if (e->x <= border &&
-                 e->y >= (c->size.height + textHeight() - border)) {
-        edge = EBottomLeft;
-      } else if (e->x > border && e->x < (c->size.width - border) &&
-                 e->y < border) {
-        edge = ETop;
-      } else if (e->x > border && e->x < (c->size.width - border) &&
-                 e->y >= border && e->y < (textHeight() + border)) {
-        edge = ENone;
-      } else if (e->x > (c->size.width - border) && e->y > border &&
-                 e->y < (c->size.height + textHeight() - border)) {
-        edge = ERight;
-      } else if (e->x > border && e->x < (c->size.width - border) &&
-                 e->y > (c->size.height - border)) {
-        edge = EBottom;
-      } else if (e->x < border && e->y > border &&
-                 e->y < (c->size.height + textHeight() - border)) {
-        edge = ELeft;
-      }
-      if (c->cursor != edge) {
+    if (c && (e->window == c->parent) && (e->subwindow != c->window)) {
+      Edge edge = c->EdgeAt(e->window, e->x, e->y);
+      if (edge != EContents && c->cursor != edge) {
         XSetWindowAttributes attr;
-
-        if (edge == ENone) {
-          attr.cursor = LScr::I->Cursors()->Root();
-        } else if (edge == E_LAST) {
-          attr.cursor = LScr::I->Cursors()->Box();
-        } else {
-          attr.cursor = LScr::I->Cursors()->ForEdge(edge);
-        }
+        attr.cursor = LScr::I->Cursors()->ForEdge(edge);
         XChangeWindowAttributes(dpy, c->parent, CWCursor, &attr);
         c->cursor = edge;
       }
@@ -826,14 +724,14 @@ static void motionnotify(XEvent* ev) {
 /*ARGSUSED*/
 void reshaping_motionnotify(XEvent* ev) {
   ev = ev;
-  int nx;  // New x.
-  int ny;  // New y.
-  int ox;  // Original x.
-  int oy;  // Original y.
-  int ndx; // New width.
-  int ndy; // New height.
-  int odx; // Original width.
-  int ody; // Original height.
+  int nx;   // New x.
+  int ny;   // New y.
+  int ox;   // Original x.
+  int oy;   // Original y.
+  int ndx;  // New width.
+  int ndy;  // New height.
+  int odx;  // Original width.
+  int ody;  // Original height.
 
   if (mode != wm_reshaping || !current) {
     return;
@@ -847,9 +745,7 @@ void reshaping_motionnotify(XEvent* ev) {
   if ((mp.modMask & MOVING_BUTTON_MASK) == 0) {
     mode = wm_idle;
     // If we escape from the weird dragging mode and we were resizing, we should
-    // ensure the little white window that shows the current being-dragged
-    // window's size is closed. Otherwise it gets left there in the middle of
-    // the screen, looking foolish.
+    // ensure the size popup is closed.
     XUnmapWindow(dpy, LScr::I->Popup());
     DBG("Flipped out of weird dragging mode.");
     return;

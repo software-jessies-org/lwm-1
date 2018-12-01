@@ -2,6 +2,11 @@
 #include "lwm.h"
 #include "xlib.h"
 
+// Colours which we use for our user interface.
+static const char kActiveBorderColour[] = "#B87058";
+static const char kInactiveBorderColour[] = "#785840";
+static const char kTitleBarBackgroundColour[] = "#A0522D";
+
 // The static LScr instance.
 LScr* LScr::I;
 
@@ -13,33 +18,52 @@ LScr::LScr(Display* dpy)
       cursor_map_(new CursorMap(dpy)),
       utf8_string_atom_(XInternAtom(dpy, "UTF8_STRING", false)),
       strut_{0, 0, 0, 0} {}
-
-void LScr::Init() {
-  // Allocate grey colour, to be used for unfocused windows.
+      
+unsigned long LScr::makeColour(const char* name) const {
   XColor colour, exact;
-  XAllocNamedColor(dpy_, DefaultColormap(dpy_, kOnlyScreenIndex), "DimGray",
+  XAllocNamedColor(dpy_, DefaultColormap(dpy_, kOnlyScreenIndex), name,
                    &colour, &exact);
-  grey_ = colour.pixel;
-
-  // Generate a graphics context for all our drawing needs.
+  return colour.pixel;
+}
+      
+void LScr::Init() {
+  active_border_ = makeColour(kActiveBorderColour);
+  inactive_border_ = makeColour(kInactiveBorderColour);
+  
+  // The graphics context used for the menu is a simple exclusive OR which will
+  // toggle pixels between black and white. This allows us to implement
+  // highlights really easily.
   XGCValues gv;
-  gv.foreground = Black() ^ White();
-  gv.background = White();
+  gv.foreground = black() ^ white();
+  gv.background = white();
   gv.function = GXxor;
   gv.line_width = 2;
   gv.subwindow_mode = IncludeInferiors;
+  menu_gc_ = XCreateGC(
+      dpy_, root_,
+      GCForeground | GCBackground | GCFunction | GCLineWidth | GCSubwindowMode,
+      &gv);
+  
+  // The GC used for the close button is the same as for the menu, except it
+  // uses GXcopy, not GXxor. That's because it needs to draw a white close icon
+  // on top of a non-black background, so XOR would not yield the right thing.
+  gv.function = GXcopy;
   gc_ = XCreateGC(
       dpy_, root_,
       GCForeground | GCBackground | GCFunction | GCLineWidth | GCSubwindowMode,
       &gv);
-  menu_gc_ = XCreateGC(
+  XSetLineAttributes(dpy, gc_, 2, LineSolid, CapProjecting, JoinMiter);
+  
+  // The title bar.
+  gv.foreground = makeColour(kTitleBarBackgroundColour);
+  title_gc_ = XCreateGC(
       dpy_, root_,
       GCForeground | GCBackground | GCFunction | GCLineWidth | GCSubwindowMode,
       &gv);
   
   // Create the popup window, to be used for the menu, and for the little window
   // that shows us how big windows are while resizing them.
-  popup_ = XCreateSimpleWindow(dpy_, root_, 0, 0, 1, 1, 1, Black(), White());
+  popup_ = XCreateSimpleWindow(dpy_, root_, 0, 0, 1, 1, 1, black(), white());
   XSetWindowAttributes attr;
   attr.event_mask = ButtonMask | ButtonMotionMask | ExposureMask;
   XChangeWindowAttributes(dpy_, popup_, CWEventMask, &attr);
@@ -126,9 +150,9 @@ Client* LScr::addClient(Window w) {
   c->border = attr.border_width;
   // map_state is likely already IsViewable if we're being called from
   // scanWindowTree (ie on start-up), but will not be if the window is in the
-  // process of being opened (ie we've been calleld from GetOrAddClient).
-  // In the latter case, we don't end up calling manage(c) here, but it'll be
-  // called at a later time, when maprequest() calls our Furnish() function.
+  // process of being opened (ie we've been called from GetOrAddClient).
+  // In the latter case, we don't call manage(c) here, but it'll be called
+  // later, when maprequest() calls our Furnish() function.
   if (attr.map_state == IsViewable) {
     c->internal_state = IPendingReparenting;
     manage(c);
@@ -141,7 +165,7 @@ void LScr::Furnish(Client *c) {
   c->parent = XCreateSimpleWindow(dpy_, root_, c->size.x,
                                   c->size.y - textHeight(), c->size.width,
                                   c->size.height + textHeight(), 1,
-                                  Black(), White());
+                                  black(), white());
   XSetWindowAttributes attr;
   attr.event_mask = ExposureMask | EnterWindowMask | ButtonMask |
       SubstructureRedirectMask | SubstructureNotifyMask |
