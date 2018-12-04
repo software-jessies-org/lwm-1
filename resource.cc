@@ -23,62 +23,108 @@
 
 #include "lwm.h"
 
-static Resources* resource_cache;
+void Resources::Init() {
+  I = new Resources();
+}
 
-static void setResource(XrmDatabase *db, const char *name, const char *cls,
-                        std::string* target) {
-  char *type;
+Resources* Resources::I;
+
+Resources::Resources() {
+  strings_.resize(S_END);
+  ints_.resize(I_END);
+
+  XrmDatabase db = nullptr;
+  char* resource_manager = XResourceManagerString(dpy);
+  if (resource_manager) {
+    XrmInitialize();
+    db = XrmGetStringDatabase(resource_manager);
+  }
+  // Font used in title bars, and indeed everywhere we have fonts.
+  set(TITLE_FONT, db, "titleFont", "Font", "roboto-16");
+  // Command to execute when button 1 (left) is clicked on root window.
+  set(BUTTON1_COMMAND, db, "button1", "Command", "");
+  // Command to execute when button 2 (middle) is clicked on root window.
+  set(BUTTON2_COMMAND, db, "button2", "Command", "xterm");
+  // Background colour for title bar of the active window.
+  set(TITLE_BG_COLOUR, db, "titleBGColour", "String", "#A0522D");
+  // Border background colour of the active window.
+  set(BORDER_COLOUR, db, "borderColour", "String", "#B87058");
+  // Border and title background colour of inactive windows.
+  set(INACTIVE_BORDER_COLOUR, db, "inactiveBorderColour", "String", "#785840");
+  // Colour of the window highlight box displayed when the popup (unhide)
+  // menu is open and the pointer is hovering over an entry in that menu, and
+  // which shows the display bounds of the corresponding window.
+  set(WINDOW_HIGHLIGHT_COLOUR, db, "windowHighlightColour", "String", "red");
+  
+  // The width of the border LWM adds to each window to allow resizing.
+  set(BORDER_WIDTH, db, "border", "Border", 6);
+}
+
+const std::string& Resources::Get(SR sr) {
+  if (sr < S_BEGIN || sr >= S_END) {
+    return strings_[S_BEGIN];  // Will be empty string, because we never init
+                               // it.
+  }
+  return strings_[sr];
+}
+
+// Retrieve an int resource.
+int Resources::GetInt(IR ir) {
+  if (ir < I_BEGIN || ir >= I_END) {
+    return 0;
+  }
+  return ints_[ir];
+}
+
+static bool tryGet(XrmDatabase db,
+                   const std::string& name,
+                   const char* cls,
+                   std::string* tgt) {
+  if (!db) {
+    return false;
+  }
+  char* type;
   XrmValue value;
-  if (XrmGetResource(*db, name, cls, &type, &value)) {
+  const std::string fullName = std::string("lwm.") + name;
+  if (XrmGetResource(db, fullName.c_str(), cls, &type, &value)) {
     if (!strcmp(type, "String")) {
-      *target = std::string(value.addr, value.size);
+      *tgt = std::string(value.addr, value.size);
+      return true;
     }
   }
+  return false;
 }
 
-static std::string getResource(XrmDatabase *db, const char *name,
-                               const char *cls) {
-  std::string res;
-  setResource(db, name, cls, &res);
-  return res;
+void Resources::set(SR res,
+                    XrmDatabase db,
+                    const std::string& name,
+                    const char* cls,
+                    const std::string& dflt) {
+  if (!tryGet(db, name, cls, &(strings_[res]))) {
+    strings_[res] = dflt;
+  }
 }
 
-Resources* parseResources() {
-  Resources* res = new Resources();
-  res->font_name = DEFAULT_TITLE_FONT;
-  res->border = DEFAULT_BORDER;
-  res->btn2_command = DEFAULT_TERMINAL;
-
-  char *resource_manager = XResourceManagerString(dpy);
-  if (!resource_manager) {
-    return res;
+void Resources::set(IR res,
+                    XrmDatabase db,
+                    const std::string& name,
+                    const char* cls,
+                    int dflt) {
+  ints_[res] = dflt;
+  std::string strVal;
+  if (!tryGet(db, name, cls, &strVal)) {
+    return;
   }
-  XrmInitialize();
-  XrmDatabase db = XrmGetStringDatabase(resource_manager);
-  if (!db) {
-    return res;
+  if (strVal == "") {
+    return;
   }
-
-  // Simple string resources.
-  setResource(&db, "lwm.titleFont", "Font", &(res->font_name));
-  setResource(&db, "lwm.button1", "Command", &(res->btn1_command));
-  setResource(&db, "lwm.button2", "Command", &(res->btn2_command));
-
-  // Resources that require some interpretation.
-  const std::string brdr = getResource(&db, "lwm.border", "Border");
-  if (brdr != "") {
-    res->border = (int)strtol(brdr.c_str(), (char **)0, 0);
-  }
-  return res;
+  const int val = (int)strtol(strVal.c_str(), (char**)0, 0);
+  // We assume 0 means failure; if 0 is a valid value, its default should be
+  // 0 to allow default to be set.
+  ints_[res] = val ? val : dflt;
 }
 
-Resources* resources() {
-  if (!resource_cache) {
-    resource_cache = parseResources();
-  }
-  return resource_cache;
-}
-
+// Border width is used a lot, so let's make it easily accessible.
 int borderWidth() {
-  return resources()->border;
+  return Resources::I->GetInt(Resources::BORDER_WIDTH);
 }

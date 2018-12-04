@@ -27,10 +27,6 @@
 
 /* --- Administrator-configurable defaults. --- */
 
-#define DEFAULT_TITLE_FONT "roboto-16"
-#define DEFAULT_TERMINAL "xterm"
-#define DEFAULT_BORDER 6
-
 #define HIDE_BUTTON Button3
 #define MOVE_BUTTON Button2
 #define RESHAPE_BUTTON Button1
@@ -151,11 +147,11 @@ struct Rect {
   int yMin;
   int xMax;
   int yMax;
-  
+
   bool contains(int x, int y) const {
     return x >= xMin && y >= yMin && x <= xMax && y <= yMax;
   }
-  
+
   int width() { return xMax - xMin; }
   int height() { return yMax - yMin; }
 };
@@ -216,14 +212,15 @@ class Client {
 
   XSizeHints size;         // Client's current geometry information.
   XSizeHints return_size;  // Client's old geometry information.
-  
+
   int State() const { return state_; }
   void SetState(int state);
   bool IsHidden() const { return state_ == IconicState; }
   bool IsWithdrawn() const { return state_ == WithdrawnState; }
   bool IsNormal() const { return state_ == NormalState; }
+
  private:
-  int state_;               // Window state. See ICCCM and <X11/Xutil.h>
+  int state_;  // Window state. See ICCCM and <X11/Xutil.h>
  public:
   bool hidden;  // true if this client is hidden.
   IState internal_state;
@@ -242,16 +239,16 @@ class Client {
   int ncmapwins;
   Window* cmapwins;
   Colormap* wmcmaps;
-  
+
   void SetIconPixmap(Pixmap icon, Pixmap mask);
   ImageIcon* Icon() { return icon_; }
-  
+
  private:
   Rect edgeBounds(Edge e) const;
-  
+
   std::string name_;  // Name used for title in frame.
   ImageIcon* icon_ = nullptr;
-  
+
   Client(const Client&) = delete;
   Client& operator=(const Client&) = delete;
 };
@@ -259,11 +256,11 @@ class Client {
 class CursorMap {
  public:
   explicit CursorMap(Display* dpy);
-  
+
   // Root() returns the standard pointer cursor we use most places, including
   // over the root window.
   Cursor Root() const { return root_; }
-  
+
   // ForEdge returns the cursor appropriate to the given edge. This may be
   // arrows for the resizing areas, or a nice big 'X' for EClose.
   // Returns the same as Root() if there's no specific cursor for some edge.
@@ -314,7 +311,7 @@ class Hider {
   int height_ = 0;
   int current_item_ = 0;  // Index of currently-selected item.
   std::vector<Item> open_content_;
-  
+
   Window highlightL = 0;
   Window highlightR = 0;
   Window highlightT = 0;
@@ -373,9 +370,9 @@ class LScr {
 
   // Clients() returns the map of all clients, for iteration.
   const std::map<Window, Client*>& Clients() const { return clients_; }
-  
-  unsigned long MakeColour(const char* name) const;
-  
+
+  unsigned long MakeColour(const std::string& name) const;
+
   // This is used as a static pointer to the global LScr instance, initialised
   // on start-up in lwm.cc.
   static LScr* I;
@@ -562,15 +559,55 @@ extern int isShaped(Window);
 extern void setShape(Client*);
 
 /* resource.cc */
-struct Resources {
-  std::string font_name;
-  std::string btn1_command;
-  std::string btn2_command;
-  int border;
-};
+class Resources {
+ public:
+  static Resources* I;
 
-// Parses, or returns a cached copy, of the resources.
-Resources* resources();
+  // Init must be called once, at program start.
+  static void Init();
+
+  // The types of string resource on offer.
+  enum SR {
+    S_BEGIN,  // Don't use this.
+    TITLE_FONT,
+    BUTTON1_COMMAND,
+    BUTTON2_COMMAND,
+    TITLE_BG_COLOUR,
+    BORDER_COLOUR,
+    INACTIVE_BORDER_COLOUR,
+    WINDOW_HIGHLIGHT_COLOUR,
+    S_END,  // This must be the last.
+  };
+
+  // The types of int resource on offer.
+  enum IR {
+    I_BEGIN,  // Don't use this.
+    BORDER_WIDTH,
+    I_END,  // This must be the last.
+  };
+
+  // Retrieve a string resource.
+  const std::string& Get(SR r);
+
+  // Retrieve an int resource.
+  int GetInt(IR r);
+
+ private:
+  Resources();
+  void set(SR res,
+           XrmDatabase db,
+           const std::string& name,
+           const char* cls,
+           const std::string& dflt);
+  void set(IR res,
+           XrmDatabase db,
+           const std::string& name,
+           const char* cls,
+           int dflt);
+
+  std::vector<std::string> strings_;
+  std::vector<int> ints_;
+};
 
 // Handy accessors which parse resources if necessary, and return the relevant
 // bit of config info.

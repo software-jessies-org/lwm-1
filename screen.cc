@@ -2,11 +2,6 @@
 #include "lwm.h"
 #include "xlib.h"
 
-// Colours which we use for our user interface.
-static const char kActiveBorderColour[] = "#B87058";
-static const char kInactiveBorderColour[] = "#785840";
-static const char kTitleBarBackgroundColour[] = "#A0522D";
-
 // The static LScr instance.
 LScr* LScr::I;
 
@@ -18,18 +13,19 @@ LScr::LScr(Display* dpy)
       cursor_map_(new CursorMap(dpy)),
       utf8_string_atom_(XInternAtom(dpy, "UTF8_STRING", false)),
       strut_{0, 0, 0, 0} {}
-      
-unsigned long LScr::MakeColour(const char* name) const {
+
+unsigned long LScr::MakeColour(const std::string& name) const {
   XColor colour, exact;
-  XAllocNamedColor(dpy_, DefaultColormap(dpy_, kOnlyScreenIndex), name,
+  XAllocNamedColor(dpy_, DefaultColormap(dpy_, kOnlyScreenIndex), name.c_str(),
                    &colour, &exact);
   return colour.pixel;
 }
-      
+
 void LScr::Init() {
-  active_border_ = MakeColour(kActiveBorderColour);
-  inactive_border_ = MakeColour(kInactiveBorderColour);
-  
+  active_border_ = MakeColour(Resources::I->Get(Resources::BORDER_COLOUR));
+  inactive_border_ =
+      MakeColour(Resources::I->Get(Resources::INACTIVE_BORDER_COLOUR));
+
   // The graphics context used for the menu is a simple exclusive OR which will
   // toggle pixels between black and white. This allows us to implement
   // highlights really easily.
@@ -43,7 +39,7 @@ void LScr::Init() {
       dpy_, root_,
       GCForeground | GCBackground | GCFunction | GCLineWidth | GCSubwindowMode,
       &gv);
-  
+
   // The GC used for the close button is the same as for the menu, except it
   // uses GXcopy, not GXxor. That's because it needs to draw a white close icon
   // on top of a non-black background, so XOR would not yield the right thing.
@@ -53,14 +49,14 @@ void LScr::Init() {
       GCForeground | GCBackground | GCFunction | GCLineWidth | GCSubwindowMode,
       &gv);
   XSetLineAttributes(dpy, gc_, 2, LineSolid, CapProjecting, JoinMiter);
-  
+
   // The title bar.
-  gv.foreground = MakeColour(kTitleBarBackgroundColour);
+  gv.foreground = MakeColour(Resources::I->Get(Resources::TITLE_BG_COLOUR));
   title_gc_ = XCreateGC(
       dpy_, root_,
       GCForeground | GCBackground | GCFunction | GCLineWidth | GCSubwindowMode,
       &gv);
-  
+
   // Create the popup window, to be used for the menu, and for the little window
   // that shows us how big windows are while resizing them.
   popup_ = XCreateSimpleWindow(dpy_, root_, 0, 0, 1, 1, 1, black(), white());
@@ -127,9 +123,9 @@ void LScr::scanWindowTree() {
 
 Client* LScr::GetOrAddClient(Window w) {
   if (w == Popup()) {
-    return nullptr; // No client for our own popup window.
+    return nullptr;  // No client for our own popup window.
   }
-  Client *c = GetClient(w);
+  Client* c = GetClient(w);
   if (c) {
     return c;
   }
@@ -142,7 +138,7 @@ Client* LScr::addClient(Window w) {
   if (attr.override_redirect) {
     return nullptr;
   }
-  Client *c = new Client(w, root_);
+  Client* c = new Client(w, root_);
   c->size.x = attr.x;
   c->size.y = attr.y;
   c->size.width = attr.width;
@@ -161,22 +157,21 @@ Client* LScr::addClient(Window w) {
   return c;
 }
 
-void LScr::Furnish(Client *c) {
-  c->parent = XCreateSimpleWindow(dpy_, root_, c->size.x,
-                                  c->size.y - textHeight(), c->size.width,
-                                  c->size.height + textHeight(), 1,
-                                  black(), white());
+void LScr::Furnish(Client* c) {
+  c->parent = XCreateSimpleWindow(
+      dpy_, root_, c->size.x, c->size.y - textHeight(), c->size.width,
+      c->size.height + textHeight(), 1, black(), white());
   XSetWindowAttributes attr;
   attr.event_mask = ExposureMask | EnterWindowMask | ButtonMask |
-      SubstructureRedirectMask | SubstructureNotifyMask |
-      PointerMotionMask;
-      XChangeWindowAttributes(dpy_, c->parent, CWEventMask, &attr);
-  
+                    SubstructureRedirectMask | SubstructureNotifyMask |
+                    PointerMotionMask;
+  XChangeWindowAttributes(dpy_, c->parent, CWEventMask, &attr);
+
   XResizeWindow(dpy_, c->window, c->size.width - 2 * borderWidth(),
                 c->size.height - 2 * borderWidth());
   parents_[c->parent] = c;
 }
-  
+
 Client* LScr::GetClient(Window w) const {
   if (w == 0 || w == Root()) {
     return nullptr;

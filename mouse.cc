@@ -55,15 +55,16 @@ void Hider::showHighlightBox(int itemIndex) {
   }
   if (!highlightL) {
     // No highlight windows created yet; create them now.
-    Display *dpy = LScr::I->Dpy();
+    Display* dpy = LScr::I->Dpy();
     const Window root = LScr::I->Root();
-    const unsigned long red = LScr::I->MakeColour("red");
+    const unsigned long red = LScr::I->MakeColour(
+        Resources::I->Get(Resources::WINDOW_HIGHLIGHT_COLOUR));
     highlightL = XCreateSimpleWindow(dpy, root, 0, 0, 1, 1, 1, red, red);
     highlightR = XCreateSimpleWindow(dpy, root, 0, 0, 1, 1, 1, red, red);
     highlightT = XCreateSimpleWindow(dpy, root, 0, 0, 1, 1, 1, red, red);
     highlightB = XCreateSimpleWindow(dpy, root, 0, 0, 1, 1, 1, red, red);
   }
-  Client *c = LScr::I->GetClient(open_content_[itemIndex].w);
+  Client* c = LScr::I->GetClient(open_content_[itemIndex].w);
   if (!c) {
     // Client has probably gone away in the meantime; no highlight to show.
     hideHighlightBox();

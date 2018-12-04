@@ -127,6 +127,7 @@ extern int main(int argc, char* argv[]) {
   if (dpy == 0) {
     panic("can't open display.");
   }
+  Resources::Init();
 
   // Set up an error handler.
   XSetErrorHandler(errorHandler);
@@ -163,10 +164,10 @@ extern int main(int argc, char* argv[]) {
   ewmh_init();
 
   int screenID = DefaultScreen(dpy);
-  g_font = XftFontOpenName(dpy, screenID, resources()->font_name.c_str());
+  std::string titleFont = Resources::I->Get(Resources::TITLE_FONT);
+  g_font = XftFontOpenName(dpy, screenID, titleFont.c_str());
   if (g_font == nullptr) {
-    fprintf(stderr, "Couldn't find font %s; falling back",
-            resources()->font_name.c_str());
+    fprintf(stderr, "Couldn't find font %s; falling back", titleFont.c_str());
     g_font = XftFontOpenName(dpy, 0, "fixed");
     if (g_font == nullptr) {
       panic("Can't find a font");
@@ -285,9 +286,9 @@ void sendConfigureNotify(Client* c) {
 extern void shell(int button) {
   std::string command;
   if (button == Button1) {
-    command = resources()->btn1_command;
+    command = Resources::I->Get(Resources::BUTTON1_COMMAND);
   } else if (button == Button2) {
-    command = resources()->btn2_command;
+    command = Resources::I->Get(Resources::BUTTON2_COMMAND);
   }
   if (command.empty()) {
     return;
