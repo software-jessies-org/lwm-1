@@ -518,12 +518,6 @@ extern Client* current;
 /* disp.cc */
 extern void dispatch(XEvent*);
 extern void reshaping_motionnotify(XEvent*);
-// We expose pendingClient externally, so the Client_Remove function in
-// client.cc can nullify it if and when the window in question is closed.
-// Otherwise the pendingClient handling can crash due to its using a freed
-// Client*.
-// TODO: This is rather a trappanation style; make it nicer.
-extern Client* pendingClient;
 
 /* error.cc */
 extern int ignore_badwindow;

@@ -21,45 +21,47 @@ lwm \- Lightweight Window Manager for the X Window System
 .SH SYNTAX
 \fBlwm \fP[ \fB\-s\fP \fIsession-id\fP ] 
 .SH DESCRIPTION
-\fILwm\fP is a window manager for the X Window System. It provides enough
+\fILwm\fP is a window manager for the X Window System.  It provides enough
 features to allow the user to manage their windows, and no more.
 .PP
-Windows are surrounded by a frame with a 
-titlebar at the top next to a small box. The frame is a grey colour for
-all windows except that which has the input focus, where it is black.
+Windows are surrounded by a frame with a titlebar at the top next to a close
+icon (in the form of a cross).  The window with input focus is coloured
+differently from the others.
 .PP
-In the default configuration, \fIlwm\fP uses the enter-to-focus scheme, where
-moving the pointer into a window gives that window the input focus.
-\fILwm\fP may also be configured to use the click-to-focus scheme, where a
-window must be clicked on (with any button) to receive the input focus. Clicking
-on a window in this mode causes the window to be raised. Note that a click
-used to focus a window is always swallowed by \fIlwm\fP, so clicking a
-button in a new window requires two clicks.
+\fILwm\fP uses the sloppy-focus scheme, where moving the pointer into a window
+gives it input focus, but moving the pointer out does not cause focus to be
+lost until the pointer enters another window.
 .PP
-A button 1 click on a window frame brings that window to the top. Dragging
+A button 1 click on a window frame brings it to the top.  Dragging
 button 1 on the frame of a resizable window repositions that edge of
-the window. If a corner rather than an edge is dragged, then both edges
-forming the corner are repositioned. While you're reshaping a window,
-a little window pops up to show you the window's current size.
+the window.  If a corner rather than an edge is dragged, then both edges
+forming the corner are repositioned.  While you're reshaping a window,
+a little window pops up to show you the window's current size.  Dragging the
+title bar always moves the window.  If you wish to resize from the top edge,
+use the top-right corner.
 .PP
 In the default configuration, button 1 on the root window does nothing.
 .PP
 Button 2 is used to drag a window by its frame, repositioning the window
-but maintaining its position in the window stack.
+but maintaining its position in the window stack.  This always just moves the
+window, never resizing it.
 .PP
 In the default configuration, button 2 on the root window brings up a
 new shell.
 .PP
 A button 3 click on a window frame hides that window.  Pressing
-button 3 on the root window brings up a menu of all the hidden windows.
-Releasing the button while over an item will unhide the named window.
+button 3 on the root window brings up a menu of all the windows.  Moving the
+pointer over menu items while holding button 3 displays a coloured box
+showing the window outline (even if it's hidden).
+Releasing the button while over an item will unhide or raise the named window,
+and give it focus.  The menu has two sections: the items above the dotted
+line refer to hidden windows; those below to already visible windows.
 .PP
 A button 3 click in the frame while Shift is held down pushes the window
-to the back, under any other windows. (Users with 4-button mice are
-encouraged to use their fourth button for this function.)
+to the back, under any other windows.
 .PP
-A click with any button inside the little white box in a window's frame
-can be used to close the window.
+A window may be closed by clicking on the little white cross in the top-left
+corner of its frame.
 .SH OPTIONS
 \fILwm\fP accepts the following command line options:
 .PP
@@ -71,10 +73,7 @@ exclusively by session managers.
 \fILwm\fP understands the following X resources:
 .TP 12
 .B titleFont
-font used in window titles
-.TP 12
-.B popupFont
-font used in popup window (menu/size indicator)
+font used in window titles, and in the popup menu and size indicator
 .TP 12
 .B border
 width in pixels of window borders
@@ -85,12 +84,21 @@ program spawned when button 1 is clicked on the root window
 .B button2
 program spawned when button 2 is clicked on the root window
 .TP 12
-.B focus
-focus mode, one of "enter" for enter-to-focus (or sloppy focus), or
-"click" for click-to-focus
+.B titleBGColour
+background colour of the active window's title bar
+.TP 12
+.B borderColour
+background colour of the active window's border
+.TP 12
+.B inactiveBorderColour
+background colour of inactive windows' title bars and borders
+.TP 12
+.B windowHighlightColour
+colour of the box showing window outlines from the window list menu
 .SH "SEE ALSO"
 .PP
 X(7)
 .SH AUTHORS
 Elliott Hughes <ehughes@bluearc.com>,
-James Carter <james@jfc.org.uk>
+James Carter <james@jfc.org.uk>,
+Phil Norman <philnorm@gmail.com>

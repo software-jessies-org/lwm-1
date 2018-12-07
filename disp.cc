@@ -176,10 +176,11 @@ static Disp disps[] = {
 };
 #undef REG_DISP
 
-// pendingClient is the client in which an action has been started by a mouse
-// press and we are waiting for the button to be released before performing
-// the action.
-Client* pendingClient = NULL;
+// pendingFrame is the LWM frame window (aka parent) of the client in which an
+// action has been started by a mouse press and we are waiting for the button
+// to be released before performing the action.
+// It may refer to a disappeared window if something closes.
+static Window pendingFrame;
 
 extern void dispatch(XEvent* ev) {
   for (Disp* p = disps; p < disps + sizeof(disps) / sizeof(disps[0]); p++) {
@@ -256,14 +257,14 @@ static void buttonpress(XEvent* ev) {
     return;
   }
   if (edge == EClose) {
-    pendingClient = c;
+    pendingFrame = c->parent;
     mode = wm_closing_window;
     return;
   }
 
   // Somewhere in the rest of the frame.
   if (e->button == HIDE_BUTTON) {
-    pendingClient = c;
+    pendingFrame = c->parent;
     mode = wm_hiding_window;
     return;
   }
@@ -280,6 +281,7 @@ static void buttonpress(XEvent* ev) {
 
 static void buttonrelease(XEvent* ev) {
   XButtonEvent* e = &ev->xbutton;
+  Client* pendingClient = LScr::I->GetClient(pendingFrame);
   if (mode == wm_menu_up) {
     LScr::I->GetHider()->MouseRelease(ev);
   } else if (mode == wm_reshaping) {
@@ -288,11 +290,10 @@ static void buttonrelease(XEvent* ev) {
     if (pendingClient->EdgeAt(e->window, e->x, e->y) == EClose) {
       Client_Close(pendingClient);
     }
-    pendingClient = nullptr;
   } else if (mode == wm_hiding_window && pendingClient) {
     // Was the button release within the window's frame?
     // Note that x11 sends is buttonrelease events which match the window the
-    // mousedown event went to, even if we let go of the mouse while overing
+    // mousedown event went to, even if we let go of the mouse while hovering
     // over the background.
     if ((e->window == pendingClient->parent) && (e->x >= 0) && (e->y >= 0) &&
         (e->x <= pendingClient->size.width) &&
@@ -303,8 +304,8 @@ static void buttonrelease(XEvent* ev) {
         pendingClient->Hide();
       }
     }
-    pendingClient = nullptr;
   }
+  pendingFrame = 0;
   mode = wm_idle;
 }
 

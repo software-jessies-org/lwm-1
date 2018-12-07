@@ -254,7 +254,7 @@ void Client_Remove(Client* c) {
   // structure's future use in other code, which can cause crashes.
   const bool wasCurrent = c == current;
   const bool wasLastFocus = (current == NULL && c == last_focus);
-  current = last_focus = pendingClient = nullptr;
+  current = last_focus = nullptr;
 
   // A deleted window can no longer be the current window.
   if (wasCurrent || wasLastFocus) {
