@@ -7,6 +7,9 @@ Change Log for "lwm"
 	Updated BUGS and other files. Will be tracking bugs/feature ideas in
 	the BUGS file from now on. It contains some useful debugging tools too.
 
+	Made a bunch more colours configurable, including all the text, popup
+	background and foreground.
+
 
 2018-12-07	pn	Basel
 	Updated man page.
