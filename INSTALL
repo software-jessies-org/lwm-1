@@ -6,6 +6,11 @@ Installing lwm
 
 	xmkmf ; make ; strip lwm
 
+...or, if you're on FreeBSD:
+	ln -s Makefile.FreeBSD Makefile
+	make ; strip lwm
+
+
 2. Copy the binary to where you want it.
 
 3. Edit your Xsession or whatever to call lwm.

@@ -1,33 +1,73 @@
-we're possibly being a bit overzealous about maintaining the window stack,
-with lots of flickering windows as a result. it's particularly noticeable
-when you're running a desktop - but then that's a stupid thing to do anyway.
-not sure how to fix it without maintaining a lot more data about the window
-stack.
+2018-12-08 (pn) Done a bit of clean-up in here. I've also set up a bunch of
+sections, generally from most to least important. At the top we have crashes,
+and at the bottom clean-ups.
 
-reported by corey holcomb-hockin: lwm producues messages like this when popups appear:
-lwm: protocol request X_ConfigureWindow on resource 0xa0000e failed: 
-BadWindow (invalid Window parameter)
-lwm: protocol request X_SendEvent on resource 0xa0000e failed: BadWindow 
-(invalid Window parameter)
-lwm: protocol request X_ConfigureWindow on resource 0xa0000e failed: 
-BadWindow (invalid Window parameter)
-lwm: protocol request X_SendEvent on resource 0xa0000e failed: BadWindow 
-(invalid Window parameter)
-lwm: protocol request X_SetInputFocus on resource 0xa0000e failed: 
-BadWindow (invalid Window parameter)
-lwm: protocol request X_SetInputFocus on resource 0x8000de failed: 
-BadMatch (invalid parameter attributes)
+Right at the bottom of the file there's a cheat sheet of debugging tools.
 
-martin and elliott still have window problems with edit, although it's
-better than it was. apparently the window is now placed correctly,
-but gets larger between successive runs. i can't reproduce this,
-unfortunately.
 
-chris reports that positioning a window on the bottom or right edge of a screen
-and then resizing the edge opposite to that touching the edge of the screen
-causes the window to jump in 1 unit (pixel or character depending on the
-application). also, and possibly related, holding button 1 to resize any edge
-apart from the right, and then moving the mouse along that edge (ie.
-perpendicular to the normal movement for resizing) causes the window to shrink
-one unit.
+=== CRASHES ===
 
+
+=== FUNCTIONAL BREAKAGES ===
+
+For multi-screen displays (xrandr), LWM thinks the total surface space of the
+display is a rectangle. If you have a laptop connected to a larger external
+monitor, this means there are inaccessible spaces that LWM thinks it can put
+windows in.
+
+
+=== THINGS THAT LOOK SILLY ===
+
+On start-up, every window looks focused.
+
+Focus display bug in Terminator: use shift-alt-t (run command in new tab). This
+opens a popup to type or select a command to run. Do that, and hit Return. The
+new tab opens, and gets input focus, but the LWM border is drawn as if it
+doesn't have focus.
+
+Chrome uses a way of specifying its icon that we don't support. Interestingly,
+running 'xprop' on one of the Chrome windows yields a massive ascii-art icon.
+We should add support for this.
+
+Application icons aren't scaled, so for some of them (eg firefox) we just
+display a weird-looking chunk of their inside. Adding automatic creation of
+scaled copies of app icons would be nice, although I don't want to rope in some
+massive bloated graphics library to do it.
+
+
+=== ERROR LOGS ===
+
+LWM produces error messages like these:
+lwm: protocol request X_ConfigureWindow on resource 0x1200001 failed: BadMatch (invalid parameter attributes)
+lwm: protocol request X_ConfigureWindow on resource 0x1800001 failed: BadMatch (invalid parameter attributes)
+lwm: protocol request X_ConfigureWindow on resource 0x1a00001 failed: BadMatch (invalid parameter attributes)
+lwm: protocol request X_ConfigureWindow on resource 0x1c00001 failed: BadMatch (invalid parameter attributes)
+
+
+=== FEATURES ===
+
+
+=== CLEANUPS ===
+
+The way the current window is tracked is using a global 'current' pointer and
+a 'last_focus'. This is not a good way to deal with the focus history. Not
+to mention the fact that keeping pointers to objects can lead to crashes, if
+they're not forcibly nulled at the right moment.
+
+The way disp.cc keeps track of the mode is not very OO. Maybe this could be
+refactored, so we don't have to have a global 'mode' variable.
+
+
+=== DEBUGGING TOOLS ===
+
+To get a dump of the window tree:
+xwininfo -root -tree
+
+To print details about a window:
+xprop -id <id>
+
+Test LWM changes in a VNC session (I use tightvnc). Believe me, testing LWM in
+the same X session as you're using to edit its code is a seriously painful
+experience.
+vncserver -geometry 1600x1200 -name test
+vncviewer localhost:1

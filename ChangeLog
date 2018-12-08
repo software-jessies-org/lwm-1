@@ -1,9 +1,11 @@
 Change Log for "lwm"
 
 
-
 2018-12-08	pn	Basel
 	Updated this ChangeLog from the log I'd been keeping elsewhere.
+
+	Updated BUGS and other files. Will be tracking bugs/feature ideas in
+	the BUGS file from now on. It contains some useful debugging tools too.
 
 
 2018-12-07	pn	Basel
