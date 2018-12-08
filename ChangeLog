@@ -1,5 +1,147 @@
 Change Log for "lwm"
 
+
+
+2018-12-08	pn	Basel
+	Updated this ChangeLog from the log I'd been keeping elsewhere.
+
+
+2018-12-07	pn	Basel
+	Updated man page.
+
+	Fixed treatment of pending windows so we keep track of the frame
+	window ID, rather than a pointer to a Client that might disappear from under us.
+
+
+2018-12-01	pn	Basel
+	Lots of changes. Give it nicer colours than black+white, added simple
+	icon support, rewrote hiding logic, etc.
+
+	Added display of a red box showing where the to-be-unhidden window is,
+	when the pointer is hovering over the Hider menu.
+
+
+2018-09-10	pn	Basel
+	Fixed an annoying crash bug that can happen on closing windows, due to
+	global Client pointers being kept around.
+
+	Sanitised header files a bit, adding include guards and moving most of
+	the X11/ .h includes to xlib.h.
+
+
+2018-09-02	pn	Basel
+	Hardened calls to XGetWindowProperty a bit, zero-initialising stuff.
+	This is an attempt to fix some random occasional crashes I see on Linux
+	when restoring colour maps.
+
+	Added some padding to the 'hidden windows' menu, as the contents was
+	hard to read.
+
+
+2018-08-24	pn	Basel
+	Fixed the Y positioning of title bar text - it was a bit low.
+
+	Changed the pop-up menu to use freetype fonts.
+
+	Changed the menu text creation to handle UTF8 truncation properly.
+
+	Changed the menu text creation to run each time it's needed, to cope
+	better with screen size changes.
+
+
+2018-08-18	pn	Basel
+	Fixed crash bug, caused by not creating a Client in the C++ way.
+
+	Changed title bar font rendering to use freetype - looks much nicer.
+
+	Removed special cases for where three's no UTF8 support - there always
+	is these days.
+
+
+2018-05-18	pn	Basel
+	Close the 'resizing window dimensions' window if we flip out of weird
+	dragging mode.
+
+
+2018-05-13	pn	Basel
+	Switched Bool/True/False to bool/true/false, and simplified some code.
+
+	Moved away from global variables for Resources.
+
+	Switched from old C strings to std::string for window names.
+
+
+2018-05-10	pn	Basel
+	Broke out XQueryTree into a C++ function which can return a struct
+	which is initialised safely, and has a save 'destructor' (C-style;
+	switching to C++ entirely will take time).
+
+	Renamed all .c files to .cc, and fixed the code up so it worked with
+	g++ (eg 'class' -> 'c_class').
+
+
+2018-05-03	pn	Basel
+	Fixed a crash bug where an uninitialised variable was iterated over
+	(last arg to XQueryTree).
+
+
+2018-05-01	pn	Basel
+	Always give focus to newly-opened windows. This fixes the annoying
+	problem of newly-opened Chrome windows being unfocused, and me entering
+	random URLs and search terms into GMail.
+
+	Fix last-focused restoration, so that closing a just-opened window
+	(eg ctrl-w in chrome) gives focus back to where it just came from.
+
+
+2018-04-27	pn	Basel
+	Changed window drag code to auto-disable if the mouse buttons aren't
+	down. Should fix the random-drag bug.
+
+	Refactored the getMousePosition function so it returns a little struct
+	with x, y, and now modMask.
+
+
+2018-04-16	pn	Basel
+	Added support for the desktop dimensions changing, with auto window
+	rearrangement. Now I can use LWM seamlessly on my work laptop :-)
+
+
+2018-04-15	pn	Basel
+	Fixed annoying resize bug where a window's bottom-right edge would zoom
+	away from the screen edge if the window was resized from the top-left
+	corner to violently.
+
+
+2018-04-08	pn	Basel
+	Changed 'unhide' menu to include visible windows, separated from the
+	hidden ones with a dotted line.
+
+	Added more nice event debugging printers.
+
+	Fixed: opening new windows didn't display them as having focus.
+
+
+2018-04-07	pn	Basel
+	Added some debugging, so I can see what's happening to it.
+
+	Added a --debug-events flag, to switch on/off detailed event display.
+
+	Fixed the bug which prevented Terminator's find box from opening.
+
+
+2018-03-25	pn	Basel
+	Created my own LWM branch.
+
+	Wrote better sloppy focus fix, got it pushed to github.
+
+	A few minor free statement improvements.
+
+
+2018-03-24	pn	Basel
+	Figured out cause of sloppy focus bug for Java, made first hacky fix.
+
+
 2016-02-12	jfc	York
 	Patches from Greg Kenneky and other fixes for fullscreen windows.
 
@@ -298,7 +440,7 @@ Change Log for "lwm"
 	not wait a long timeout when starting the window manager.
 
 2000-02-08	enh	Basel
-	
+
 	Tried out a patch from Robert Bauer so that it's possible to move
 	windows with button 1, if you're in the ``titlebar'' (i.e. not touching
 	the top border). This makes it easier for Windows users to cope
@@ -338,13 +480,13 @@ Change Log for "lwm"
 	child insists on drawing a black border around itself, though.
 
 1999-02-07	enh	Basel
-	
+
 	Title-bars no longer pop up and down. An inactive window has a
 	grey title instead. This means less load on the server, no annoying
 	"I want to type the information from one window's title-bar into
 	the current window but can't" syndrome, and a final solution to
 	the race condition that's been with us since the very beginning.
-	
+
 	The size feedback no longer pops up as soon as you grab a window,
 	because that made it almost impossible to grab a window without
 	resizing it.
