@@ -55,7 +55,17 @@ Resources::Resources() {
   // menu is open and the pointer is hovering over an entry in that menu, and
   // which shows the display bounds of the corresponding window.
   set(WINDOW_HIGHLIGHT_COLOUR, db, "windowHighlightColour", "String", "red");
-  
+  // Colour of the title bar text of the active window.
+  set(TITLE_COLOUR, db, "titleColour", "String", "white");
+  // Colour of the title bar text of inactive windows.
+  set(INACTIVE_TITLE_COLOUR, db, "inactiveTitleColour", "String", "#afafaf");
+  // Colour of the close icon (cross in top-left corner of the window frame).
+  set(CLOSE_ICON_COLOUR, db, "closeIconColour", "String", "white");
+  // Colour of text in the popup window (unhide menu and resize popup).
+  set(POPUP_TEXT_COLOUR, db, "popupTextColour", "String", "black");
+  // Background colour of the popup window (unhide menu and resize popup).
+  set(POPUP_BACKGROUND_COLOUR, db, "popupBackgroundColour", "String", "white");
+
   // The width of the border LWM adds to each window to allow resizing.
   set(BORDER_WIDTH, db, "border", "Border", 6);
 }
@@ -65,7 +75,31 @@ const std::string& Resources::Get(SR sr) {
     return strings_[S_BEGIN];  // Will be empty string, because we never init
                                // it.
   }
+  if (strings_[sr] == "") {
+    fprintf(stderr, "WARNING! No string for resource with ID %d\n", sr);
+  }
   return strings_[sr];
+}
+
+unsigned long Resources::GetColour(SR sr) {
+  const std::string name = Get(sr);
+  XColor colour, exact;
+  XAllocNamedColor(dpy, DefaultColormap(dpy, LScr::kOnlyScreenIndex),
+                   name.c_str(), &colour, &exact);
+  return colour.pixel;
+}
+
+// Returns a short comprising two copies of the lowest byte in c.
+// This converts an 8-bit r, g or b component into a 16-bit value as required
+// by XRenderColor.
+static unsigned short extend(unsigned long c) {
+  unsigned short result = c & 0xff;
+  return result | (result << 8);
+}
+
+XRenderColor Resources::GetXRenderColor(SR sr) {
+  const unsigned long rgb = GetColour(sr);
+  return XRenderColor{extend(rgb >> 16), extend(rgb >> 8), extend(rgb), 0xffff};
 }
 
 // Retrieve an int resource.

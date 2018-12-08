@@ -224,19 +224,19 @@ void Client_DrawBorder(Client* c, int active) {
     XFillRectangle(dpy, c->parent, lscr->GetTitleGC(), x, 0, w,
                    textHeight() + borderWidth());
   }
-  
+
   // Find where the title stuff is going to go.
   int x = borderWidth() + 2 + (3 * quarter);
   int y = borderWidth() / 2 + g_font->ascent;
-  
+
   // Do we have an icon? If so, draw it to the left of the title text.
   if (c->Icon()) {
     c->Icon()->Paint(c->parent, x, 0, titleBarHeight(), titleBarHeight());
     x += titleBarHeight();  // Title bar text must come after.
   }
-  
+
   // Draw window title.
-  XftColor* color = active ? &g_font_white : &g_font_pale_grey;
+  XftColor* color = active ? &g_font_active_title : &g_font_inactive_title;
   drawString(c->parent, x, y, c->Name(), color);
 }
 
@@ -460,7 +460,8 @@ void size_expose() {
 
   const std::string text = makeSizeString(width, height);
   const int x = (popup_width - textWidth(text)) / 2;
-  drawString(LScr::I->Popup(), x, g_font->ascent + 1, text, &g_font_black);
+  drawString(LScr::I->Popup(), x, g_font->ascent + 1, text,
+             &g_font_popup_colour);
 }
 
 extern void Client_ReshapeEdge(Client* c, Edge edge) {
@@ -471,13 +472,13 @@ extern void Client_ReshapeEdge(Client* c, Edge edge) {
   MousePos mp = getMousePosition();
   const int sx = c->size.x - mp.x;
   const int sy = c->size.y - mp.y;
-  
+
   Cursor cursor = LScr::I->Cursors()->ForEdge(edge);
   XChangeActivePointerGrab(dpy,
                            ButtonMask | PointerMotionHintMask |
                                ButtonMotionMask | OwnerGrabButtonMask,
-                               cursor, CurrentTime);
-  
+                           cursor, CurrentTime);
+
   // Store some state so that we can get back into the main event
   // dispatching thing.
   interacting_edge = edge;
@@ -577,7 +578,7 @@ extern void Client_ResetAllCursors() {
 extern void Client_FreeAll() {
   for (auto it : LScr::I->Clients()) {
     Client* c = it.second;
-    
+
     // Reparent the client window to the root, to elide our furniture window.
     XReparentWindow(dpy, c->window, LScr::I->Root(), c->size.x, c->size.y);
     if (c->hidden) {
@@ -586,7 +587,7 @@ extern void Client_FreeAll() {
       XMapWindow(dpy, c->window);
       XLowerWindow(dpy, c->window);
     }
-    
+
     // Give it back its initial border width.
     XWindowChanges wc;
     wc.border_width = c->border;

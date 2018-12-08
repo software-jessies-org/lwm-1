@@ -14,17 +14,9 @@ LScr::LScr(Display* dpy)
       utf8_string_atom_(XInternAtom(dpy, "UTF8_STRING", false)),
       strut_{0, 0, 0, 0} {}
 
-unsigned long LScr::MakeColour(const std::string& name) const {
-  XColor colour, exact;
-  XAllocNamedColor(dpy_, DefaultColormap(dpy_, kOnlyScreenIndex), name.c_str(),
-                   &colour, &exact);
-  return colour.pixel;
-}
-
 void LScr::Init() {
-  active_border_ = MakeColour(Resources::I->Get(Resources::BORDER_COLOUR));
-  inactive_border_ =
-      MakeColour(Resources::I->Get(Resources::INACTIVE_BORDER_COLOUR));
+  active_border_ = Resources::I->GetColour(Resources::BORDER_COLOUR);
+  inactive_border_ = Resources::I->GetColour(Resources::INACTIVE_BORDER_COLOUR);
 
   // The graphics context used for the menu is a simple exclusive OR which will
   // toggle pixels between black and white. This allows us to implement
@@ -41,8 +33,9 @@ void LScr::Init() {
       &gv);
 
   // The GC used for the close button is the same as for the menu, except it
-  // uses GXcopy, not GXxor. That's because it needs to draw a white close icon
-  // on top of a non-black background, so XOR would not yield the right thing.
+  // uses GXcopy, not GXxor, so we draw the chosen colour correctly.
+  gv.foreground = Resources::I->GetColour(Resources::CLOSE_ICON_COLOUR);
+  gv.background = white();
   gv.function = GXcopy;
   gc_ = XCreateGC(
       dpy_, root_,
@@ -51,7 +44,7 @@ void LScr::Init() {
   XSetLineAttributes(dpy, gc_, 2, LineSolid, CapProjecting, JoinMiter);
 
   // The title bar.
-  gv.foreground = MakeColour(Resources::I->Get(Resources::TITLE_BG_COLOUR));
+  gv.foreground = Resources::I->GetColour(Resources::TITLE_BG_COLOUR);
   title_gc_ = XCreateGC(
       dpy_, root_,
       GCForeground | GCBackground | GCFunction | GCLineWidth | GCSubwindowMode,
@@ -59,7 +52,10 @@ void LScr::Init() {
 
   // Create the popup window, to be used for the menu, and for the little window
   // that shows us how big windows are while resizing them.
-  popup_ = XCreateSimpleWindow(dpy_, root_, 0, 0, 1, 1, 1, black(), white());
+  popup_ = XCreateSimpleWindow(
+      dpy_, root_, 0, 0, 1, 1, 1,
+      Resources::I->GetColour(Resources::POPUP_TEXT_COLOUR),
+      Resources::I->GetColour(Resources::POPUP_BACKGROUND_COLOUR));
   XSetWindowAttributes attr;
   attr.event_mask = ButtonMask | ButtonMotionMask | ExposureMask;
   XChangeWindowAttributes(dpy_, popup_, CWEventMask, &attr);

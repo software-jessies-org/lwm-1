@@ -371,12 +371,12 @@ class LScr {
   // Clients() returns the map of all clients, for iteration.
   const std::map<Window, Client*>& Clients() const { return clients_; }
 
-  unsigned long MakeColour(const std::string& name) const;
-
   // This is used as a static pointer to the global LScr instance, initialised
   // on start-up in lwm.cc.
   static LScr* I;
-
+  
+  static constexpr int kOnlyScreenIndex = 0;
+  
  private:
   void initEWMH();
   void scanWindowTree();
@@ -403,7 +403,6 @@ class LScr {
 
   Atom utf8_string_atom_;
 
-  static constexpr int kOnlyScreenIndex = 0;
   Window popup_ = 0;
   Window ewmh_compat_ = 0;
 
@@ -438,9 +437,9 @@ extern Display* dpy;
 
 // New, pretty fonts:
 extern XftFont* g_font;
-extern XftColor g_font_white;
-extern XftColor g_font_pale_grey;
-extern XftColor g_font_black;
+extern XftColor g_font_active_title;
+extern XftColor g_font_inactive_title;
+extern XftColor g_font_popup_colour;
 
 // Functions for dealing with new pretty fonts:
 extern int textHeight();
@@ -570,6 +569,11 @@ class Resources {
     BORDER_COLOUR,
     INACTIVE_BORDER_COLOUR,
     WINDOW_HIGHLIGHT_COLOUR,
+    TITLE_COLOUR,
+    INACTIVE_TITLE_COLOUR,
+    CLOSE_ICON_COLOUR,
+    POPUP_TEXT_COLOUR,
+    POPUP_BACKGROUND_COLOUR,
     S_END,  // This must be the last.
   };
 
@@ -582,7 +586,13 @@ class Resources {
 
   // Retrieve a string resource.
   const std::string& Get(SR r);
-
+  
+  // Retrieve a string resource as a colour.
+  unsigned long GetColour(SR r);
+  
+  // Retrieve a string resource as an XRenderColor (used for Xft fonts).
+  XRenderColor GetXRenderColor(SR r);
+  
   // Retrieve an int resource.
   int GetInt(IR r);
 

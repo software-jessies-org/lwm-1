@@ -38,9 +38,9 @@ int start_y;  // The Y position where the mode changed.
 Display* dpy;  // The connection to the X server.
 
 XftFont* g_font;
-XftColor g_font_white;
-XftColor g_font_pale_grey;
-XftColor g_font_black;
+XftColor g_font_active_title;
+XftColor g_font_inactive_title;
+XftColor g_font_popup_colour;
 
 bool shape;       // Does server have Shape Window extension?
 int shape_event;  // ShapeEvent event type.
@@ -103,8 +103,6 @@ Atom motif_wm_hints;
 bool forceRestart;
 char* argv0;
 
-static void initScreen();
-
 static void rrScreenChangeNotify(XEvent* ev);
 
 /*ARGSUSED*/
@@ -126,6 +124,12 @@ extern int main(int argc, char* argv[]) {
   dpy = XOpenDisplay(NULL);
   if (dpy == 0) {
     panic("can't open display.");
+  }
+  if (ScreenCount(dpy) != 1) {
+    fprintf(stderr,
+            "Sorry, LWM no longer supports multiple screens, and you "
+            "have %d set up.\nPlease consider using xrandr.\n",
+            ScreenCount(dpy));
   }
   Resources::Init();
 
@@ -173,17 +177,21 @@ extern int main(int argc, char* argv[]) {
       panic("Can't find a font");
     }
   }
-  XRenderColor xrc = {0xffff, 0xffff, 0xffff, 0xffff};
+  XRenderColor xrc = Resources::I->GetXRenderColor(Resources::TITLE_COLOUR);
   XftColorAllocValue(dpy, DefaultVisual(dpy, screenID),
-                     DefaultColormap(dpy, screenID), &xrc, &g_font_white);
-  xrc = {0xafff, 0xafff, 0xafff, 0xffff};
+                     DefaultColormap(dpy, screenID), &xrc,
+                     &g_font_active_title);
+  xrc = Resources::I->GetXRenderColor(Resources::INACTIVE_TITLE_COLOUR);
   XftColorAllocValue(dpy, DefaultVisual(dpy, screenID),
-                     DefaultColormap(dpy, screenID), &xrc, &g_font_pale_grey);
-  xrc = {0, 0, 0, 0xffff};
+                     DefaultColormap(dpy, screenID), &xrc,
+                     &g_font_inactive_title);
+  xrc = Resources::I->GetXRenderColor(Resources::POPUP_TEXT_COLOUR);
   XftColorAllocValue(dpy, DefaultVisual(dpy, screenID),
-                     DefaultColormap(dpy, screenID), &xrc, &g_font_black);
+                     DefaultColormap(dpy, screenID), &xrc,
+                     &g_font_popup_colour);
 
-  initScreen();
+  LScr::I = new LScr(dpy);
+  LScr::I->Init();
   // ewmh_init_screen();
   session_init(argc, argv);
 
@@ -343,17 +351,4 @@ extern int textWidth(const std::string& s) {
   XftTextExtentsUtf8(dpy, g_font, reinterpret_cast<const FcChar8*>(s.c_str()),
                      s.size(), &extents);
   return extents.xOff;
-}
-
-static void initScreen() {
-  // Find out how many screens we've got, and allocate space for their info.
-  const int num = ScreenCount(dpy);
-  if (num != 1) {
-    fprintf(stderr,
-            "Sorry, LWM no longer supports multiple screens, and you "
-            "have %d set up.\nPlease consider using xrandr.\n",
-            num);
-  }
-  LScr::I = new LScr(dpy);
-  LScr::I->Init();
 }

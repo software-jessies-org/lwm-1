@@ -57,12 +57,12 @@ void Hider::showHighlightBox(int itemIndex) {
     // No highlight windows created yet; create them now.
     Display* dpy = LScr::I->Dpy();
     const Window root = LScr::I->Root();
-    const unsigned long red = LScr::I->MakeColour(
-        Resources::I->Get(Resources::WINDOW_HIGHLIGHT_COLOUR));
-    highlightL = XCreateSimpleWindow(dpy, root, 0, 0, 1, 1, 1, red, red);
-    highlightR = XCreateSimpleWindow(dpy, root, 0, 0, 1, 1, 1, red, red);
-    highlightT = XCreateSimpleWindow(dpy, root, 0, 0, 1, 1, 1, red, red);
-    highlightB = XCreateSimpleWindow(dpy, root, 0, 0, 1, 1, 1, red, red);
+    const unsigned long col =
+        Resources::I->GetColour(Resources::WINDOW_HIGHLIGHT_COLOUR);
+    highlightL = XCreateSimpleWindow(dpy, root, 0, 0, 1, 1, 1, col, col);
+    highlightR = XCreateSimpleWindow(dpy, root, 0, 0, 1, 1, 1, col, col);
+    highlightT = XCreateSimpleWindow(dpy, root, 0, 0, 1, 1, 1, col, col);
+    highlightB = XCreateSimpleWindow(dpy, root, 0, 0, 1, 1, 1, col, col);
   }
   Client* c = LScr::I->GetClient(open_content_[itemIndex].w);
   if (!c) {
@@ -253,7 +253,7 @@ void Hider::Paint() {
     const int y = i * itemHeight;
     const int textY = y + g_font->ascent + MENU_Y_PADDING / 2;
     drawString(popup, menuLMargin(), textY, open_content_[i].name,
-               &g_font_black);
+               &g_font_popup_colour);
     // Show a dotted line to separate the last hidden window from the first
     // non-hidden one.
     if (!open_content_[i].hidden && (i == 0 || open_content_[i - 1].hidden)) {

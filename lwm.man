@@ -95,6 +95,21 @@ background colour of inactive windows' title bars and borders
 .TP 12
 .B windowHighlightColour
 colour of the box showing window outlines from the window list menu
+.TP 12
+.B titleColour
+colour of the title bar text in the active window
+.TP 12
+.B inactiveTitleColour
+colour of the title bar text in inactive windows
+.TP 12
+.B closeIconColour
+colour of the close icon (only shown in the active window)
+.TP 12
+.B popupTextColour
+text colour of the popup window (unhide menu and resizing popup)
+.TP 12
+.B popupBackgroundColour
+background colour of the popup window
 .SH "SEE ALSO"
 .PP
 X(7)
