@@ -52,6 +52,9 @@ for the X (close icon) foreground and the title bar text (both on focused and
 unfocused windows). Also (possibly less urgently) the menu foreground and
 background.
 
+Detect when mouse pointer switches between displays (for multiple xrandr
+monitors) and bring up some visual indication of where the pointer has gone.
+
 Make the size of the mouse pointer configurable. Some people have poor vision,
 and would benefit from a larger pointer (and 4k displays exacerbate this).
 
