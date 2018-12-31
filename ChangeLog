@@ -6,6 +6,10 @@ Change Log for "lwm"
 	for tracking input focus with a proper focus-tracking class, that can
 	maintain more than one item of history. By cleaning the focus-tracking
 	code up, the annoying Terminator focus bug now goes away.
+	
+	Changed the close icon action bounds to be larger, down to the client
+	window and across to the title bar area, which works more nicely
+	particularly on large 4k screens.
 
 
 2018-12-08	pn	Basel

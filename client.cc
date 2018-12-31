@@ -35,16 +35,26 @@ Edge interacting_edge;
 
 static void sendClientMessage(Window, Atom, long, long);
 
-Rect closeBounds() {
-  const int quarter = (borderWidth() + textHeight()) / 4;
-  const int cMin = quarter + 2;
-  const int cMax = 3 * quarter;
-  return Rect{cMin, cMin, cMax, cMax};
-}
-
 // Returns the total height, in pixels, of the window title bar.
 int titleBarHeight() {
   return textHeight() + borderWidth();
+}
+
+// closeBounds returns the bounding box of the close icon cross.
+// If displayBounds is true, the returned box is the cross itself; if false,
+// it's the active area (which extends down to the client window, and across
+// to the start of the title bar).
+// The reason for the difference is simple usability: particularly on large 4k
+// displays, it's tricky to hit the cross itself, and easy to instead click on
+// the area below and to the right of the cross, which would result in the
+// window being resized. However, resizing from that position seems weird; one
+// would more naturally pick the outer edge for such an action, so it makes
+// more sense to have that close the window too.
+Rect closeBounds(bool displayBounds) {
+  const int quarter = (borderWidth() + textHeight()) / 4;
+  const int cMin = quarter + 2;
+  const int cMax = displayBounds ? 3 * quarter : titleBarHeight();
+  return Rect{cMin, cMin, cMax, cMax};
 }
 
 Rect titleBarBounds(int windowWidth) {
@@ -124,7 +134,7 @@ Edge Client::EdgeAt(Window w, int x, int y) const {
   if (w != parent) {
     return EContents;
   }
-  if (closeBounds().contains(x, y)) {
+  if (closeBounds(false).contains(x, y)) { // false -> get action bounds.
     return EClose;
   }
   if (titleBarBounds(size.width).contains(x, y)) {
@@ -173,7 +183,7 @@ void Client::DrawBorder() {
 
   if (active) {
     // Cross for the close icon.
-    const Rect r = closeBounds();
+    const Rect r = closeBounds(true); // true -> get display bounds.
     XDrawLine(dpy, parent, lscr->GetGC(), r.xMin, r.yMin, r.xMax, r.yMax);
     XDrawLine(dpy, parent, lscr->GetGC(), r.xMin, r.yMax, r.xMax, r.yMin);
 
