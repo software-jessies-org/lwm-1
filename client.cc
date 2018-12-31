@@ -29,8 +29,8 @@
 #include "lwm.h"
 #include "xlib.h"
 
-Client* current;
-Client* last_focus = NULL;
+static Client* current;
+static Client* last_focus = NULL;
 
 static int popup_width;  // The width of the size-feedback window.
 
@@ -693,4 +693,13 @@ extern void Client_Focus(Client* c, Time time) {
 
 void Client::SetName(const char* c, int len) {
   name_ = (c && len) ? std::string(c, len) : "";
+}
+
+bool Client::HasFocus() const {
+  return this == current;
+}
+
+// static
+Client* Client::FocusedClient() {
+  return current;
 }

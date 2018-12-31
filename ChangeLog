@@ -1,6 +1,13 @@
 Change Log for "lwm"
 
 
+2018-12-31	pn	Basel
+	Removed the global 'current' Client pointer. There are still a few
+	places outside client.cc where it's needed, so there's an accessor
+	function, but at least it's easier to search for. Mostly to do with
+	colourmap scum.
+
+
 2018-12-08	pn	Basel
 	Updated this ChangeLog from the log I'd been keeping elsewhere.
 

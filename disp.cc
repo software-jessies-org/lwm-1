@@ -215,13 +215,13 @@ static void expose(XEvent* ev) {
   if (w == LScr::I->Popup()) {
     if (mode == wm_menu_up) {
       LScr::I->GetHider()->Paint();
-    } else if (mode == wm_reshaping && current != 0) {
+    } else if (mode == wm_reshaping) {
       size_expose();
     }
   } else {
     Client* c = LScr::I->GetClient(w);
     if (c != 0) {
-      Client_DrawBorder(c, c == current);
+      Client_DrawBorder(c, c->HasFocus());
     }
   }
 }
@@ -335,7 +335,7 @@ static void maprequest(XEvent* ev) {
     DBGF("MapRequest for non-existent window: %lx!", c->window);
     return;
   }
-  
+
   if (c->hidden) {
     c->Unhide();
   }
@@ -373,7 +373,7 @@ static void unmap(XEvent* ev) {
   if (c == nullptr) {
     return;
   }
-  
+
   // In the description of the ReparentWindow request we read: "If the window
   // is mapped, an UnmapWindow request is performed automatically first". This
   // might seem stupid, but it's the way it is. While a reparenting is pending
@@ -608,7 +608,7 @@ static void colormap(XEvent* ev) {
     Client* c = LScr::I->GetClient(e->window);
     if (c) {
       c->cmap = e->colormap;
-      if (c == current) {
+      if (c->HasFocus()) {
         cmapfocus(c);
       }
     } else {
@@ -632,7 +632,7 @@ static void property(XEvent* ev) {
     getNormalHints(c);
   } else if (e->atom == wm_colormaps) {
     getColourmaps(c);
-    if (c == current) {
+    if (c->HasFocus()) {
       cmapfocus(c);
     }
   } else if (e->atom == ewmh_atom[_NET_WM_STRUT]) {
@@ -672,13 +672,13 @@ static void focuschange(XEvent* ev) {
   int revert_to;
   XGetInputFocus(dpy, &focus_window, &revert_to);
   if (focus_window == PointerRoot || focus_window == None) {
-    if (current) {
+    if (Client::FocusedClient()) {
       Client_Focus(NULL, CurrentTime);
     }
     return;
   }
   Client* c = LScr::I->GetClient(focus_window);
-  if (c && c != current) {
+  if (c && !c->HasFocus()) {
     Client_Focus(c, CurrentTime);
   }
 }
@@ -696,7 +696,7 @@ static void enter(XEvent* ev) {
     XChangeWindowAttributes(dpy, c->parent, CWCursor, &attr);
     c->cursor = ENone;
   }
-  if (c != current && !c->hidden) {
+  if (!c->HasFocus() && !c->hidden) {
     // Entering a new window in enter focus mode, so take focus
     Client_Focus(c, ev->xcrossing.time);
   }
@@ -734,7 +734,8 @@ void reshaping_motionnotify(XEvent* ev) {
   int odx;  // Original width.
   int ody;  // Original height.
 
-  if (mode != wm_reshaping || !current) {
+  Client* c = Client::FocusedClient();
+  if (mode != wm_reshaping || !c) {
     return;
   }
 
@@ -753,57 +754,55 @@ void reshaping_motionnotify(XEvent* ev) {
   }
 
   if (interacting_edge != ENone) {
-    nx = ox = current->size.x;
-    ny = oy = current->size.y;
-    ndx = odx = current->size.width;
-    ndy = ody = current->size.height;
+    nx = ox = c->size.x;
+    ny = oy = c->size.y;
+    ndx = odx = c->size.width;
+    ndy = ody = c->size.height;
 
     Client_SizeFeedback();
 
     // Vertical.
     if (isTopEdge(interacting_edge)) {
       mp.y += textHeight();
-      ndy += (current->size.y - mp.y);
+      ndy += (c->size.y - mp.y);
       ny = mp.y;
     }
     if (isBottomEdge(interacting_edge)) {
-      ndy = mp.y - current->size.y;
+      ndy = mp.y - c->size.y;
     }
 
     // Horizontal.
     if (isRightEdge(interacting_edge)) {
-      ndx = mp.x - current->size.x;
+      ndx = mp.x - c->size.x;
     }
     if (isLeftEdge(interacting_edge)) {
-      ndx += (current->size.x - mp.x);
+      ndx += (c->size.x - mp.x);
       nx = mp.x;
     }
 
-    Client_MakeSane(current, interacting_edge, &nx, &ny, &ndx, &ndy);
-    XMoveResizeWindow(dpy, current->parent, current->size.x,
-                      current->size.y - textHeight(), current->size.width,
-                      current->size.height + textHeight());
-    if (current->size.width == odx && current->size.height == ody) {
-      if (current->size.x != ox || current->size.y != oy) {
-        sendConfigureNotify(current);
+    Client_MakeSane(c, interacting_edge, &nx, &ny, &ndx, &ndy);
+    XMoveResizeWindow(dpy, c->parent, c->size.x, c->size.y - textHeight(),
+                      c->size.width, c->size.height + textHeight());
+    if (c->size.width == odx && c->size.height == ody) {
+      if (c->size.x != ox || c->size.y != oy) {
+        sendConfigureNotify(c);
       }
     } else {
       const int border = borderWidth();
-      XMoveResizeWindow(dpy, current->window, border, border + textHeight(),
-                        current->size.width - 2 * border,
-                        current->size.height - 2 * border);
+      XMoveResizeWindow(dpy, c->window, border, border + textHeight(),
+                        c->size.width - 2 * border,
+                        c->size.height - 2 * border);
     }
   } else {
     nx = mp.x + start_x;
     ny = mp.y + start_y;
 
-    Client_MakeSane(current, interacting_edge, &nx, &ny, 0, 0);
-    if (current->framed) {
-      XMoveWindow(dpy, current->parent, current->size.x,
-                  current->size.y - textHeight());
+    Client_MakeSane(c, interacting_edge, &nx, &ny, 0, 0);
+    if (c->framed) {
+      XMoveWindow(dpy, c->parent, c->size.x, c->size.y - textHeight());
     } else {
-      XMoveWindow(dpy, current->parent, current->size.x, current->size.y);
+      XMoveWindow(dpy, c->parent, c->size.x, c->size.y);
     }
-    sendConfigureNotify(current);
+    sendConfigureNotify(c);
   }
 }

@@ -218,7 +218,10 @@ class Client {
   bool IsHidden() const { return state_ == IconicState; }
   bool IsWithdrawn() const { return state_ == WithdrawnState; }
   bool IsNormal() const { return state_ == NormalState; }
-
+  
+  bool HasFocus() const;
+  static Client* FocusedClient();
+  
  private:
   int state_;  // Window state. See ICCCM and <X11/Xutil.h>
  public:
@@ -512,7 +515,6 @@ extern void Client_EnterFullScreen(Client* c);
 extern void Client_ExitFullScreen(Client* c);
 extern void Client_Focus(Client* c, Time time);
 extern void Client_ResetAllCursors();
-extern Client* current;
 
 /* disp.cc */
 extern void dispatch(XEvent*);

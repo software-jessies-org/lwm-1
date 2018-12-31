@@ -101,7 +101,7 @@ void Hider::Hide(Client* c) {
   c->hidden = true;
 
   // If the window was the current window, it isn't any more...
-  if (c == current) {
+  if (c->HasFocus()) {
     Client_Focus(NULL, CurrentTime);
   }
   c->SetState(IconicState);
@@ -311,7 +311,5 @@ void Hider::MouseRelease(XEvent* ev) {
   Unhide(c);
   // Colourmap scum? Is the following really needed? I'd imagine this is the
   // wrong place for this to be done, anyway.
-  if (current) {
-    cmapfocus(current);
-  }
+  cmapfocus(Client::FocusedClient());
 }
