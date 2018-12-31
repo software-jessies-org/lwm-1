@@ -671,34 +671,16 @@ static void focuschange(XEvent* ev) {
   Window focus_window;
   int revert_to;
   XGetInputFocus(dpy, &focus_window, &revert_to);
-  if (focus_window == PointerRoot || focus_window == None) {
-    if (Client::FocusedClient()) {
-      Client_Focus(NULL, CurrentTime);
-    }
-    return;
-  }
   Client* c = LScr::I->GetClient(focus_window);
-  if (c && !c->HasFocus()) {
-    Client_Focus(c, CurrentTime);
+  if (c) {
+    LScr::I->GetFocuser()->FocusClient(c);
   }
 }
 
 static void enter(XEvent* ev) {
-  Client* c = LScr::I->GetClient(ev->xcrossing.window);
-  if (c == 0 || mode != wm_idle) {
-    return;
-  }
-
-  if (c->framed) {
-    XSetWindowAttributes attr;
-
-    attr.cursor = LScr::I->Cursors()->Root();
-    XChangeWindowAttributes(dpy, c->parent, CWCursor, &attr);
-    c->cursor = ENone;
-  }
-  if (!c->HasFocus() && !c->hidden) {
-    // Entering a new window in enter focus mode, so take focus
-    Client_Focus(c, ev->xcrossing.time);
+  if (mode == wm_idle) {
+    LScr::I->GetFocuser()->EnterWindow(ev->xcrossing.window,
+                                       ev->xcrossing.time);
   }
 }
 

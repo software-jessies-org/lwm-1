@@ -115,6 +115,11 @@ void LScr::scanWindowTree() {
   for (const Window w : wt.children) {
     addClient(w);
   }
+  // Tell all the clients to draw their window furniture. We do that now, after
+  // we've scanned the window tree, so everything is in its final state.
+  for (auto it : clients_) {
+    it.second->DrawBorder();
+  }
 }
 
 Client* LScr::GetOrAddClient(Window w) {
@@ -187,6 +192,7 @@ Client* LScr::GetClient(Window w) const {
 }
 
 void LScr::Remove(Client* c) {
+  focuser_.UnfocusClient(c);
   auto it = clients_.find(c->window);
   if (it == clients_.end()) {
     return;

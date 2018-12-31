@@ -99,11 +99,8 @@ void Hider::Hide(Client* c) {
   XUnmapWindow(dpy, c->window);
 
   c->hidden = true;
-
-  // If the window was the current window, it isn't any more...
-  if (c->HasFocus()) {
-    Client_Focus(NULL, CurrentTime);
-  }
+  // Remove input focus, and drop from focus history.
+  LScr::I->GetFocuser()->UnfocusClient(c);
   c->SetState(IconicState);
 }
 
@@ -123,8 +120,8 @@ void Hider::Unhide(Client* c) {
   XMapWindow(dpy, c->window);
   Client_Raise(c);
   c->SetState(NormalState);
-  // It feels right that the unhidden window gets focus always.
-  Client_Focus(c, CurrentTime);
+  // Windows are given input focus when they're unhidden.
+  LScr::I->GetFocuser()->FocusClient(c);
 }
 
 static int menuItemHeight() {

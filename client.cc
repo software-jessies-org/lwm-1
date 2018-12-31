@@ -29,9 +29,6 @@
 #include "lwm.h"
 #include "xlib.h"
 
-static Client* current;
-static Client* last_focus = NULL;
-
 static int popup_width;  // The width of the size-feedback window.
 
 Edge interacting_edge;
@@ -208,29 +205,11 @@ void Client_Remove(Client* c) {
   if (c == 0) {
     return;
   }
-  // Note: here was some code to unhide the menu (without unhiding it) to remove
-  // it from the linked list. This should no longer be required, as we just
-  // reference windows by their ID (and keep a copy of their name) in the menu
-  // structure itself.
-
-  // Take note of any special status this window had, and then nullify all the
-  // ugly global variables that currently point to it. This prevents the
-  // structure's future use in other code, which can cause crashes.
-  const bool wasCurrent = c == current;
-  const bool wasLastFocus = (current == NULL && c == last_focus);
-  current = last_focus = nullptr;
-
-  // A deleted window can no longer be the current window.
-  if (wasCurrent || wasLastFocus) {
-    Client* focus = NULL;
-
-    // As pointed out by J. Han, if a window disappears while it's
-    // being reshaped you need to get rid of the size indicator.
-    if (wasCurrent && mode == wm_reshaping) {
-      XUnmapWindow(dpy, LScr::I->Popup());
-      mode = wm_idle;
-    }
-    Client_Focus(focus, CurrentTime);
+  // As pointed out by J. Han, if a window disappears while it's
+  // being reshaped you need to get rid of the size indicator.
+  if (c->HasFocus() && mode == wm_reshaping) {
+    XUnmapWindow(dpy, LScr::I->Popup());
+    mode = wm_idle;
   }
 
   if (c->parent != LScr::I->Root()) {
@@ -399,27 +378,30 @@ void Client_SizeFeedback() {
 }
 
 void size_expose() {
-  int width = current->size.width - 2 * borderWidth();
-  int height = current->size.height - 2 * borderWidth();
+  Client* c = LScr::I->GetFocuser()->GetFocusedClient();
+  if (!c) {
+    return;
+  }
+  int width = c->size.width - 2 * borderWidth();
+  int height = c->size.height - 2 * borderWidth();
 
   // This dance ensures that we report 80x24 for an xterm even when
   // it has a scrollbar.
-  if (current->size.flags & (PMinSize | PBaseSize) &&
-      current->size.flags & PResizeInc) {
-    if (current->size.flags & PBaseSize) {
-      width -= current->size.base_width;
-      height -= current->size.base_height;
+  if (c->size.flags & (PMinSize | PBaseSize) && c->size.flags & PResizeInc) {
+    if (c->size.flags & PBaseSize) {
+      width -= c->size.base_width;
+      height -= c->size.base_height;
     } else {
-      width -= current->size.min_width;
-      height -= current->size.min_height;
+      width -= c->size.min_width;
+      height -= c->size.min_height;
     }
   }
 
-  if (current->size.width_inc != 0) {
-    width /= current->size.width_inc;
+  if (c->size.width_inc != 0) {
+    width /= c->size.width_inc;
   }
-  if (current->size.height_inc != 0) {
-    height /= current->size.height_inc;
+  if (c->size.height_inc != 0) {
+    height /= c->size.height_inc;
   }
 
   const std::string text = makeSizeString(width, height);
@@ -565,7 +547,7 @@ extern void Client_ColourMap(XEvent* e) {
     for (int i = 0; i < c->ncmapwins; i++) {
       if (c->cmapwins[i] == e->xcolormap.window) {
         c->wmcmaps[i] = e->xcolormap.colormap;
-        if (c == current) {
+        if (c->HasFocus()) {
           cmapfocus(c);
         }
         return;
@@ -629,63 +611,103 @@ extern void Client_ExitFullScreen(Client* c) {
   sendConfigureNotify(c);
 }
 
-extern void Client_Focus(Client* c, Time time) {
-  std::vector<Client*> redraw;
-  if (current) {
-    redraw.push_back(current);
-    XDeleteProperty(dpy, LScr::I->Root(), ewmh_atom[_NET_ACTIVE_WINDOW]);
-  }
-
-  // If c != NULL, and we have a current window, store current as being the
-  // last_focused window, so that later we can restore focus to it if c closes.
-  if (c && current) {
-    last_focus = current;
-  }
-  // If c == NULL, then we should instead try to restore focus to last_focus,
-  // if it is not itself NULL.
-  if (!c && last_focus) {
-    c = last_focus;
-    last_focus = NULL;
-  }
-  current = c;
-  if (c) {
-    redraw.push_back(c);
-    // There was a check for 'c->IsHidden()' here. Needed?
-    if (c->accepts_focus) {
-      XSetInputFocus(dpy, c->window, RevertToPointerRoot, CurrentTime);
-      // Also send focus messages to child windows that can receive
-      // focus events.
-      // This fixes a bug in focus-follows-mouse whereby Java apps,
-      // which have a child window called FocusProxy which must be
-      // given the focus event, would not get input focus when the
-      // mouse was moved into them.
-      focusChildrenOf(c->window);
-      if (c->proto & Ptakefocus) {
-        sendClientMessage(c->window, wm_protocols, wm_take_focus, time);
-      }
-      cmapfocus(c);
-    } else {
-      // FIXME: is this sensible?
-      XSetInputFocus(dpy, None, RevertToPointerRoot, CurrentTime);
-    }
-    XChangeProperty(dpy, LScr::I->Root(), ewmh_atom[_NET_ACTIVE_WINDOW],
-                    XA_WINDOW, 32, PropModeReplace,
-                    (unsigned char*)&current->window, 1);
-  }
-  for (Client* c : redraw) {
-    c->DrawBorder();
-  }
-}
-
 void Client::SetName(const char* c, int len) {
   name_ = (c && len) ? std::string(c, len) : "";
 }
 
 bool Client::HasFocus() const {
-  return this == current;
+  return this == LScr::I->GetFocuser()->GetFocusedClient();
 }
 
 // static
 Client* Client::FocusedClient() {
-  return current;
+  return LScr::I->GetFocuser()->GetFocusedClient();
+}
+
+void Focuser::EnterWindow(Window w, Time time) {
+  // If the window being entered is still part of the same client, we do
+  // nothing. This avoids giving focus to a window in the following situation:
+  // 1: Mouse pointer is over window X.
+  // 2: Window Y is opened and is given focus.
+  // 3: Mouse pointer is moved such that it crosses into a different window in
+  //    the client of X.
+  // In this situation, window Y should still keep focus.
+  Client* c = LScr::I->GetClient(w);
+  const Window le = last_entered_;
+  last_entered_ = w;
+  if (!c || (c == LScr::I->GetClient(le))) {
+    return;  // No change in pointed-at client, so we have nothing to do.
+  }
+  FocusClient(c, time);
+}
+
+void Focuser::UnfocusClient(Client* c) {
+  const bool had_focus = c->HasFocus();
+  removeFromHistory(c);
+  if (!had_focus) {
+    return;
+  }
+  // The given client used to have input focus; give focus to the next in line.
+  if (focus_history_.empty()) {
+    return;  // No one left to give focus to.
+  }
+  reallyFocusClient(focus_history_.front(), CurrentTime);
+}
+
+void Focuser::FocusClient(Client* c, Time time) {
+  // If this window is already focused, ignore.
+  if (!c->HasFocus()) {
+    reallyFocusClient(c, time);
+  }
+}
+
+void Focuser::reallyFocusClient(Client* c, Time time) {
+  Client* was_focused = GetFocusedClient();
+  removeFromHistory(c);
+  focus_history_.push_front(c);
+  
+  XDeleteProperty(dpy, LScr::I->Root(), ewmh_atom[_NET_ACTIVE_WINDOW]);
+  // There was a check for 'c->IsHidden()' here. Needed?
+  if (c->accepts_focus) {
+    XSetInputFocus(dpy, c->window, RevertToPointerRoot, CurrentTime);
+    // Also send focus messages to child windows that can receive
+    // focus events.
+    // This fixes a bug in focus-follows-mouse whereby Java apps,
+    // which have a child window called FocusProxy which must be
+    // given the focus event, would not get input focus when the
+    // mouse was moved into them.
+    focusChildrenOf(c->window);
+    if (c->proto & Ptakefocus) {
+      sendClientMessage(c->window, wm_protocols, wm_take_focus, time);
+    }
+    cmapfocus(c);
+  } else {
+    // FIXME: is this sensible?
+    XSetInputFocus(dpy, None, RevertToPointerRoot, CurrentTime);
+  }
+  XChangeProperty(dpy, LScr::I->Root(), ewmh_atom[_NET_ACTIVE_WINDOW],
+                  XA_WINDOW, 32, PropModeReplace, (unsigned char*)&c->window,
+                  1);
+  
+  if (was_focused && (was_focused != c)) {
+    was_focused->DrawBorder();
+  }
+  c->DrawBorder();
+}
+
+void Focuser::removeFromHistory(Client* c) {
+  for (std::list<Client*>::iterator it = focus_history_.begin();
+       it != focus_history_.end(); it++) {
+    if (*it == c) {
+      focus_history_.erase(it);
+      return;
+    }
+  }
+}
+
+Client* Focuser::GetFocusedClient() {
+  if (focus_history_.empty()) {
+    return nullptr;
+  }
+  return focus_history_.front();
 }

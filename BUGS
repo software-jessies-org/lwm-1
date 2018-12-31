@@ -18,13 +18,6 @@ windows in.
 
 === THINGS THAT LOOK SILLY ===
 
-On start-up, every window looks focused.
-
-Focus display bug in Terminator: use shift-alt-t (run command in new tab). This
-opens a popup to type or select a command to run. Do that, and hit Return. The
-new tab opens, and gets input focus, but the LWM border is drawn as if it
-doesn't have focus.
-
 Chrome uses a way of specifying its icon that we don't support. Interestingly,
 running 'xprop' on one of the Chrome windows yields a massive ascii-art icon.
 We should add support for this.
@@ -54,11 +47,6 @@ and would benefit from a larger pointer (and 4k displays exacerbate this).
 
 
 === CLEANUPS ===
-
-The way the current window is tracked is using a global 'current' pointer and
-a 'last_focus'. This is not a good way to deal with the focus history. Not
-to mention the fact that keeping pointers to objects can lead to crashes, if
-they're not forcibly nulled at the right moment.
 
 The way disp.cc keeps track of the mode is not very OO. Maybe this could be
 refactored, so we don't have to have a global 'mode' variable.

@@ -324,6 +324,46 @@ class Hider {
   Window highlightB = 0;
 };
 
+class Focuser {
+ public:
+  Focuser() = default;
+  
+  // Notification that the mouse pointer has entered a window. This may or may
+  // not result in a change of input focus.
+  void EnterWindow(Window w, Time time);
+  
+  // Forces the focuser to forget the given client (either because the window
+  // has been hidden or destroyed). If this was the currently-focused client,
+  // focus will be transferred to the previously-focused client.
+  void UnfocusClient(Client* c);
+  
+  // Forcibly gives focus to a client (possibly because the client requested it,
+  // possibly because it's just been unhidden or created). Does nothing if the
+  // given client already has input focus.
+  void FocusClient(Client* c, Time time = CurrentTime);
+  
+  Client* GetFocusedClient();
+  
+ private:
+  void removeFromHistory(Client* c);
+  
+  // Does the actual work of FocusClient, except without the safety-check for
+  // 'do we currently have focus?'. This is needed to make the refocusing of
+  // older-focused clients work when a window closes.
+  void reallyFocusClient(Client* c, Time time);
+  
+  // last_entered_ is the last window the mouse pointer was seen entering. It
+  // is *NOT* necessarily the window with input focus. In fact, if a new window
+  // was opened and was given focus, the pointer may be over a completely
+  // different (and unfocused) window.
+  Window last_entered_;
+  
+  // The following list contains the history of focused windows. The Focuser
+  // is notified of all window destructions, and must keep this list free of
+  // Client pointers that are no longer valid.
+  std::list<Client*> focus_history_;
+};
+
 // Screen information.
 class LScr {
  public:
@@ -373,7 +413,8 @@ class LScr {
   void Remove(Client* client);
 
   Hider* GetHider() { return &hider_; }
-
+  Focuser* GetFocuser() { return &focuser_; }
+  
   // Clients() returns the map of all clients, for iteration.
   const std::map<Window, Client*>& Clients() const { return clients_; }
 
@@ -397,6 +438,7 @@ class LScr {
   CursorMap* cursor_map_;
 
   Hider hider_;
+  Focuser focuser_;
 
   // The clients_ map is keyed by the top-level client Window ID. The values
   // are owned.
@@ -514,7 +556,6 @@ extern void Client_FreeAll();
 extern void Client_ColourMap(XEvent*);
 extern void Client_EnterFullScreen(Client* c);
 extern void Client_ExitFullScreen(Client* c);
-extern void Client_Focus(Client* c, Time time);
 extern void Client_ResetAllCursors();
 
 /* disp.cc */
