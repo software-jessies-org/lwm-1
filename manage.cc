@@ -106,7 +106,7 @@ void manage(Client* c) {
   if (hints && (hints->flags & InputHint)) {
     c->accepts_focus = hints->input;
   }
-  if (c->proto | Ptakefocus) {
+  if (c->proto & Ptakefocus) {
     // WM_TAKE_FOCUS overrides normal hints
     c->accepts_focus = true;
   }
