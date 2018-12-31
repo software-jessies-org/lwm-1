@@ -500,7 +500,6 @@ extern bool printDebugPrefix(char const* filename, int line);
 extern Edge interacting_edge;
 extern void Client_MakeSane(Client*, Edge, int*, int*, int*, int*);
 extern void Client_DrawBorder(Client*, int);
-extern void setactive(Client*, int, long);
 extern void Client_SizeFeedback();
 extern void size_expose();
 extern void Client_ReshapeEdge(Client*, Edge);

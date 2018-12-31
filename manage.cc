@@ -261,7 +261,6 @@ void manage(Client* c) {
     c->hidden = false;
     XMapWindow(dpy, c->parent);
     XMapWindow(dpy, c->window);
-    setactive(c, 1, 0L);
     c->SetState(NormalState);
   }
 

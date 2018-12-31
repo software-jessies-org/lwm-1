@@ -158,7 +158,7 @@ static void focusChildrenOf(Window parent) {
   }
 }
 
-void setactive(Client* c, int on, long timestamp) {
+static void setactive(Client* c, int on, long timestamp) {
   if (c == 0 || c->IsHidden()) {
     return;
   }
