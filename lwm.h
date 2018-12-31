@@ -222,6 +222,9 @@ class Client {
   bool HasFocus() const;
   static Client* FocusedClient();
   
+  // Draws the contents of the furniture window.
+  void DrawBorder();
+  
  private:
   int state_;  // Window state. See ICCCM and <X11/Xutil.h>
  public:
@@ -499,7 +502,6 @@ extern bool printDebugPrefix(char const* filename, int line);
 /* client.cc */
 extern Edge interacting_edge;
 extern void Client_MakeSane(Client*, Edge, int*, int*, int*, int*);
-extern void Client_DrawBorder(Client*, int);
 extern void Client_SizeFeedback();
 extern void size_expose();
 extern void Client_ReshapeEdge(Client*, Edge);

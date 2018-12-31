@@ -429,7 +429,7 @@ void getWindowName(Client* c) {
   const std::string old_name = c->Name();
   ewmh_get_window_name(c);
   if (old_name != c->Name()) {
-    Client_DrawBorder(c, c->HasFocus());
+    c->DrawBorder();
   }
 }
 

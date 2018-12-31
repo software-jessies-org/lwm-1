@@ -158,70 +158,34 @@ static void focusChildrenOf(Window parent) {
   }
 }
 
-static void setactive(Client* c, int on, long timestamp) {
-  if (c == 0 || c->IsHidden()) {
+void Client::DrawBorder() {
+  if (!framed) {
     return;
   }
-
-  const int inhibit = !c->framed;
-
-  if (!inhibit) {
-    XMoveResizeWindow(dpy, c->parent, c->size.x, c->size.y - textHeight(),
-                      c->size.width, c->size.height + textHeight());
-    XMoveWindow(dpy, c->window, borderWidth(), borderWidth() + textHeight());
-    sendConfigureNotify(c);
-  }
-
-  if (on && c->accepts_focus) {
-    XSetInputFocus(dpy, c->window, RevertToPointerRoot, CurrentTime);
-    // Also send focus messages to child windows that can receive
-    // focus events.
-    // This fixes a bug in focus-follows-mouse whereby Java apps,
-    // which have a child window called FocusProxy which must be
-    // given the focus event, would not get input focus when the
-    // mouse was moved into them.
-    focusChildrenOf(c->window);
-    if (c->proto & Ptakefocus) {
-      sendClientMessage(c->window, wm_protocols, wm_take_focus, timestamp);
-    }
-    cmapfocus(c);
-  }
-
-  // FIXME: is this sensible?
-  if (on && !c->accepts_focus) {
-    XSetInputFocus(dpy, None, RevertToPointerRoot, CurrentTime);
-  }
-
-  if (!inhibit) {
-    Client_DrawBorder(c, on);
-  }
-}
-
-void Client_DrawBorder(Client* c, int active) {
   const int quarter = (titleBarHeight()) / 4;
 
   LScr* lscr = LScr::I;
-  if (c->parent == lscr->Root() || c->parent == 0 || !c->framed ||
-      c->wstate.fullscreen) {
+  if (parent == lscr->Root() || parent == 0 || !framed || wstate.fullscreen) {
     return;
   }
 
-  XSetWindowBackground(dpy, c->parent,
+  const bool active = HasFocus();
+  XSetWindowBackground(dpy, parent,
                        active ? lscr->ActiveBorder() : lscr->InactiveBorder());
-  XClearWindow(dpy, c->parent);
+  XClearWindow(dpy, parent);
 
   if (active) {
     // Cross for the close icon.
     const Rect r = closeBounds();
-    XDrawLine(dpy, c->parent, lscr->GetGC(), r.xMin, r.yMin, r.xMax, r.yMax);
-    XDrawLine(dpy, c->parent, lscr->GetGC(), r.xMin, r.yMax, r.xMax, r.yMin);
+    XDrawLine(dpy, parent, lscr->GetGC(), r.xMin, r.yMin, r.xMax, r.yMax);
+    XDrawLine(dpy, parent, lscr->GetGC(), r.xMin, r.yMax, r.xMax, r.yMin);
 
     // Give the title a nice background, and differentiate it from the
     // rest of the furniture to show it acts differently (moves the window
     // rather than resizing it).
     const int x = borderWidth() + 3 * quarter;
-    const int w = c->size.width - 2 * x;
-    XFillRectangle(dpy, c->parent, lscr->GetTitleGC(), x, 0, w,
+    const int w = size.width - 2 * x;
+    XFillRectangle(dpy, parent, lscr->GetTitleGC(), x, 0, w,
                    textHeight() + borderWidth());
   }
 
@@ -230,14 +194,14 @@ void Client_DrawBorder(Client* c, int active) {
   int y = borderWidth() / 2 + g_font->ascent;
 
   // Do we have an icon? If so, draw it to the left of the title text.
-  if (c->Icon()) {
-    c->Icon()->Paint(c->parent, x, 0, titleBarHeight(), titleBarHeight());
+  if (Icon()) {
+    Icon()->Paint(parent, x, 0, titleBarHeight(), titleBarHeight());
     x += titleBarHeight();  // Title bar text must come after.
   }
 
   // Draw window title.
   XftColor* color = active ? &g_font_active_title : &g_font_inactive_title;
-  drawString(c->parent, x, y, c->Name(), color);
+  drawString(parent, x, y, Name(), color);
 }
 
 void Client_Remove(Client* c) {
@@ -666,8 +630,9 @@ extern void Client_ExitFullScreen(Client* c) {
 }
 
 extern void Client_Focus(Client* c, Time time) {
+  std::vector<Client*> redraw;
   if (current) {
-    setactive(current, 0, 0L);
+    redraw.push_back(current);
     XDeleteProperty(dpy, LScr::I->Root(), ewmh_atom[_NET_ACTIVE_WINDOW]);
   }
 
@@ -684,10 +649,31 @@ extern void Client_Focus(Client* c, Time time) {
   }
   current = c;
   if (c) {
-    setactive(current, 1, time);
+    redraw.push_back(c);
+    // There was a check for 'c->IsHidden()' here. Needed?
+    if (c->accepts_focus) {
+      XSetInputFocus(dpy, c->window, RevertToPointerRoot, CurrentTime);
+      // Also send focus messages to child windows that can receive
+      // focus events.
+      // This fixes a bug in focus-follows-mouse whereby Java apps,
+      // which have a child window called FocusProxy which must be
+      // given the focus event, would not get input focus when the
+      // mouse was moved into them.
+      focusChildrenOf(c->window);
+      if (c->proto & Ptakefocus) {
+        sendClientMessage(c->window, wm_protocols, wm_take_focus, time);
+      }
+      cmapfocus(c);
+    } else {
+      // FIXME: is this sensible?
+      XSetInputFocus(dpy, None, RevertToPointerRoot, CurrentTime);
+    }
     XChangeProperty(dpy, LScr::I->Root(), ewmh_atom[_NET_ACTIVE_WINDOW],
                     XA_WINDOW, 32, PropModeReplace,
                     (unsigned char*)&current->window, 1);
+  }
+  for (Client* c : redraw) {
+    c->DrawBorder();
   }
 }
 

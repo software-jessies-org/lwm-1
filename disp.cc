@@ -221,7 +221,7 @@ static void expose(XEvent* ev) {
   } else {
     Client* c = LScr::I->GetClient(w);
     if (c != 0) {
-      Client_DrawBorder(c, c->HasFocus());
+      c->DrawBorder();
     }
   }
 }
