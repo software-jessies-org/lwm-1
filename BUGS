@@ -18,14 +18,12 @@ windows in.
 
 === THINGS THAT LOOK SILLY ===
 
-Chrome uses a way of specifying its icon that we don't support. Interestingly,
-running 'xprop' on one of the Chrome windows yields a massive ascii-art icon.
-We should add support for this.
-
-Application icons aren't scaled, so for some of them (eg firefox) we just
-display a weird-looking chunk of their inside. Adding automatic creation of
-scaled copies of app icons would be nice, although I don't want to rope in some
-massive bloated graphics library to do it.
+We scale down large app icons (such as Firefox, Chromium, FreeBSD etc) by using
+simple sub-sampling with no anti-aliasing. This makes them look a little bit
+ugly (although not too bad). We could do much better, maybe by stripping out
+the mask at this time and pre-rendering alpha-blended icons for the 3
+backgrounds we need to support (white for the menu, and the active and inactive
+title bar colours).
 
 
 === ERROR LOGS ===

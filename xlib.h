@@ -46,23 +46,52 @@ class ImageIcon {
   // Create either creates an ImageIcon capable of drawing the icon on a 24bit
   // display, or returns null.
   static ImageIcon* Create(Pixmap img, Pixmap mask);
+  
+  // Create an ImageIcon from an array of unsigned longs.
+  // The format is as used for _NET_WM_ICON, so the first two values are the
+  // width and height, and then there's one value per pixel. There may be more
+  // than one icon, which appears after the first.
+  // Again, returns null if there was a problem.
+  // The data is not freed - that's the caller's job.
+  static ImageIcon* CreateFromPixels(unsigned long* data, unsigned long len);
 
   // Paints this image on the given window, centred within the box given by
   // x, y, w, h.
   void Paint(Window w, int x, int y, int width, int height);
-
+  
  private:
   ImageIcon(Pixmap img,
             Pixmap mask,
             unsigned int img_w,
             unsigned int img_h,
             unsigned int depth);
-
+  
+  ImageIcon* clone() {
+    return new ImageIcon(img_, mask_, img_w_, img_h_, depth_);
+  }
+  
   Pixmap img_;
   Pixmap mask_;
   unsigned int img_w_ = 0;
   unsigned int img_h_ = 0;
   unsigned int depth_ = 0;
+};
+
+// XFreer calls XFree on the data pointer it's constructed with when its
+// destructor is called. This is useful to avoid a massive chain of XFree calls
+// on every possible return path of a function.
+// It is safe to create one of these with a null pointer.
+class XFreer {
+ public:
+  explicit XFreer(void* data) : data_(data) {}
+  ~XFreer() {
+    if (data_) {
+      XFree(data_);
+    }
+  }
+  
+ private:
+  void* data_;
 };
 
 #endif  // LWM_XLIB_H_included

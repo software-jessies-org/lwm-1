@@ -182,6 +182,27 @@ bool ewmh_get_window_name(Client* c) {
   return true;
 }
 
+ImageIcon* ewmh_get_window_icon(Client* c) {
+  Atom rt;
+  unsigned long* data = NULL;
+  int fmt = 0;
+  unsigned long n = 0;
+  unsigned long extra = 0;
+  // Max allowed size for a window icon is 1MiB.
+  int i = XGetWindowProperty(dpy, c->window, ewmh_atom[_NET_WM_ICON], 0,
+                             1 << 20, false, XA_CARDINAL, &rt, &fmt, &n, &extra,
+                             (unsigned char**)&data);
+  if (i != Success || data == nullptr) {
+    return nullptr;
+  }
+  XFreer data_freer(data);
+  if (extra > 0) {
+    fprintf(stderr, "Icon size too large: %d bytes extra\n", int(extra));
+    return nullptr;
+  }
+  return ImageIcon::CreateFromPixels(data, n);
+}
+
 bool ewmh_hasframe(Client* c) {
   switch (c->wtype) {
     case WTypeDesktop:
@@ -445,7 +466,7 @@ static void fix_stack() {
       continue;
     }
     Client_Lower(c);
-    break; // only one desktop, surely
+    break;  // only one desktop, surely
   }
 
   // raise clients with _NET_WM_STATE_ABOVE and docks
@@ -500,7 +521,7 @@ void ewmh_set_client_list() {
   Window* stacked_client_list = NULL;
   if (no_clients > 0) {
     client_list = (Window*)malloc(sizeof(Window) * no_clients);
-    int i = no_clients - 1; // array starts with oldest
+    int i = no_clients - 1;  // array starts with oldest
     for (auto it : LScr::I->Clients()) {
       Client* c = it.second;
       if (valid_for_client_list(c)) {

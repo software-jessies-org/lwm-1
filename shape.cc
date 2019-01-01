@@ -71,9 +71,7 @@ extern int isShaped(Window w) {
 #ifdef SHAPE
   int n;
   int order;
-  XRectangle *rect = XShapeGetRectangles(dpy, w, ShapeBounding, &n, &order);
-  XFree(rect);
-
+  XFree(XShapeGetRectangles(dpy, w, ShapeBounding, &n, &order));
   return (n > 1);
 #else
   w = w;

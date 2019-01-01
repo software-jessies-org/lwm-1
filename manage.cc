@@ -66,8 +66,9 @@ void manage(Client* c) {
   // Get the hints, window name, and normal hints (see ICCCM section 4.1.2.3).
   XWMHints* hints = XGetWMHints(dpy, c->window);
   if (hints) {
-    c->SetIconPixmap(hints->icon_pixmap, hints->icon_mask);
+    c->SetIcon(ImageIcon::Create(hints->icon_pixmap, hints->icon_mask));
   }
+  c->SetIcon(ewmh_get_window_icon(c));
   
   getWindowName(c);
   getNormalHints(c);

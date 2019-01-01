@@ -124,7 +124,7 @@ void Hider::Unhide(Client* c) {
   LScr::I->GetFocuser()->FocusClient(c);
 }
 
-static int menuItemHeight() {
+int menuItemHeight() {
   return textHeight() + MENU_Y_PADDING;
 }
 

@@ -245,8 +245,10 @@ class Client {
   int ncmapwins;
   Window* cmapwins;
   Colormap* wmcmaps;
-
-  void SetIconPixmap(Pixmap icon, Pixmap mask);
+  
+  // SetIcon sets the window's title bar icon. If called with null, it will do
+  // nothing (and leave any previously-set icon in place).
+  void SetIcon(ImageIcon* icon);
   ImageIcon* Icon() { return icon_; }
 
  private:
@@ -557,6 +559,7 @@ extern void Client_ColourMap(XEvent*);
 extern void Client_EnterFullScreen(Client* c);
 extern void Client_ExitFullScreen(Client* c);
 extern void Client_ResetAllCursors();
+extern int titleBarHeight();
 
 /* disp.cc */
 extern void dispatch(XEvent*);
@@ -588,6 +591,7 @@ struct MousePos {
 };
 
 extern MousePos getMousePosition();
+extern int menuItemHeight();
 
 /* shape.cc */
 extern int shapeEvent(XEvent*);
@@ -672,6 +676,7 @@ extern Atom ewmh_atom[];
 extern void ewmh_init();
 extern EWMHWindowType ewmh_get_window_type(Window w);
 extern bool ewmh_get_window_name(Client* c);
+extern ImageIcon* ewmh_get_window_icon(Client* c);
 extern bool ewmh_hasframe(Client* c);
 extern void ewmh_set_state(Client* c);
 extern void ewmh_get_state(Client* c);

@@ -150,8 +150,10 @@ Edge Client::EdgeAt(Window w, int x, int y) const {
   return ENone;
 }
 
-void Client::SetIconPixmap(Pixmap icon, Pixmap mask) {
-  icon_ = ImageIcon::Create(icon, mask);
+void Client::SetIcon(ImageIcon* icon) {
+  if (icon) {
+    icon_ = icon;
+  }
 }
 
 static void focusChildrenOf(Window parent) {
