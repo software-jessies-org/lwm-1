@@ -218,13 +218,13 @@ class Client {
   bool IsHidden() const { return state_ == IconicState; }
   bool IsWithdrawn() const { return state_ == WithdrawnState; }
   bool IsNormal() const { return state_ == NormalState; }
-  
+
   bool HasFocus() const;
   static Client* FocusedClient();
-  
+
   // Draws the contents of the furniture window.
   void DrawBorder();
-  
+
  private:
   int state_;  // Window state. See ICCCM and <X11/Xutil.h>
  public:
@@ -245,7 +245,7 @@ class Client {
   int ncmapwins;
   Window* cmapwins;
   Colormap* wmcmaps;
-  
+
   // SetIcon sets the window's title bar icon. If called with null, it will do
   // nothing (and leave any previously-set icon in place).
   void SetIcon(ImageIcon* icon);
@@ -329,37 +329,37 @@ class Hider {
 class Focuser {
  public:
   Focuser() = default;
-  
+
   // Notification that the mouse pointer has entered a window. This may or may
   // not result in a change of input focus.
   void EnterWindow(Window w, Time time);
-  
+
   // Forces the focuser to forget the given client (either because the window
   // has been hidden or destroyed). If this was the currently-focused client,
   // focus will be transferred to the previously-focused client.
   void UnfocusClient(Client* c);
-  
+
   // Forcibly gives focus to a client (possibly because the client requested it,
   // possibly because it's just been unhidden or created). Does nothing if the
   // given client already has input focus.
   void FocusClient(Client* c, Time time = CurrentTime);
-  
+
   Client* GetFocusedClient();
-  
+
  private:
   void removeFromHistory(Client* c);
-  
+
   // Does the actual work of FocusClient, except without the safety-check for
   // 'do we currently have focus?'. This is needed to make the refocusing of
   // older-focused clients work when a window closes.
   void reallyFocusClient(Client* c, Time time);
-  
+
   // last_entered_ is the last window the mouse pointer was seen entering. It
   // is *NOT* necessarily the window with input focus. In fact, if a new window
   // was opened and was given focus, the pointer may be over a completely
   // different (and unfocused) window.
   Window last_entered_;
-  
+
   // The following list contains the history of focused windows. The Focuser
   // is notified of all window destructions, and must keep this list free of
   // Client pointers that are no longer valid.
@@ -387,7 +387,7 @@ class LScr {
   unsigned long ActiveBorder() const { return active_border_; }
   CursorMap* Cursors() const { return cursor_map_; }
 
-  GC GetGC() { return gc_; }
+  GC GetCloseIconGC(bool active) { return active ? gc_ : inactive_gc_; }
   GC GetMenuGC() { return menu_gc_; }
   GC GetTitleGC() { return title_gc_; }
 
@@ -416,16 +416,16 @@ class LScr {
 
   Hider* GetHider() { return &hider_; }
   Focuser* GetFocuser() { return &focuser_; }
-  
+
   // Clients() returns the map of all clients, for iteration.
   const std::map<Window, Client*>& Clients() const { return clients_; }
 
   // This is used as a static pointer to the global LScr instance, initialised
   // on start-up in lwm.cc.
   static LScr* I;
-  
+
   static constexpr int kOnlyScreenIndex = 0;
-  
+
  private:
   void initEWMH();
   void scanWindowTree();
@@ -459,6 +459,7 @@ class LScr {
   EWMHStrut strut_;  // reserved areas
 
   GC gc_;
+  GC inactive_gc_;
   GC menu_gc_;
   GC title_gc_;
 
@@ -620,6 +621,7 @@ class Resources {
     TITLE_COLOUR,
     INACTIVE_TITLE_COLOUR,
     CLOSE_ICON_COLOUR,
+    INACTIVE_CLOSE_ICON_COLOUR,
     POPUP_TEXT_COLOUR,
     POPUP_BACKGROUND_COLOUR,
     S_END,  // This must be the last.
@@ -634,13 +636,13 @@ class Resources {
 
   // Retrieve a string resource.
   const std::string& Get(SR r);
-  
+
   // Retrieve a string resource as a colour.
   unsigned long GetColour(SR r);
-  
+
   // Retrieve a string resource as an XRenderColor (used for Xft fonts).
   XRenderColor GetXRenderColor(SR r);
-  
+
   // Retrieve an int resource.
   int GetInt(IR r);
 

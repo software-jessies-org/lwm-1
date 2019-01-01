@@ -27,28 +27,26 @@ void LScr::Init() {
   gv.function = GXxor;
   gv.line_width = 2;
   gv.subwindow_mode = IncludeInferiors;
-  menu_gc_ = XCreateGC(
-      dpy_, root_,
-      GCForeground | GCBackground | GCFunction | GCLineWidth | GCSubwindowMode,
-      &gv);
+  const unsigned long gv_mask =
+      GCForeground | GCBackground | GCFunction | GCLineWidth | GCSubwindowMode;
+  menu_gc_ = XCreateGC(dpy_, root_, gv_mask, &gv);
 
   // The GC used for the close button is the same as for the menu, except it
   // uses GXcopy, not GXxor, so we draw the chosen colour correctly.
   gv.foreground = Resources::I->GetColour(Resources::CLOSE_ICON_COLOUR);
   gv.background = white();
   gv.function = GXcopy;
-  gc_ = XCreateGC(
-      dpy_, root_,
-      GCForeground | GCBackground | GCFunction | GCLineWidth | GCSubwindowMode,
-      &gv);
+  gc_ = XCreateGC(dpy_, root_, gv_mask, &gv);
   XSetLineAttributes(dpy, gc_, 2, LineSolid, CapProjecting, JoinMiter);
+
+  gv.foreground =
+      Resources::I->GetColour(Resources::INACTIVE_CLOSE_ICON_COLOUR);
+  inactive_gc_ = XCreateGC(dpy_, root_, gv_mask, &gv);
+  XSetLineAttributes(dpy, inactive_gc_, 2, LineSolid, CapProjecting, JoinMiter);
 
   // The title bar.
   gv.foreground = Resources::I->GetColour(Resources::TITLE_BG_COLOUR);
-  title_gc_ = XCreateGC(
-      dpy_, root_,
-      GCForeground | GCBackground | GCFunction | GCLineWidth | GCSubwindowMode,
-      &gv);
+  title_gc_ = XCreateGC(dpy_, root_, gv_mask, &gv);
 
   // Create the popup window, to be used for the menu, and for the little window
   // that shows us how big windows are while resizing them.

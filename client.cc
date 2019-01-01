@@ -134,7 +134,7 @@ Edge Client::EdgeAt(Window w, int x, int y) const {
   if (w != parent) {
     return EContents;
   }
-  if (closeBounds(false).contains(x, y)) { // false -> get action bounds.
+  if (closeBounds(false).contains(x, y)) {  // false -> get action bounds.
     return EClose;
   }
   if (titleBarBounds(size.width).contains(x, y)) {
@@ -183,12 +183,12 @@ void Client::DrawBorder() {
                        active ? lscr->ActiveBorder() : lscr->InactiveBorder());
   XClearWindow(dpy, parent);
 
+  // Cross for the close icon.
+  const Rect r = closeBounds(true);  // true -> get display bounds.
+  const GC close_gc = lscr->GetCloseIconGC(active);
+  XDrawLine(dpy, parent, close_gc, r.xMin, r.yMin, r.xMax, r.yMax);
+  XDrawLine(dpy, parent, close_gc, r.xMin, r.yMax, r.xMax, r.yMin);
   if (active) {
-    // Cross for the close icon.
-    const Rect r = closeBounds(true); // true -> get display bounds.
-    XDrawLine(dpy, parent, lscr->GetGC(), r.xMin, r.yMin, r.xMax, r.yMax);
-    XDrawLine(dpy, parent, lscr->GetGC(), r.xMin, r.yMax, r.xMax, r.yMin);
-
     // Give the title a nice background, and differentiate it from the
     // rest of the furniture to show it acts differently (moves the window
     // rather than resizing it).
@@ -677,7 +677,7 @@ void Focuser::reallyFocusClient(Client* c, Time time) {
   Client* was_focused = GetFocusedClient();
   removeFromHistory(c);
   focus_history_.push_front(c);
-  
+
   XDeleteProperty(dpy, LScr::I->Root(), ewmh_atom[_NET_ACTIVE_WINDOW]);
   // There was a check for 'c->IsHidden()' here. Needed?
   if (c->accepts_focus) {
@@ -700,7 +700,7 @@ void Focuser::reallyFocusClient(Client* c, Time time) {
   XChangeProperty(dpy, LScr::I->Root(), ewmh_atom[_NET_ACTIVE_WINDOW],
                   XA_WINDOW, 32, PropModeReplace, (unsigned char*)&c->window,
                   1);
-  
+
   if (was_focused && (was_focused != c)) {
     was_focused->DrawBorder();
   }

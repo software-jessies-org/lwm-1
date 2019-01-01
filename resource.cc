@@ -61,6 +61,9 @@ Resources::Resources() {
   set(INACTIVE_TITLE_COLOUR, db, "inactiveTitleColour", "String", "#afafaf");
   // Colour of the close icon (cross in top-left corner of the window frame).
   set(CLOSE_ICON_COLOUR, db, "closeIconColour", "String", "white");
+  // Colour of the close icon in inactive windows.
+  set(INACTIVE_CLOSE_ICON_COLOUR, db, "inactiveCloseIconColour", "String",
+      "#afafaf");
   // Colour of text in the popup window (unhide menu and resize popup).
   set(POPUP_TEXT_COLOUR, db, "popupTextColour", "String", "black");
   // Background colour of the popup window (unhide menu and resize popup).

@@ -9,6 +9,9 @@ Change Log for "lwm"
 	the size we want for displaying. This makes Firefox and Chromium icons
 	look like they should, rather than just a tiny swatch from their middle.
 
+	Close icon now still drawn for inactive windows, but with a different
+	colour (defaults to the same grey as inactive window titles).
+
 
 2018-12-31	pn	Basel
 	Replaced the ugly global 'current' pointer use (and static 'last_focus')
