@@ -122,6 +122,25 @@ void Hider::Unhide(Client* c) {
   c->SetState(NormalState);
   // Windows are given input focus when they're unhidden.
   LScr::I->GetFocuser()->FocusClient(c);
+
+  // The following is to counteract a really weird bug which happens when
+  // unhiding a window. To reproduce the bug (with the moveresize call below
+  // commented out), do this:
+  // 1: Move some window into a position where you can remember exactly where
+  //    it was (eg it's obscuring some text in an underlying window at a
+  //    specific point).
+  // 2: Hide the window (right-click on title bar).
+  // 3: Hold the right button over the root window to bring up the unhide menu -
+  //    note that the red box is showing the correct location of the window.
+  // 4: Release the right button to make the window reappear - note that without
+  //    the following conditional code, the re-opened window appears
+  //    approximately 'textHeight()' pixels lower than it previously was.
+  if (c->framed) {
+    XMoveResizeWindow(dpy, c->parent, c->size.x, c->size.y - textHeight(),
+                      c->size.width, c->size.height + textHeight());
+    XMoveWindow(dpy, c->window, borderWidth(), borderWidth() + textHeight());
+    sendConfigureNotify(c);
+  }
 }
 
 int menuItemHeight() {
