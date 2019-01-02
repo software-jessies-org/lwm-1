@@ -1,0 +1,32 @@
+! To test xresources processing, run the following:
+! xrdb -merge testXresources
+!
+! I would recommend doing this inside a VNC session, so your Xwindows session
+! is not corrupted.
+!
+! Important note: these settings are not intended to look beautiful; in fact,
+! they look particularly horrible. Rather, they are intended as a test so we
+! can easily check that the resource processing is working correctly. Thus,
+! they all look and act very differently from the (hopefully nicer) defaults.
+
+! You may need to change the font, in case you do not have this one.
+lwm*titleFont: Utopia-16
+lwm*titleBGColour: deepskyblue
+lwm*titleColour: black
+lwm*inactiveTitleColour: blue
+
+lwm*inactiveBorderColour: deepskyblue4
+lwm*borderColour: deepskyblue3
+
+lwm*closeIconColour: red
+lwm*inactiveCloseIconColour: brown
+
+lwm*button1: xcalc
+lwm*button2: xclock
+lwm*focus: click
+
+lwm*popupTextColour: yellow
+lwm*popupBackgroundColour: blue
+lwm*border: 4
+
+lwm*windowHighlightColour: green

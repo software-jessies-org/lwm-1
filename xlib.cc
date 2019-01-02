@@ -242,7 +242,9 @@ ImageIcon* ImageIcon::Create(Pixmap img, Pixmap mask) {
   copyWithScaling(src_img, dest_img);
   const Pixmap inactive_pm = pixmapFromXImage(dest_img);
 
-  xImageDataToImage(src_img, orig_img, mask_img, 0xffffff);
+  xImageDataToImage(
+      src_img, orig_img, mask_img,
+      Resources::I->GetColour(Resources::POPUP_BACKGROUND_COLOUR));
   copyWithScaling(src_img, dest_img);
   const Pixmap menu_pm = pixmapFromXImage(dest_img);
 
@@ -310,7 +312,8 @@ ImageIcon* ImageIcon::CreateFromPixels(unsigned long* data, unsigned long len) {
   copyWithScaling(src_img, dest_img);
   const Pixmap inactive_pm = pixmapFromXImage(dest_img);
 
-  pixelDataToImage(src_img, data + 2, src_width, src_height, 0xffffff);
+  pixelDataToImage(src_img, data + 2, src_width, src_height,
+                   Resources::I->GetColour(Resources::POPUP_BACKGROUND_COLOUR));
   copyWithScaling(src_img, dest_img);
   const Pixmap menu_pm = pixmapFromXImage(dest_img);
 
