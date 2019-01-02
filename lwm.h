@@ -221,6 +221,10 @@ class Client {
 
   bool HasFocus() const;
   static Client* FocusedClient();
+  
+  // Notifications to the Client that it has gained or lost focus.
+  void FocusGained();
+  void FocusLost();
 
   // Draws the contents of the furniture window.
   void DrawBorder();
@@ -624,6 +628,7 @@ class Resources {
     INACTIVE_CLOSE_ICON_COLOUR,
     POPUP_TEXT_COLOUR,
     POPUP_BACKGROUND_COLOUR,
+    FOCUS_MODE,
     S_END,  // This must be the last.
   };
 
@@ -645,6 +650,14 @@ class Resources {
 
   // Retrieve an int resource.
   int GetInt(IR r);
+
+  // Retrieve the 'click to focus' resource (as a bool).
+  bool ClickToFocus() {
+    std::string fm = Get(FOCUS_MODE);
+    // std::string== doesn't seem to ever return true; using old-fashioned
+    // strcmp instead.
+    return !strcmp(fm.c_str(), "click");
+  }
 
  private:
   Resources();

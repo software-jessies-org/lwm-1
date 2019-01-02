@@ -247,6 +247,9 @@ static void buttonpress(XEvent* ev) {
   if (c == nullptr) {
     return;
   }
+  if (Resources::I->ClickToFocus()) {
+    LScr::I->GetFocuser()->FocusClient(c);
+  }
 
   // move this test up to disable scroll to focus
   if (e->button >= 4 && e->button <= 7) {
@@ -347,6 +350,7 @@ static void maprequest(XEvent* ev) {
                 "in maprequest, taking over management of window %lx.",
                 c->parent);
         manage(c);
+        LScr::I->GetFocuser()->FocusClient(c);
         break;
       }
       if (c->framed) {

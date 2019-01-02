@@ -28,9 +28,10 @@ Windows are surrounded by a frame with a titlebar at the top next to a close
 icon (in the form of a cross).  The window with input focus is coloured
 differently from the others.
 .PP
-\fILwm\fP uses the sloppy-focus scheme, where moving the pointer into a window
-gives it input focus, but moving the pointer out does not cause focus to be
-lost until the pointer enters another window.
+\fILwm\fP uses the sloppy-focus scheme by default, whereby moving the pointer
+into a window gives it input focus, but moving the pointer out does not cause
+focus to be lost until the pointer enters another window.  Click-to-focus mode
+can be enabled using the \fIfocus\fP resource.
 .PP
 A button 1 click on a window frame brings it to the top.  Dragging
 button 1 on the frame of a resizable window repositions that edge of
@@ -72,6 +73,9 @@ exclusively by session managers.
 .SH RESOURCES
 \fILwm\fP understands the following X resources:
 .TP 12
+.B focus
+if set to 'click', click-to-focus mode is activated, otherwise sloppy focus
+.TP 12
 .B titleFont
 font used in window titles, and in the popup menu and size indicator
 .TP 12
@@ -103,7 +107,10 @@ colour of the title bar text in the active window
 colour of the title bar text in inactive windows
 .TP 12
 .B closeIconColour
-colour of the close icon (only shown in the active window)
+colour of the close icon in the active window
+.TP 12
+.B inactiveCloseIconColour
+colour of the close icon in inactive windows
 .TP 12
 .B popupTextColour
 text colour of the popup window (unhide menu and resizing popup)

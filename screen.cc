@@ -116,10 +116,14 @@ void LScr::scanWindowTree() {
   for (const Window w : wt.children) {
     addClient(w);
   }
-  // Tell all the clients to draw their window furniture. We do that now, after
-  // we've scanned the window tree, so everything is in its final state.
+  // Tell all the clients they don't have input focus. This has two effects:
+  // 1: the client will respond by drawing its border (always)
+  // 2: if we're in click-to-focus mode, the client will grab input events, so
+  //    that it can detect clicks within the window being managed.
+  // We do that now, after we've scanned the window tree, so everything is in
+  // its final state.
   for (auto it : clients_) {
-    it.second->DrawBorder();
+    it.second->FocusLost();
   }
 }
 

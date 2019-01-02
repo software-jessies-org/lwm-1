@@ -69,7 +69,7 @@ void manage(Client* c) {
     c->SetIcon(ImageIcon::Create(hints->icon_pixmap, hints->icon_mask));
   }
   c->SetIcon(ewmh_get_window_icon(c));
-  
+
   getWindowName(c);
   getNormalHints(c);
 
@@ -271,6 +271,7 @@ void manage(Client* c) {
 
   if (!c->HasFocus()) {
     cmapfocus(Client::FocusedClient());
+    c->FocusLost();
   }
 }
 
@@ -512,7 +513,7 @@ static int getWindowState(Window w, int* state) {
 
 extern bool motifWouldDecorate(Client* c) {
   unsigned long* p = 0;
-  bool ret = true; // if all else fails - decorate
+  bool ret = true;  // if all else fails - decorate
 
   if (getProperty(c->window, motif_wm_hints, motif_wm_hints, 5L,
                   (unsigned char**)&p) <= 0) {

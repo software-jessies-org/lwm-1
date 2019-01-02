@@ -167,6 +167,31 @@ static void focusChildrenOf(Window parent) {
   }
 }
 
+void Client::FocusGained() {
+  if (framed && Resources::I->ClickToFocus()) {
+    // In click-to-focus mode, our FocusLost function will grab button events
+    // on the client's window. We must relinquish this grabbing when we gain
+    // focus, otherwise the client itself won't get the events when it is
+    // focused.
+    XUngrabButton(dpy, AnyButton, AnyModifier, window);
+  }
+  DrawBorder();
+}
+
+void Client::FocusLost() {
+  if (framed && Resources::I->ClickToFocus()) {
+    // In click-to-focus mode, we need to intercept button clicks within the
+    // client window, so we can give the window focus. While some applications,
+    // notably java apps, will grab input focus when clicked on, xterm and
+    // many others do not. Thus, we need to grab click notifications ourselves
+    // so that we can properly support click-to-focus.
+    XGrabButton(dpy, AnyButton, AnyModifier, window, false,
+                ButtonPressMask | ButtonReleaseMask, GrabModeAsync,
+                GrabModeSync, None, None);
+  }
+  DrawBorder();
+}
+
 void Client::DrawBorder() {
   if (!framed) {
     return;
@@ -179,6 +204,7 @@ void Client::DrawBorder() {
   }
 
   const bool active = HasFocus();
+
   XSetWindowBackground(dpy, parent,
                        active ? lscr->ActiveBorder() : lscr->InactiveBorder());
   XClearWindow(dpy, parent);
@@ -654,7 +680,9 @@ void Focuser::EnterWindow(Window w, Time time) {
   if (!c || (c == LScr::I->GetClient(le))) {
     return;  // No change in pointed-at client, so we have nothing to do.
   }
-  FocusClient(c, time);
+  if (!Resources::I->ClickToFocus()) {
+    FocusClient(c, time);
+  }
 }
 
 void Focuser::UnfocusClient(Client* c) {
@@ -674,6 +702,11 @@ void Focuser::FocusClient(Client* c, Time time) {
   // If this window is already focused, ignore.
   if (!c->HasFocus()) {
     reallyFocusClient(c, time);
+    // Old LWM seems to always have raised the window being focused, so let's
+    // copy that. Maybe it should be a separate resource option though?
+    if (Resources::I->ClickToFocus()) {
+      Client_Raise(c);
+    }
   }
 }
 
@@ -706,9 +739,9 @@ void Focuser::reallyFocusClient(Client* c, Time time) {
                   1);
 
   if (was_focused && (was_focused != c)) {
-    was_focused->DrawBorder();
+    was_focused->FocusLost();
   }
-  c->DrawBorder();
+  c->FocusGained();
 }
 
 void Focuser::removeFromHistory(Client* c) {

@@ -68,7 +68,9 @@ Resources::Resources() {
   set(POPUP_TEXT_COLOUR, db, "popupTextColour", "String", "black");
   // Background colour of the popup window (unhide menu and resize popup).
   set(POPUP_BACKGROUND_COLOUR, db, "popupBackgroundColour", "String", "white");
-
+  // Click to focus enabled if this is the string "click".
+  set(FOCUS_MODE, db, "focus", "String", "sloppy");
+  
   // The width of the border LWM adds to each window to allow resizing.
   set(BORDER_WIDTH, db, "border", "Border", 6);
 }

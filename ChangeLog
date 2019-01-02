@@ -18,6 +18,10 @@ Change Log for "lwm"
 	highlight extends a little to the left and right of the text. Just a
 	minor prettiness improvement, but it does look nicer.
 
+	Added back click-to-focus mode. Also added a testXresources file, so
+	the interpretation and support for the various Xresources can be easily
+	tested.
+
 
 2019-01-01	pn	Basel
 	Added support for fetching the window icon from the _NET_WM_ICON
