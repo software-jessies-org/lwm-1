@@ -165,18 +165,20 @@ static void pixelDataToImage(XImage* img,
                              int width,
                              int height,
                              unsigned long background) {
-  background &= 0xffffff;
-  unsigned long max = 0;
+  const unsigned long bgr = background & 0xff0000;
+  const unsigned long bgg = background & 0xff00;
+  const unsigned long bgb = background & 0xff;
   for (int y = 0; y < height; y++) {
     for (int x = 0; x < width; x++) {
-      unsigned long argb = *data++;
-      unsigned long alpha = (argb >> 24) & 0xff;
-      unsigned long rgb = argb & 0xffffff;
-      rgb = ((rgb * alpha) + (background * (0xff - alpha))) / 0xff;
-      if (rgb > max) {
-        max = rgb;
-      }
-      XPutPixel(img, x, y, rgb & 0xffffff);
+      const unsigned long argb = *data++;
+      const unsigned long a = (argb >> 24) & 0xff;  // alpha for foreground.
+      const unsigned long bga = 0xff - a;           // alpha for background.
+      // Treat the 3 channels separately, to avoid cross-channel bleed (which
+      // makes the icons of rhythmbox and xfce4-mixer look like CGA vomit).
+      unsigned long r = (((argb & 0xff0000) * a + bgr * bga) / 0xff) & 0xff0000;
+      unsigned long g = (((argb & 0xff00) * a + bgg * bga) / 0xff) & 0xff00;
+      unsigned long b = (((argb & 0xff) * a + bgb * bga) / 0xff) & 0xff;
+      XPutPixel(img, x, y, r | g | b);
     }
   }
 }
