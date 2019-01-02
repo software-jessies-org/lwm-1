@@ -1,6 +1,15 @@
 Change Log for "lwm"
 
 
+2019-01-02	pn	Basel
+	Discovered XSetIconSizes, and used it to specify LWM's preferred icon
+	size range. This prevents Java from using butt-ugly down-sampling to
+	squeeze the image into 16x16 pixels (which is the default if no
+	WM_ICON_SIZE property is present). Now Evergreen and Terminator app
+	icons look much nicer (although we could do better by not down-sampling
+	ourselves).
+
+
 2019-01-01	pn	Basel
 	Added support for fetching the window icon from the _NET_WM_ICON
 	property. This method of specifying icons is used by Chromium/Chrome.

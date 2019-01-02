@@ -160,9 +160,7 @@ extern int main(int argc, char* argv[]) {
   wm_take_focus = XInternAtom(dpy, "WM_TAKE_FOCUS", false);
   wm_colormaps = XInternAtom(dpy, "WM_COLORMAP_WINDOWS", false);
   compound_text = XInternAtom(dpy, "COMPOUND_TEXT", false);
-
   _mozilla_url = XInternAtom(dpy, "_MOZILLA_URL", false);
-
   motif_wm_hints = XInternAtom(dpy, "_MOTIF_WM_HINTS", false);
 
   ewmh_init();
@@ -192,7 +190,6 @@ extern int main(int argc, char* argv[]) {
 
   LScr::I = new LScr(dpy);
   LScr::I->Init();
-  // ewmh_init_screen();
   session_init(argc, argv);
 
   // Do we need to support XRandR?

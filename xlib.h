@@ -59,6 +59,13 @@ class ImageIcon {
   // x, y, w, h.
   void Paint(Window w, int x, int y, int width, int height);
   
+  // ConfigureIconSizes tells X11 what sizes we desire for window icons.
+  // This is used by applications to scale their icons to desirable sizes.
+  // Otherwise, the defaults they use are rather random (Chrome, Firefox,
+  // FreeBSD use quite large sizes, but Java scales everything to 16x16, which
+  // looks ugly).
+  static void ConfigureIconSizes();
+  
  private:
   ImageIcon(Pixmap img,
             Pixmap mask,

@@ -33,6 +33,21 @@ static int targetImageIconSize() {
   return (mh < th) ? mh : th;
 }
 
+// static
+void ImageIcon::ConfigureIconSizes() {
+  // XSetIconSize sets the WM_ICON_SIZE property.
+  // By requesting anything up to 1024 pixels on a side, we allow the app
+  // to provide the largest icon size it's likely to have.
+  // This means the app doesn't do any down-scaling for us. For Java apps this
+  // is a good move, as while Java is perfectly capable of scaling down images
+  // smoothly, it handily forgets this ability and uses the butt-ugly jagged
+  // down-sampling method.
+  const int min_size = targetImageIconSize();
+  const int max_size = 1024;
+  XIconSize sz = { min_size, min_size, max_size, max_size, 1, 1 };
+  XSetIconSizes(dpy, LScr::I->Root(), &sz, 1);
+}
+
 static std::map<unsigned long, ImageIcon*>* image_icon_cache;
 
 static ImageIcon* fromCache(unsigned long hash) {

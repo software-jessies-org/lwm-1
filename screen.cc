@@ -64,7 +64,10 @@ void LScr::Init() {
                     ColormapChangeMask | ButtonPressMask | PropertyChangeMask |
                     EnterWindowMask;
   XChangeWindowAttributes(dpy_, root_, CWCursor | CWEventMask, &attr);
-
+  
+  // Tell all the applications what icon sizes we prefer.
+  ImageIcon::ConfigureIconSizes();
+  
   // Make sure all our communication to the server got through.
   XSync(dpy_, false);
   scanWindowTree();
