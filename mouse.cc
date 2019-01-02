@@ -140,8 +140,20 @@ static int menuIconSize() {
   return menuItemHeight() - menuIconYPad() * 2;
 }
 
-static int menuLMargin() {
+static int menuLHighlight() {
   return menuItemHeight() + menuIconXPad() * 2;
+}
+
+static int menuRHighlight() {
+  return menuItemHeight() - menuIconXPad();
+}
+
+static int menuHighlightMargins() {
+  return menuLHighlight() + menuRHighlight();
+}
+
+static int menuLMargin() {
+  return menuItemHeight() + menuIconXPad() * 3;
 }
 
 static int menuRMargin() {
@@ -273,8 +285,8 @@ void Hider::drawHighlight(int itemIndex) {
   }
   const int ih = menuItemHeight();
   const int y = itemIndex * ih;
-  XFillRectangle(dpy, LScr::I->Popup(), LScr::I->GetMenuGC(), menuLMargin(), y,
-                 width_ - menuMargins(), ih);
+  XFillRectangle(dpy, LScr::I->Popup(), LScr::I->GetMenuGC(), menuLHighlight(),
+                 y, width_ - menuHighlightMargins(), ih);
 }
 
 void Hider::MouseMotion(XEvent* ev) {

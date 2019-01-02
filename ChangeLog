@@ -14,6 +14,10 @@ Change Log for "lwm"
 	simple anti-aliasing (made possible by the baked-in alpha channel).
 	This makes window icons look *MUCH* smoother.
 
+	Added a little extra padding in the unhide menu, so that the mouse-over
+	highlight extends a little to the left and right of the text. Just a
+	minor prettiness improvement, but it does look nicer.
+
 
 2019-01-01	pn	Basel
 	Added support for fetching the window icon from the _NET_WM_ICON
