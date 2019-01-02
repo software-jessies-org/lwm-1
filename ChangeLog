@@ -9,6 +9,11 @@ Change Log for "lwm"
 	icons look much nicer (although we could do better by not down-sampling
 	ourselves).
 
+	Changed window icon handling so we create 3 scaled-down versions, for
+	the menu, active and inactive window titles. The scaling now uses
+	simple anti-aliasing (made possible by the baked-in alpha channel).
+	This makes window icons look *MUCH* smoother.
+
 
 2019-01-01	pn	Basel
 	Added support for fetching the window icon from the _NET_WM_ICON

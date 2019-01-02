@@ -46,7 +46,7 @@ class ImageIcon {
   // Create either creates an ImageIcon capable of drawing the icon on a 24bit
   // display, or returns null.
   static ImageIcon* Create(Pixmap img, Pixmap mask);
-  
+
   // Create an ImageIcon from an array of unsigned longs.
   // The format is as used for _NET_WM_ICON, so the first two values are the
   // width and height, and then there's one value per pixel. There may be more
@@ -55,30 +55,49 @@ class ImageIcon {
   // The data is not freed - that's the caller's job.
   static ImageIcon* CreateFromPixels(unsigned long* data, unsigned long len);
 
-  // Paints this image on the given window, centred within the box given by
-  // x, y, w, h.
-  void Paint(Window w, int x, int y, int width, int height);
-  
+  // Paints the image with the 'inactive' background on the given window,
+  // centred within the box given by x, y, w, h.
+  void PaintInactive(Window w, int x, int y, int width, int height) {
+    paint(w, inactive_img_, x, y, width, height);
+  }
+
+  // Paints the image with the 'active' background on the given window,
+  // centred within the box given by x, y, w, h.
+  void PaintActive(Window w, int x, int y, int width, int height) {
+    paint(w, active_img_, x, y, width, height);
+  }
+
+  // Paints the image with the menu's white background on the given window,
+  // centred within the box given by x, y, w, h.
+  void PaintMenu(Window w, int x, int y, int width, int height) {
+    paint(w, menu_img_, x, y, width, height);
+  }
+
   // ConfigureIconSizes tells X11 what sizes we desire for window icons.
   // This is used by applications to scale their icons to desirable sizes.
   // Otherwise, the defaults they use are rather random (Chrome, Firefox,
   // FreeBSD use quite large sizes, but Java scales everything to 16x16, which
   // looks ugly).
   static void ConfigureIconSizes();
-  
+
  private:
-  ImageIcon(Pixmap img,
-            Pixmap mask,
+  ImageIcon(Pixmap active_img,
+            Pixmap inactive_img,
+            Pixmap menu_img,
             unsigned int img_w,
             unsigned int img_h,
             unsigned int depth);
-  
+
+  void paint(Window w, Pixmap img, int x, int y, int width, int height);
+
   ImageIcon* clone() {
-    return new ImageIcon(img_, mask_, img_w_, img_h_, depth_);
+    return new ImageIcon(active_img_, inactive_img_, menu_img_, img_w_, img_h_,
+                         depth_);
   }
-  
-  Pixmap img_;
-  Pixmap mask_;
+
+  Pixmap active_img_;
+  Pixmap inactive_img_;
+  Pixmap menu_img_;
   unsigned int img_w_ = 0;
   unsigned int img_h_ = 0;
   unsigned int depth_ = 0;
@@ -96,7 +115,7 @@ class XFreer {
       XFree(data_);
     }
   }
-  
+
  private:
   void* data_;
 };

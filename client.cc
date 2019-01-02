@@ -204,7 +204,11 @@ void Client::DrawBorder() {
 
   // Do we have an icon? If so, draw it to the left of the title text.
   if (Icon()) {
-    Icon()->Paint(parent, x, 0, titleBarHeight(), titleBarHeight());
+    if (active) {
+      Icon()->PaintActive(parent, x, 0, titleBarHeight(), titleBarHeight());
+    } else {
+      Icon()->PaintInactive(parent, x, 0, titleBarHeight(), titleBarHeight());
+    }
     x += titleBarHeight();  // Title bar text must come after.
   }
 

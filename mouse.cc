@@ -260,8 +260,8 @@ void Hider::Paint() {
 
     Client* c = LScr::I->GetClient(open_content_[i].w);
     if (c && c->Icon()) {
-      c->Icon()->Paint(popup, menuIconXPad(), y + menuIconYPad(),
-                       menuIconSize(), menuIconSize());
+      c->Icon()->PaintMenu(popup, menuIconXPad(), y + menuIconYPad(),
+                           menuIconSize(), menuIconSize());
     }
   }
   drawHighlight(current_item_);
