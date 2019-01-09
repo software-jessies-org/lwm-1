@@ -1,6 +1,14 @@
 Change Log for "lwm"
 
 
+2019-01-09	pn	Basel
+	Fixed a regression in the way the mouse pointer's cursor was set, such
+	that we don't keep showing the 'resize corner' icon (or whatever LWM
+	last set) when the pointer is hovering over the client window. This was
+	particularly evident in clients that aren't too militant in their cursor
+	setting, like Rhythmbox for example.
+
+
 2019-01-02	pn	Basel
 	Discovered XSetIconSizes, and used it to specify LWM's preferred icon
 	size range. This prevents Java from using butt-ugly down-sampling to

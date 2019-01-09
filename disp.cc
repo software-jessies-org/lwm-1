@@ -685,6 +685,21 @@ static void enter(XEvent* ev) {
   if (mode == wm_idle) {
     LScr::I->GetFocuser()->EnterWindow(ev->xcrossing.window,
                                        ev->xcrossing.time);
+    // We receive enter events for our client windows too. When we do, we need
+    // to switch the mouse pointer's shape to the default pointer.
+    // If we don't do this, then for apps like Rhythmbox which don't
+    // aggressively set the pointer to their preferred shape, we end up showing
+    // silly icons, such as the 'resize corner' icon, while hovering over the
+    // middle of the application window.
+    Client* c = LScr::I->GetClient(ev->xcrossing.window);
+    if (c && ev->xcrossing.window != c->parent) {
+      // TODO: add a SetCursor method to Client, so we don't have to keep
+      // repeating this code everywhere.
+      XSetWindowAttributes attr;
+      attr.cursor = LScr::I->Cursors()->Root();
+      XChangeWindowAttributes(dpy, c->parent, CWCursor, &attr);
+      c->cursor = ENone;
+    }
   }
 }
 
