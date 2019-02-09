@@ -10,6 +10,7 @@ Right at the bottom of the file there's a cheat sheet of debugging tools.
 
 === FUNCTIONAL BREAKAGES ===
 
+NOTE: this should be fixed now. Needs more testing though.
 For multi-screen displays (xrandr), LWM thinks the total surface space of the
 display is a rectangle. If you have a laptop connected to a larger external
 monitor, this means there are inaccessible spaces that LWM thinks it can put

@@ -1,6 +1,11 @@
 Change Log for "lwm"
 
 
+2019-02-09	pn	Basel
+	Rewrite of the way we handle xrandr notifications, so we can support odd
+	shapes caused by multiple screens (which can cause inaccessible areas).
+
+
 2019-01-09	pn	Basel
 	Fixed a regression in the way the mouse pointer's cursor was set, such
 	that we don't keep showing the 'resize corner' icon (or whatever LWM
