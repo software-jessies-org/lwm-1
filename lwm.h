@@ -23,6 +23,7 @@
 #include <map>
 #include <string>
 
+#include "log.h"
 #include "xlib.h"
 
 /* --- Administrator-configurable defaults. --- */
@@ -37,6 +38,10 @@
 #define MOVING_BUTTON_MASK (Button1Mask | Button2Mask)
 
 #define EDGE_RESIST 32
+
+// How many pixels to move the auto-placement location down and to the right,
+// after each window is placed.
+#define AUTO_PLACEMENT_INCREMENT 40
 
 /* --- End of administrator-configurable defaults. --- */
 
@@ -142,6 +147,14 @@ struct EWMHStrut {
   unsigned int bottom;
 };
 
+struct Point {
+  int x;
+  int y;
+  
+  // Returns b - a.
+  static Point Sub(Point a, Point b);
+};
+
 struct Rect {
   int xMin;
   int yMin;
@@ -149,12 +162,26 @@ struct Rect {
   int yMax;
 
   bool contains(int x, int y) const {
-    return x >= xMin && y >= yMin && x <= xMax && y <= yMax;
+    return x >= xMin && y >= yMin && x < xMax && y < yMax;
   }
 
-  int width() { return xMax - xMin; }
-  int height() { return yMax - yMin; }
+  int width() const { return xMax - xMin; }
+  int height() const { return yMax - yMin; }
+  int area() const { return width() * height(); }
+  
+  Point middle() const {
+    return Point{(xMin + xMax)/2, (yMin + yMax)/2};
+  }
+  
+  // Returns a new Rect which is shifted by the given x and y translation.
+  static Rect Translate(Rect r, Point p);
+  
+  // Returns the intersection of the two rectangles or, if they don't intersect,
+  // the empty rectangle 0,0,0,0.
+  static Rect Intersect(const Rect& a, const Rect& b);
 };
+
+std::ostream& operator<<(std::ostream& os, const Rect& r);
 
 class Client {
  public:
@@ -221,13 +248,22 @@ class Client {
 
   bool HasFocus() const;
   static Client* FocusedClient();
-  
+
   // Notifications to the Client that it has gained or lost focus.
   void FocusGained();
   void FocusLost();
 
   // Draws the contents of the furniture window.
   void DrawBorder();
+  
+  bool HasStruts() const {
+    return strut.top || strut.bottom || strut.left || strut.right;
+  }
+  
+  // Rect defining the bounds of the window, either including LWM's window
+  // furniture (WithBorder) or not (NoBorder).
+  Rect RectWithBorder() const;
+  Rect RectNoBorder() const;
 
  private:
   int state_;  // Window state. See ICCCM and <X11/Xutil.h>
@@ -395,6 +431,29 @@ class LScr {
   GC GetMenuGC() { return menu_gc_; }
   GC GetTitleGC() { return title_gc_; }
 
+  // Sets the screen areas which are visible.
+  // For one-monitor systems, this will be a single rectangle.
+  // For multi-screen systems this will consist of one rect for each screen.
+  // These may form a larger rectangle (eg 2 identical-sized monitors), or
+  // there may be several unevenly-sized screens, and at arbitrary relative
+  // positions. Essentially, anything supported by xrandr.
+  // This includes areas which overlap.
+  // Calling this function will cause all client windows to be resized and
+  // repositioned if necessary to ensure they're still accessible.
+  void SetVisibleAreas(std::vector<Rect> visible_areas);
+  
+  // Returns the rectangle describing the 'main' screen area. This is chosen
+  // essentially by finding the largest monitor, and if there are several with
+  // the same size, tie-breaking according to which has the lower Y, followed
+  // by which has the lower X.
+  // If withStruts is true, only the part of the visible area not used by
+  // strutting furniture will be returned.
+  Rect GetPrimaryVisibleArea(bool withStruts) const;
+  
+  // Returns all the visible areas. The areas returned are returned in no
+  // specific order, and will abut *or overlap*.
+  std::vector<Rect> VisibleAreas(bool withStruts) const;
+
   // Expose the utf8 string atom. This is used by ewmh.cc. Not sure why it can't
   // go in the main enumerated set of atoms, and indeed this whole atom support
   // looks like it needs refactoring. For now, though, ugly hack here:
@@ -441,6 +500,7 @@ class LScr {
   Window root_ = 0;
   int width_ = 0;
   int height_ = 0;
+  std::vector<Rect> visible_areas_;
   CursorMap* cursor_map_;
 
   Hider hider_;
@@ -550,7 +610,7 @@ extern bool printDebugPrefix(char const* filename, int line);
 
 /* client.cc */
 extern Edge interacting_edge;
-extern void Client_MakeSane(Client*, Edge, int*, int*, int*, int*);
+extern void Client_MakeSane(Client*, Edge, int, int, int, int);
 extern void Client_SizeFeedback();
 extern void size_expose();
 extern void Client_ReshapeEdge(Client*, Edge);

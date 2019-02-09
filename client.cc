@@ -243,6 +243,23 @@ void Client::DrawBorder() {
   drawString(parent, x, y, Name(), color);
 }
 
+Rect Client::RectWithBorder() const {
+  Rect res = RectNoBorder();
+  if (!framed) {
+    return res;
+  }
+  const int bw = borderWidth();
+  res.xMin -= bw;
+  res.xMax += bw;
+  res.yMin -= titleBarHeight();
+  res.yMax += bw;
+  return res;
+}
+
+Rect Client::RectNoBorder() const {
+  return Rect{size.x, size.y, size.x + size.width, size.y + size.height};
+}
+
 void Client_Remove(Client* c) {
   if (c == 0) {
     return;
@@ -262,25 +279,45 @@ void Client_Remove(Client* c) {
   ewmh_set_strut();
 }
 
-void Client_MakeSane(Client* c, Edge edge, int* x, int* y, int* dx, int* dy) {
+// The diff is expected to be the difference between a window position and some
+// barrier (eg edge of a screen). If that difference is within 0..EDGE_RESIST,
+// we return it; otherwise we return 0.
+// This makes the code to apply edge resistance a simple matter of subtracting
+// or adding the returned value.
+static int getResistanceOffset(int diff) {
+  if (diff <= 0 || diff > EDGE_RESIST) {
+    return 0;
+  }
+  return diff;
+}
+
+// x and y are the proposed new coordinates of the window. w and h are the
+// proposed new width and height, or zero if the size should remain unchanged.
+void Client_MakeSane(Client* c, Edge edge, int x, int y, int w, int h) {
   bool horizontal_ok = true;
   bool vertical_ok = true;
+  if (w == 0) {
+    w = c->size.width;
+  }
+  if (h == 0) {
+    h = c->size.height;
+  }
 
   if (edge != ENone) {
     // Make sure we're not making the window too small.
-    if (*dx < c->size.min_width) {
+    if (w < c->size.min_width) {
       horizontal_ok = false;
     }
-    if (*dy < c->size.min_height) {
+    if (h < c->size.min_height) {
       vertical_ok = false;
     }
 
     // Make sure we're not making the window too large.
     if (c->size.flags & PMaxSize) {
-      if (*dx > c->size.max_width) {
+      if (w > c->size.max_width) {
         horizontal_ok = false;
       }
-      if (*dy > c->size.max_height) {
+      if (h > c->size.max_height) {
         vertical_ok = false;
       }
     }
@@ -288,26 +325,26 @@ void Client_MakeSane(Client* c, Edge edge, int* x, int* y, int* dx, int* dy) {
     // Make sure the window's width & height are multiples of
     // the width & height increments (not including the base size).
     if (c->size.width_inc > 1) {
-      int apparent_dx = *dx - 2 * borderWidth() - c->size.base_width;
-      int x_fix = apparent_dx % c->size.width_inc;
+      int apparent_w = w - 2 * borderWidth() - c->size.base_width;
+      int x_fix = apparent_w % c->size.width_inc;
 
       if (isLeftEdge(edge)) {
-        *x += x_fix;
+        x += x_fix;
       }
       if (isLeftEdge(edge) || isRightEdge(edge)) {
-        *dx -= x_fix;
+        w -= x_fix;
       }
     }
 
     if (c->size.height_inc > 1) {
-      int apparent_dy = *dy - 2 * borderWidth() - c->size.base_height;
-      int y_fix = apparent_dy % c->size.height_inc;
+      int apparent_h = h - 2 * borderWidth() - c->size.base_height;
+      int y_fix = apparent_h % c->size.height_inc;
 
       if (isTopEdge(edge)) {
-        *y += y_fix;
+        y += y_fix;
       }
       if (isTopEdge(edge) || isBottomEdge(edge)) {
-        *dy -= y_fix;
+        h -= y_fix;
       }
     }
 
@@ -328,22 +365,40 @@ void Client_MakeSane(Client* c, Edge edge, int* x, int* y, int* dx, int* dy) {
    * set a strut itself.					jfc
    */
   LScr* lscr = LScr::I;
-  const EWMHStrut& scrStrut = lscr->Strut();
-  if (c->strut.left == 0 && c->strut.right == 0 && c->strut.top == 0 &&
-      c->strut.bottom == 0) {
-    if ((int)(*y + borderWidth()) >= (int)(lscr->Height() - scrStrut.bottom)) {
-      *y = lscr->Height() - scrStrut.bottom - borderWidth();
+  // Go through all screens, finding the smallest movement (in both x and y, to
+  // cope with the display area shrinking) to ensure the window is visible on a
+  // screen.
+  int best_x_fix = INT_MAX;
+  int best_y_fix = INT_MAX;
+  // We get visible areas with or without the effect of struts, based on whether
+  // the client sets struts itself. If it does, we must ignore struts so we
+  // don't prevent the client being placed on its own reserved area.
+  for (const auto& r : lscr->VisibleAreas(!c->HasStruts())) {
+    const int bw = borderWidth();
+    int x_fix = 0;
+    int y_fix = 0;
+    if (x + bw >= r.xMax) {
+      x_fix = r.xMax - (x + bw);
+    } else if (x + w - bw <= r.xMin) {
+      x_fix = r.xMin - (x + w - bw);
     }
-    if ((int)(*y + c->size.height - borderWidth()) <= (int)scrStrut.top) {
-      *y = scrStrut.top + borderWidth() - c->size.height;
+    if (y + bw >= r.yMax) {
+      y_fix = r.yMax - (y + bw);
+    } else if (y + h - bw <= r.yMin) {
+      y_fix = r.yMin - (y + h - bw);
     }
-    if ((int)(*x + borderWidth()) >= (int)(lscr->Width() - scrStrut.right)) {
-      *x = lscr->Width() - scrStrut.right - borderWidth();
-    }
-    if ((int)(*x + c->size.width - borderWidth()) <= (int)scrStrut.left) {
-      *x = scrStrut.left + borderWidth() - c->size.width;
+    // If we need fixing for this screen, we find the worse offender of the two
+    // axes (one of them may be zero), and check if that's the best solution
+    // yet.
+    if (std::max(abs(x_fix), abs(y_fix)) <
+        std::max(abs(best_x_fix), abs(best_y_fix))) {
+      best_x_fix = x_fix;
+      best_y_fix = y_fix;
     }
   }
+  // If we have found a best fix, we must fix it!
+  x += best_x_fix;
+  y += best_y_fix;
 
   // If the edge resistance code is used for window sizes, we get funny effects
   // during some resize events.
@@ -355,44 +410,42 @@ void Client_MakeSane(Client* c, Edge edge, int* x, int* y, int* dx, int* dy) {
   // Edge resistance is only useful for moves anyway, so simply disable the code
   // for resizes to avoid the bug.
   if (edge == ENone) {
-    // Introduce a resistance to the workarea edge, so that windows may
-    // be "thrown" to the edge of the workarea without precise mousing,
-    // as requested by MAD.
-    if (*x<(int)scrStrut.left&& * x>((int)scrStrut.left - EDGE_RESIST)) {
-      *x = (int)scrStrut.left;
-    }
-    if ((*x + c->size.width) > (int)(lscr->Width() - scrStrut.right) &&
-        (*x + c->size.width) <
-            (int)(lscr->Width() - scrStrut.right + EDGE_RESIST)) {
-      *x = (int)(lscr->Width() - scrStrut.right - c->size.width);
-    }
-    if ((*y - textHeight()) < (int)scrStrut.top &&
-        (*y - textHeight()) > ((int)scrStrut.top - EDGE_RESIST)) {
-      *y = (int)scrStrut.top + textHeight();
-    }
-    if ((*y + c->size.height) > (int)(lscr->Height() - scrStrut.bottom) &&
-        (*y + c->size.height) <
-            (int)(lscr->Height() - scrStrut.bottom + EDGE_RESIST)) {
-      *y = (int)(lscr->Height() - scrStrut.bottom - c->size.height);
+    // Implement edge resistance for all of the visible areas. There can be
+    // several if we're using multiple monitors with xrandr, and they can be
+    // offset from each other. However, for each box, ensure that some part of
+    // the window is interacting with an edge.
+    for (const auto& r : lscr->VisibleAreas(!c->HasStruts())) {
+      // Check for top/bottom if the horizontal location of the window overlaps
+      // with that of the screen area.
+      if ((x < r.xMax) && (x + w > r.xMin)) {
+        y += getResistanceOffset(r.yMin - (y - textHeight()));  // Top.
+        y -= getResistanceOffset((y + h) - r.yMax);             // Bottom.
+      }
+      // Check for left/right if the vertical location of the window overlaps
+      // with that of the screen area.
+      if ((y < r.yMax) && (y + h > r.yMin)) {
+        x += getResistanceOffset(r.xMin - x);        // Left.
+        x -= getResistanceOffset((x + w) - r.xMax);  // Right.
+      }
     }
   }
 
   // Update that part of the client information that we're happy with.
   if (interacting_edge != ENone) {
     if (horizontal_ok) {
-      c->size.x = *x;
-      c->size.width = *dx;
+      c->size.x = x;
+      c->size.width = w;
     }
     if (vertical_ok) {
-      c->size.y = *y;
-      c->size.height = *dy;
+      c->size.y = y;
+      c->size.height = h;
     }
   } else {
     if (horizontal_ok) {
-      c->size.x = *x;
+      c->size.x = x;
     }
     if (vertical_ok) {
-      c->size.y = *y;
+      c->size.y = y;
     }
   }
 }
@@ -405,7 +458,8 @@ static std::string makeSizeString(int x, int y) {
 
 void Client_SizeFeedback() {
   // Make the popup 10% wider than the widest string it needs to show.
-  popup_width = textWidth(makeSizeString(LScr::I->Width(), LScr::I->Height()));
+  popup_width =
+      textWidth(makeSizeString(DisplayWidth(dpy, 0), DisplayHeight(dpy, 0)));
   popup_width += popup_width / 10;
 
   // Put the popup in the right place to report on the window's size.
@@ -602,25 +656,31 @@ extern void Client_EnterFullScreen(Client* c) {
   XWindowChanges fs;
 
   memcpy(&c->return_size, &c->size, sizeof(XSizeHints));
-  const int scrWidth = LScr::I->Width();
-  const int scrHeight = LScr::I->Height();
+  // For now, just find the 'main screen' and use that.
+  // Ideally, we'd actually try to find the largest contiguous rectangle, as
+  // someone might be using two identical-sized monitors next to each other
+  // to get a bigger view of what they're killing, but for now we'll save that
+  // for another day.
+  const Rect scr = LScr::I->GetPrimaryVisibleArea(false); // Without struts.
   if (c->framed) {
-    c->size.x = fs.x = -borderWidth();
-    c->size.y = fs.y = -borderWidth();
-    c->size.width = fs.width = scrWidth + 2 * borderWidth();
-    c->size.height = fs.height = scrHeight + 2 * borderWidth();
+    const int bw = borderWidth();
+    c->size.x = fs.x = scr.xMin - bw;
+    c->size.y = fs.y = scr.yMin - bw;
+    c->size.width = fs.width = scr.width() + 2 * borderWidth();
+    c->size.height = fs.height = scr.height() + 2 * borderWidth();
     XConfigureWindow(dpy, c->parent, CWX | CWY | CWWidth | CWHeight, &fs);
 
-    fs.x = borderWidth();
-    fs.y = borderWidth();
-    fs.width = scrWidth;
-    fs.height = scrHeight;
+    fs.x = 0;
+    fs.y = 0;
+    fs.width = scr.width();
+    fs.height = scr.height();
     XConfigureWindow(dpy, c->window, CWX | CWY | CWWidth | CWHeight, &fs);
     XRaiseWindow(dpy, c->parent);
   } else {
-    c->size.x = c->size.y = fs.x = fs.y = 0;
-    c->size.width = fs.width = scrWidth;
-    c->size.height = fs.height = scrHeight;
+    c->size.x = fs.x = scr.xMin;
+    c->size.y = fs.y = scr.yMin;
+    c->size.width = fs.width = scr.width();
+    c->size.height = fs.height = scr.height();
     XConfigureWindow(dpy, c->window, CWX | CWY | CWWidth | CWHeight, &fs);
     XRaiseWindow(dpy, c->window);
   }

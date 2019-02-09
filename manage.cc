@@ -178,43 +178,39 @@ void manage(Client* c) {
       static unsigned int auto_x = 100;
       static unsigned int auto_y = 100;
 
-      // firstly, make sure auto_x and auto_y are outside strut
-      if (auto_x < LScr::I->Strut().left) {
-        auto_x = LScr::I->Strut().left;
-      }
-      if (auto_y < LScr::I->Strut().top) {
-        auto_y = LScr::I->Strut().top;
+      // First, find the primary screen area.
+      const Rect scr = LScr::I->GetPrimaryVisibleArea(true);  // With struts.
+      // If auto_x and auto_y are outside the main visible area, reset them.
+      // This can happen after a change of monitor configuration.
+      if (!scr.contains(auto_x, auto_y)) {
+        auto_x = scr.xMin + 100;
+        auto_y = scr.yMin + 100;
       }
 
-      if ((auto_x + c->size.width) >
-              (LScr::I->Width() - LScr::I->Strut().right) &&
-          (c->size.width <= (LScr::I->Width() - LScr::I->Strut().left -
-                             LScr::I->Strut().right))) {
+      if (auto_x + c->size.width > scr.xMax && c->size.width <= scr.width()) {
         // If the window wouldn't fit using normal auto-placement but is small
         // enough to fit horizontally, then centre the window horizontally.
-        c->size.x = (LScr::I->Width() - c->size.width) / 2;
-        auto_x = LScr::I->Strut().left + 20;
+        c->size.x = scr.xMin + (scr.width() - c->size.width) / 2;
+        auto_x = scr.xMin + 20;
       } else {
         c->size.x = auto_x;
-        auto_x += 10;
-        if (auto_x > (LScr::I->Width() / 2)) {
-          auto_x = LScr::I->Strut().left + 20;
+        auto_x += AUTO_PLACEMENT_INCREMENT;
+        if (auto_x > (scr.xMin + scr.xMax) / 2) {  // Past middle.
+          auto_x = scr.xMin + 20;
         }
       }
 
-      if (((auto_y + c->size.height) >
-           (LScr::I->Height() - LScr::I->Strut().bottom)) &&
-          (c->size.height <= (LScr::I->Height() - LScr::I->Strut().top -
-                              LScr::I->Strut().bottom))) {
+      if (auto_y + c->size.height > scr.yMax &&
+          c->size.height <= scr.height()) {
         // If the window wouldn't fit using normal auto-placement but is small
         // enough to fit vertically, then centre the window vertically.
-        c->size.y = (LScr::I->Height() - c->size.height) / 2;
-        auto_y = LScr::I->Strut().top + 20;
+        c->size.y = scr.yMin + (scr.height() - c->size.height) / 2;
+        auto_y = scr.yMin + 20;
       } else {
         c->size.y = auto_y;
-        auto_y += 10;
-        if (auto_y > (LScr::I->Height() / 2)) {
-          auto_y = LScr::I->Strut().top + 20;
+        auto_y += AUTO_PLACEMENT_INCREMENT;
+        if (auto_y > (scr.yMin + scr.yMax) / 2) {  // Past middle.
+          auto_y = scr.yMin + 20;
         }
       }
     }

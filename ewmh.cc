@@ -383,11 +383,11 @@ void ewmh_set_strut() {
   unsigned long data[4];
   data[0] = strut.left;
   data[1] = strut.top;
-  data[2] = LScr::I->Width() - (strut.left + strut.right);
-  data[3] = LScr::I->Height() - (strut.top + strut.bottom);
+  data[2] = DisplayWidth(dpy, 0) - (strut.left + strut.right);
+  data[3] = DisplayHeight(dpy, 0) - (strut.top + strut.bottom);
   XChangeProperty(dpy, LScr::I->Root(), ewmh_atom[_NET_WORKAREA], XA_CARDINAL,
                   32, PropModeReplace, (unsigned char*)data, 4);
-
+  
   // ensure no window fully occupy reserved areas
   for (auto it : LScr::I->Clients()) {
     Client* c = it.second;
@@ -399,10 +399,7 @@ void ewmh_set_strut() {
     }
     Edge backup = interacting_edge;
     interacting_edge = ENone;
-    // Note: the only reason this doesn't crash (due to the last two args
-    // being 0) is that dx and dy are only used when edge != ENone. You have
-    // been warned.
-    Client_MakeSane(c, ENone, &x, &y, 0, 0);
+    Client_MakeSane(c, ENone, x, y, 0, 0);
     interacting_edge = backup;
     if (c->framed) {
       XMoveWindow(dpy, c->parent, c->size.x, c->size.y - textHeight());

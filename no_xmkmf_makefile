@@ -28,9 +28,9 @@ LDFLAGS = -lXext -lX11 -lICE -lSM
 
 # -----------------------------------------------------------------------------
 
-OFILES = client.o cursor.o disp.o error.o ewmh.o lwm.o manage.o mouse.o \
-	resource.o session.o shape.o
-HFILES = lwm.h ewmh.h
+OFILES = client.o cursor.o disp.o error.o ewmh.o geometry.o log.o lwm.o \
+	manage.o mouse.o resource.o screen.o session.o shape.o xlib.o
+HFILES = ewmh.h log.h lwm.h xlib.h
 
 # -----------------------------------------------------------------------------
 

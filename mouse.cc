@@ -183,13 +183,26 @@ static int menuMargins() {
   return menuLMargin() + menuRMargin();
 }
 
-// Returns val unless it's larger than max, in which case it returns max.
-// If either val or max is < 0, returns 0.
-static int clamp(int val, int max) {
-  if (val > max) {
-    val = max;
+// Returns val if it's within the range described by min and max, or min or
+// max according to which side val extends off.
+static int clamp(int val, int min, int max) {
+  if (val >= min && val < max) {
+    return val;
   }
-  return val < 0 ? 0 : val;
+  return (val < min) ? min : max;
+}
+
+// visibleAreaAt returns the rectangle describing the current visible area which
+// contains the given coordinates. This allows us to keep the popup menu within
+// a single monitor at a time.
+static Rect visibleAreaAt(int x, int y) {
+  for (const Rect& r : LScr::I->VisibleAreas(true)) {
+    if (r.contains(x, y)) {
+      return r;
+    }
+  }
+  // Mouse pointer outside the screen? Weird. Anyway, just return the first one.
+  return LScr::I->VisibleAreas(false)[0];
 }
 
 void Hider::OpenMenu(XButtonEvent* e) {
@@ -245,8 +258,9 @@ void Hider::OpenMenu(XButtonEvent* e) {
 
   // Arrange for centre of first menu item to be under pointer,
   // unless that would put the menu off-screen.
-  x_min_ = clamp(e->x - width_ / 2, LScr::I->Width() - width_);
-  y_min_ = clamp(e->y - menuItemHeight() / 2, LScr::I->Height() - height_);
+  const Rect scr = visibleAreaAt(e->x, e->y);
+  x_min_ = clamp(e->x - width_ / 2, scr.xMin, scr.xMax - width_);
+  y_min_ = clamp(e->y - menuItemHeight() / 2, scr.yMin, scr.yMax - height_);
 
   current_item_ = itemAt(e->x_root, e->y_root);
   showHighlightBox(current_item_);

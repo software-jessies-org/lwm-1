@@ -781,7 +781,7 @@ void reshaping_motionnotify(XEvent* ev) {
       nx = mp.x;
     }
 
-    Client_MakeSane(c, interacting_edge, &nx, &ny, &ndx, &ndy);
+    Client_MakeSane(c, interacting_edge, nx, ny, ndx, ndy);
     XMoveResizeWindow(dpy, c->parent, c->size.x, c->size.y - textHeight(),
                       c->size.width, c->size.height + textHeight());
     if (c->size.width == odx && c->size.height == ody) {
@@ -798,7 +798,7 @@ void reshaping_motionnotify(XEvent* ev) {
     nx = mp.x + start_x;
     ny = mp.y + start_y;
 
-    Client_MakeSane(c, interacting_edge, &nx, &ny, 0, 0);
+    Client_MakeSane(c, interacting_edge, nx, ny, 0, 0);
     if (c->framed) {
       XMoveWindow(dpy, c->parent, c->size.x, c->size.y - textHeight());
     } else {

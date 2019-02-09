@@ -85,6 +85,7 @@ bool debug_all_events;        // -d=e
 bool debug_focus;             // -d=f
 bool debug_map;               // -d=m
 bool debug_property_notify;   // -d=p
+int fake_screen_areas;        // -fakescreen
 
 bool printDebugPrefix(char const* file, int line) {
   char buf[16];
@@ -104,6 +105,22 @@ bool forceRestart;
 char* argv0;
 
 static void rrScreenChangeNotify(XEvent* ev);
+static void setScreenAreasFromXRandR();
+
+// Enable this using the -fakescreen flag. When this is used, we pretend that
+// xrandr has told us our display area is divided in half, with a left and a
+// right monitor. We adjust the left so it begins some pixels down from the
+// top, and the right side extends to some pixels up from the bottom.
+// This is for testing xrandr support on VNC (which itself doesn't support
+// xrandr, at least the one I'm using).
+static void setFakeScreenAreasForTesting() {
+  const int w = DisplayWidth(dpy, 0);
+  const int h = DisplayHeight(dpy, 0);
+  std::vector<Rect> rects;
+  rects.push_back(Rect{0, fake_screen_areas, w / 2, h});
+  rects.push_back(Rect{w / 2, 0, w, h - fake_screen_areas});
+  LScr::I->SetVisibleAreas(rects);
+}
 
 /*ARGSUSED*/
 extern int main(int argc, char* argv[]) {
@@ -113,6 +130,8 @@ extern int main(int argc, char* argv[]) {
       for (int j = 3; argv[i][j]; j++) {
         setDebugArg(argv[i][j]);
       }
+    } else if (!strncmp(argv[i], "-fakescreen=", 12)) {
+      fake_screen_areas = atoi(argv[i] + 12);
     }
   }
 
@@ -197,6 +216,13 @@ extern int main(int argc, char* argv[]) {
   bool have_rr = XRRQueryExtension(dpy, &rr_event_base, &rr_error_base);
   if (have_rr) {
     XRRSelectInput(dpy, LScr::I->Root(), RRScreenChangeNotifyMask);
+    setScreenAreasFromXRandR();
+  }
+
+  // If the user has run us with 'fake screen areas', then set up two pretend
+  // visible areas, to simulate running on a two-monitor system.
+  if (fake_screen_areas) {
+    setFakeScreenAreasForTesting();
   }
 
   // See if the server has the Shape Window extension.
@@ -246,8 +272,8 @@ extern int main(int argc, char* argv[]) {
 
 static void rrScreenChangeNotify(XEvent* ev) {
   XRRScreenChangeNotifyEvent* rrev = (XRRScreenChangeNotifyEvent*)ev;
-  const int nScrWidth = rrev->width;
-  const int nScrHeight = rrev->height;
+  int nScrWidth = rrev->width;
+  int nScrHeight = rrev->height;
   // If my laptop is connected to a screen that is switched off, of I try
   // to switch to an external screen when none is connected, LWM gets this
   // event with a new size of 320x200. This forces all the windows to be
@@ -257,11 +283,56 @@ static void rrScreenChangeNotify(XEvent* ev) {
   // the smallest vaguely sensible size I can think of (and, TBH, this is
   // really too small to be sensible already).
   if (nScrWidth < 600 || nScrHeight < 400) {
-    fprintf(stderr, "Ignoring tiny screen dimensions from xrandr: %dx%d\n",
-            nScrWidth, nScrHeight);
+    LOGW() << "Ignoring tiny screen dimensions from xrandr: " << nScrWidth
+           << "x" << nScrHeight;
     return;
   }
-  LScr::I->ChangeScreenDimensions(nScrWidth, nScrHeight);
+
+  static long lastSerial;
+  if (rrev->serial == lastSerial) {
+    LOGI() << "Dropping duplicate event for serial " << std::hex << lastSerial;
+    return;  // Drop duplicate message (we get lots of these).
+  }
+  lastSerial = rrev->serial;
+  setScreenAreasFromXRandR();
+}
+
+static void setScreenAreasFromXRandR() {
+  XRRScreenResources* res = XRRGetScreenResourcesCurrent(dpy, LScr::I->Root());
+  if (!res) {
+    LOGE() << "Failed to get XRRScreenResources";
+    return;
+  }
+  XFreer res_freer((void*)res);
+  if (!res->ncrtc) {
+    LOGE() << "Empty list of CRTs";
+    return;
+  }
+  // Ignore any CRT with mode==0.
+  // Change nScrWidth/nScrHeight according to the total extent of all visible
+  // areas, and don't rely on the size provided in the event itself. This is
+  // because when switching from internal+external monitors to internal only,
+  // the first couple of notifications claim the old area. However, querying
+  // the CRT info already gets the correct sizes and locations (including
+  // mode=0 for those that are disabled).
+  std::vector<Rect> visible;
+  for (int i = 0; i < res->ncrtc; i++) {
+    const RRCrtc crt = res->crtcs[i];
+    LOGI() << "Looking up CRT " << i << ": " << crt;
+    XRRCrtcInfo* crtInfo = XRRGetCrtcInfo(dpy, res, crt);
+    LOGI() << "  CRT size " << crtInfo->width << "x" << crtInfo->height
+           << ", offset " << crtInfo->x << "," << crtInfo->y
+           << " (mode=" << crtInfo->mode << ")";
+    if (!crtInfo->mode) {
+      continue;
+    }
+    const int xMin = crtInfo->x;
+    const int yMin = crtInfo->y;
+    const int xMax = xMin + crtInfo->width;
+    const int yMax = yMin + crtInfo->height;
+    visible.push_back(Rect{xMin, yMin, xMax, yMax});
+  }
+  LScr::I->SetVisibleAreas(visible);
 }
 
 void sendConfigureNotify(Client* c) {
