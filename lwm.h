@@ -748,6 +748,14 @@ class DebugCLI {
  public:
   DebugCLI() = default;
   void Read();
+  
+ private:
+  void cmdXRandr(std::string line);
+  void resetDeadZones(const std::vector<Rect>& visible);
+  
+  // Windows which cover the areas of the desktop that are not visible, due to
+  // the debug CLI fake xrandr commands.
+  std::vector<Window> dead_zones_;
 };
 
 // Handy accessors which parse resources if necessary, and return the relevant

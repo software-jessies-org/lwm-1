@@ -23,7 +23,18 @@ std::string nextToken(std::string& victim) {
   return res;
 }
 
-void cmdXRandr(std::string line) {
+Rect fullScreenRect() {
+  return Rect{0, 0, DisplayWidth(dpy, 0), DisplayHeight(dpy, 0)};
+}
+
+unsigned long deadColour() {
+  XColor colour, exact;
+  XAllocNamedColor(dpy, DefaultColormap(dpy, LScr::kOnlyScreenIndex), "grey",
+                   &colour, &exact);
+  return colour.pixel;
+}
+
+void DebugCLI::cmdXRandr(std::string line) {
   if (line == "?") {
     LOGI() << "With struts:    " << LScr::I->VisibleAreas(true);
     LOGI() << "Without struts: " << LScr::I->VisibleAreas(false);
@@ -40,10 +51,57 @@ void cmdXRandr(std::string line) {
     }
   }
   if (rects.empty()) {
-    rects.push_back(Rect{0, 0, DisplayWidth(dpy, 0), DisplayHeight(dpy, 0)});
+    rects.push_back(fullScreenRect());
   }
   LOGI() << "Setting visible areas to " << rects;
+  resetDeadZones(rects);
   LScr::I->SetVisibleAreas(rects);
+}
+
+void DebugCLI::resetDeadZones(const std::vector<Rect>& visible) {
+  std::vector<Rect> dead(1, fullScreenRect());
+  for (const Rect& vis : visible) {
+    std::vector<Rect> new_dead;
+    for (const Rect& d : dead) {
+      const Rect i = Rect::Intersect(vis, d);
+      if (i.empty()) {
+        new_dead.push_back(d);
+        continue;
+      }
+      // There's definitely an intersection.
+      // Full-width rect above the visible area.
+      if (i.yMin > d.yMin) {
+        new_dead.push_back(Rect{d.xMin, d.yMin, d.xMax, i.yMin});
+      }
+      // Full-width rect below the visible area.
+      if (i.yMax < d.yMax) {
+        new_dead.push_back(Rect{d.xMin, i.yMax, d.xMax, d.yMax});
+      }
+      // Left of the visible area.
+      if (i.xMin > d.xMin) {
+        new_dead.push_back(Rect{d.xMin, i.yMin, i.xMin, i.yMax});
+      }
+      // Right of the visible area.
+      if (i.xMax < d.xMax) {
+        new_dead.push_back(Rect{i.xMax, i.yMin, d.xMax, i.yMax});
+      }
+    }
+    dead = new_dead;
+  }
+  for (Window w : dead_zones_) {
+    XDestroyWindow(dpy, w);
+  }
+  dead_zones_.clear();
+
+  const unsigned long dead_colour = deadColour();
+  for (const Rect& r : dead) {
+    const Window w =
+        XCreateSimpleWindow(dpy, LScr::I->Root(), r.xMin, r.yMin, r.width(),
+                            r.height(), 0, dead_colour, dead_colour);
+    XMapRaised(dpy, w);
+    dead_zones_.push_back(w);
+  }
+  LOGI() << "Inaccessible areas are: " << dead;
 }
 
 void DebugCLI::Read() {
