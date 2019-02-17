@@ -19,7 +19,7 @@
 .SH NAME
 lwm \- Lightweight Window Manager for the X Window System
 .SH SYNTAX
-\fBlwm \fP[ \fB\-s\fP \fIsession-id\fP ] 
+\fBlwm \fP[\fB\-s\fP session-id] [\fB\-debugcli\fP] 
 .SH DESCRIPTION
 \fILwm\fP is a window manager for the X Window System.  It provides enough
 features to allow the user to manage their windows, and no more.
@@ -70,6 +70,11 @@ corner of its frame.
 .B \-s
 specifies a client ID for the X Session Management system, and is used
 exclusively by session managers.
+.TP 8
+.B \-debugcli
+enables the debug CLI (command line interface), which allows LWM to be given
+certain commands on stdin.  This is intended for debugging, not for normal LWM
+use.  For details of commands available on the CLI, refer to the BUGS file.
 .SH RESOURCES
 \fILwm\fP understands the following X resources:
 .TP 12

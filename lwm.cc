@@ -124,6 +124,7 @@ static void setFakeScreenAreasForTesting() {
 
 /*ARGSUSED*/
 extern int main(int argc, char* argv[]) {
+  DebugCLI *debugCLI = nullptr;
   argv0 = argv[0];
   for (int i = 1; i < argc; i++) {
     if (!strncmp(argv[i], "-d=", 3)) {
@@ -132,6 +133,9 @@ extern int main(int argc, char* argv[]) {
       }
     } else if (!strncmp(argv[i], "-fakescreen=", 12)) {
       fake_screen_areas = atoi(argv[i] + 12);
+    } else if (!strcmp(argv[i], "-debugcli")) {
+      debugCLI = new DebugCLI;
+      std::cout << "Debug CLI enabled. Will listen for commands on stdin.\n";
     }
   }
 
@@ -246,6 +250,9 @@ extern int main(int argc, char* argv[]) {
     if (ice_fd > 0) {
       FD_SET(ice_fd, &readfds);
     }
+    if (debugCLI) {
+      FD_SET(STDIN_FILENO, &readfds);
+    }
     if (select(max_fd, &readfds, NULL, NULL, NULL) > -1) {
       if (FD_ISSET(dpy_fd, &readfds)) {
         while (XPending(dpy)) {
@@ -262,6 +269,9 @@ extern int main(int argc, char* argv[]) {
       }
       if (ice_fd > 0 && FD_ISSET(ice_fd, &readfds)) {
         session_process();
+      }
+      if (debugCLI && FD_ISSET(STDIN_FILENO, &readfds)) {
+        debugCLI->Read();
       }
     }
   }

@@ -168,6 +168,7 @@ struct Rect {
   int width() const { return xMax - xMin; }
   int height() const { return yMax - yMin; }
   int area() const { return width() * height(); }
+  bool empty() const { return area() == 0; }
   
   Point middle() const {
     return Point{(xMin + xMax)/2, (yMin + yMax)/2};
@@ -179,9 +180,14 @@ struct Rect {
   // Returns the intersection of the two rectangles or, if they don't intersect,
   // the empty rectangle 0,0,0,0.
   static Rect Intersect(const Rect& a, const Rect& b);
+  
+  // Parse rectangles in X11 style (1280x960+23+25).
+  // Returns the canonical empty rectangle if parsing fails.
+  static Rect Parse(std::string str);
 };
 
 std::ostream& operator<<(std::ostream& os, const Rect& r);
+std::ostream& operator<<(std::ostream& os, const std::vector<Rect>& rs);
 
 class Client {
  public:
@@ -734,6 +740,14 @@ class Resources {
 
   std::vector<std::string> strings_;
   std::vector<int> ints_;
+};
+
+// Implements the built-in debug CLI. This is only available if -debugcli is
+// passed on the command line.
+class DebugCLI {
+ public:
+  DebugCLI() = default;
+  void Read();
 };
 
 // Handy accessors which parse resources if necessary, and return the relevant

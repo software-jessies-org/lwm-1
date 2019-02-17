@@ -25,8 +25,27 @@ bool isBottomEdge(Edge e) {
 }
 
 std::ostream& operator<<(std::ostream& os, const Rect& r) {
-  os << "Rect[" << r.xMin << "," << r.yMin << ";" << r.xMax << "," << r.yMax
-     << "]";
+  os << (r.xMax - r.xMin) << "x" << (r.yMax - r.yMin);
+  if (r.xMin >= 0) {
+    os << "+";
+  }
+  os << r.xMin;
+  if (r.yMin >= 0) {
+    os << "+";
+  }
+  os << r.yMin;
+  return os;
+}
+
+std::ostream& operator<<(std::ostream& os, const std::vector<Rect>& rs) {
+  os << "rects[";
+  for (int i = 0; i < rs.size(); i++) {
+    if (i) {
+      os << " ";
+    }
+    os << rs[i];
+  }
+  os << "]";
   return os;
 }
 
@@ -50,4 +69,42 @@ Rect Rect::Intersect(const Rect& a, const Rect& b) {
 // static
 Rect Rect::Translate(Rect r, Point p) {
   return Rect{r.xMin + p.x, r.yMin + p.y, r.xMax + p.x, r.yMax + p.y};
+}
+
+int parseInt(const std::string& s) {
+  const char* cs = s.c_str();
+  if (cs[0] == '+') {
+    cs++;
+  }
+  return atoi(cs);
+}
+
+// static
+Rect Rect::Parse(std::string v) {
+  Rect res = {};
+  int sep = v.find('x');
+  if (sep == std::string::npos) {
+    return res;
+  }
+  const int w = parseInt(v.substr(0, sep));
+  v = v.substr(sep + 1);
+  sep = v.find_first_of("+-");
+  if (sep == std::string::npos) {
+    return res;
+  }
+  const int h = parseInt(v.substr(0, sep));
+  v = v.substr(sep);
+  sep = v.find_last_of("+-");
+  if (sep == std::string::npos || sep == 0) {
+    return res;
+  }
+  const int x = parseInt(v.substr(0, sep));
+  const int y = parseInt(v.substr(sep));
+  if (h != 0 && w != 0) {
+    res.xMin = x;
+    res.yMin = y;
+    res.xMax = x + w;
+    res.yMax = y + h;
+  }
+  return res;
 }
