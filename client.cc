@@ -293,7 +293,9 @@ static int getResistanceOffset(int diff) {
 
 // x and y are the proposed new coordinates of the window. w and h are the
 // proposed new width and height, or zero if the size should remain unchanged.
-void Client_MakeSane(Client* c, Edge edge, int x, int y, int w, int h) {
+// Returns true if the window size or location was modified.
+bool Client_MakeSane(Client* c, Edge edge, int x, int y, int w, int h) {
+  const Rect old_pos = Rect::FromXYWH(x, y, w, h);
   bool horizontal_ok = true;
   bool vertical_ok = true;
   if (w == 0) {
@@ -448,6 +450,8 @@ void Client_MakeSane(Client* c, Edge edge, int x, int y, int w, int h) {
       c->size.y = y;
     }
   }
+  const Rect new_pos = Rect::FromXYWH(x, y, w, h);
+  return new_pos != old_pos;
 }
 
 static std::string makeSizeString(int x, int y) {
@@ -661,7 +665,7 @@ extern void Client_EnterFullScreen(Client* c) {
   // someone might be using two identical-sized monitors next to each other
   // to get a bigger view of what they're killing, but for now we'll save that
   // for another day.
-  const Rect scr = LScr::I->GetPrimaryVisibleArea(false); // Without struts.
+  const Rect scr = LScr::I->GetPrimaryVisibleArea(false);  // Without struts.
   if (c->framed) {
     const int bw = borderWidth();
     c->size.x = fs.x = scr.xMin - bw;

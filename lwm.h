@@ -174,6 +174,16 @@ struct Rect {
     return Point{(xMin + xMax)/2, (yMin + yMax)/2};
   }
   
+  inline bool operator==(const Rect& o) const {
+    return xMin == o.xMin && yMin == o.yMin && xMax == o.xMax && yMax == o.yMax;
+  }
+  
+  inline bool operator!=(const Rect& o) const {
+    return !operator==(o);
+  }
+  
+  static Rect FromXYWH(int x, int y, int w, int h);
+  
   // Returns a new Rect which is shifted by the given x and y translation.
   static Rect Translate(Rect r, Point p);
   
@@ -616,7 +626,7 @@ extern bool printDebugPrefix(char const* filename, int line);
 
 /* client.cc */
 extern Edge interacting_edge;
-extern void Client_MakeSane(Client*, Edge, int, int, int, int);
+extern bool Client_MakeSane(Client*, Edge, int, int, int, int);
 extern void Client_SizeFeedback();
 extern void size_expose();
 extern void Client_ReshapeEdge(Client*, Edge);

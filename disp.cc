@@ -34,6 +34,7 @@ static void buttonrelease(XEvent*);
 static void focuschange(XEvent*);
 static void maprequest(XEvent*);
 static void configurereq(XEvent*);
+static void configurenotify(XEvent*);
 static void unmap(XEvent*);
 static void destroy(XEvent*);
 static void clientmessage(XEvent*);
@@ -164,7 +165,7 @@ static Disp disps[] = {
     REG_DISP(EnterNotify, enter, debugGeneric),
     REG_DISP(CirculateRequest, circulaterequest, debugGeneric),
     REG_DISP(LeaveNotify, 0, debugGeneric),
-    REG_DISP(ConfigureNotify, 0, debugConfigureNotify),
+    REG_DISP(ConfigureNotify, configurenotify, debugConfigureNotify),
     REG_DISP(CreateNotify, 0, debugGeneric),
     REG_DISP(GravityNotify, 0, debugGeneric),
     REG_DISP(MapNotify, 0, debugGeneric),
@@ -348,15 +349,18 @@ static void maprequest(XEvent* ev) {
       if (c->parent == LScr::I->Root()) {
         DBGF_IF(debug_map,
                 "in maprequest, taking over management of window %lx.",
-                c->parent);
+                c->window);
         manage(c);
         LScr::I->GetFocuser()->FocusClient(c);
         break;
       }
       if (c->framed) {
+        DBGF_IF(debug_map, "in maprequest, reparenting window %lx.", c->parent);
         XReparentWindow(dpy, c->window, c->parent, borderWidth(),
                         borderWidth() + textHeight());
       } else {
+        DBGF_IF(debug_map, "in maprequest, reparenting (2) window %lx.",
+                c->parent);
         XReparentWindow(dpy, c->window, c->parent, c->size.x, c->size.y);
       }
       XAddToSaveSet(dpy, c->window);
@@ -472,6 +476,37 @@ static void configurereq(XEvent* ev) {
       XMoveResizeWindow(dpy, c->window, c->size.x, c->size.y, c->size.width,
                         c->size.height);
     }
+  }
+}
+
+static void configurenotify(XEvent* ev) {
+  if (mode != wm_idle) {
+    // This is probably us moving the window around, so ignore it.
+    // TODO: Check if the client is the one being molested, otherwise we'll miss
+    // invalid openings if we're dragging.
+    return;
+  }
+  const XConfigureEvent& xc = ev->xconfigure;
+  Client* c = LScr::I->GetClient(xc.window);
+  if (!c || !c->framed || c->IsHidden()) {
+    return;
+  }
+  if (c->parent != xc.window) {
+    // Only force our own window to be on-screen, not any random
+    // sub-window contained within it.
+    return;
+  }
+  const int bw = borderWidth();
+  const int th = textHeight();
+  const int x = xc.x + bw;
+  const int y = xc.y + th;
+  const int w = xc.width - 2 * bw;
+  const int h = xc.height - (bw + th);
+  if (Client_MakeSane(c, ENone, x, y, w, h)) {
+    XMoveResizeWindow(dpy, c->parent, c->size.x, c->size.y - textHeight(),
+                      c->size.width, c->size.height + textHeight());
+    LOGW() << "Forcing sanity upon " << c->Name() << ", at " << c->size.x
+           << ", " << c->size.y;
   }
 }
 

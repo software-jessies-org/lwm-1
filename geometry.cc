@@ -55,6 +55,11 @@ Point Point::Sub(Point a, Point b) {
 }
 
 // static
+Rect Rect::FromXYWH(int x, int y, int w, int h) {
+  return Rect{x, y, x + w, y + h};
+}
+
+// static
 Rect Rect::Intersect(const Rect& a, const Rect& b) {
   Rect res = Rect{std::max(a.xMin, b.xMin), std::max(a.yMin, b.yMin),
                   std::min(a.xMax, b.xMax), std::min(a.yMax, b.yMax)};
