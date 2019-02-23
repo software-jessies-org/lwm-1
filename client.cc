@@ -31,8 +31,6 @@
 
 static int popup_width;  // The width of the size-feedback window.
 
-Edge interacting_edge;
-
 static void sendClientMessage(Window, Atom, long, long);
 
 // Returns the total height, in pixels, of the window title bar.
@@ -264,13 +262,6 @@ void Client_Remove(Client* c) {
   if (c == 0) {
     return;
   }
-  // As pointed out by J. Han, if a window disappears while it's
-  // being reshaped you need to get rid of the size indicator.
-  if (c->HasFocus() && mode == wm_reshaping) {
-    XUnmapWindow(dpy, LScr::I->Popup());
-    mode = wm_idle;
-  }
-
   if (c->parent != LScr::I->Root()) {
     XDestroyWindow(dpy, c->parent);
   }
@@ -295,7 +286,8 @@ static int getResistanceOffset(int diff) {
 // proposed new width and height, or zero if the size should remain unchanged.
 // Returns true if the window size or location was modified.
 bool Client_MakeSane(Client* c, Edge edge, int x, int y, int w, int h) {
-  const Rect old_pos = Rect::FromXYWH(x, y, w, h);
+  const Rect old_pos =
+      Rect::FromXYWH(c->size.x, c->size.y, c->size.width, c->size.height);
   bool horizontal_ok = true;
   bool vertical_ok = true;
   if (w == 0) {
@@ -430,10 +422,13 @@ bool Client_MakeSane(Client* c, Edge edge, int x, int y, int w, int h) {
         x -= getResistanceOffset((x + w) - r.xMax);  // Right.
       }
     }
-  }
-
-  // Update that part of the client information that we're happy with.
-  if (interacting_edge != ENone) {
+    if (horizontal_ok) {
+      c->size.x = x;
+    }
+    if (vertical_ok) {
+      c->size.y = y;
+    }
+  } else {
     if (horizontal_ok) {
       c->size.x = x;
       c->size.width = w;
@@ -441,13 +436,6 @@ bool Client_MakeSane(Client* c, Edge edge, int x, int y, int w, int h) {
     if (vertical_ok) {
       c->size.y = y;
       c->size.height = h;
-    }
-  } else {
-    if (horizontal_ok) {
-      c->size.x = x;
-    }
-    if (vertical_ok) {
-      c->size.y = y;
     }
   }
   const Rect new_pos = Rect::FromXYWH(x, y, w, h);
@@ -508,34 +496,6 @@ void size_expose() {
   const int x = (popup_width - textWidth(text)) / 2;
   drawString(LScr::I->Popup(), x, g_font->ascent + 1, text,
              &g_font_popup_colour);
-}
-
-extern void Client_ReshapeEdge(Client* c, Edge edge) {
-  if (c == 0) {
-    return;
-  }
-  // Find out where we've got hold of the window.
-  MousePos mp = getMousePosition();
-  const int sx = c->size.x - mp.x;
-  const int sy = c->size.y - mp.y;
-
-  Cursor cursor = LScr::I->Cursors()->ForEdge(edge);
-  XChangeActivePointerGrab(dpy,
-                           ButtonMask | PointerMotionHintMask |
-                               ButtonMotionMask | OwnerGrabButtonMask,
-                           cursor, CurrentTime);
-
-  // Store some state so that we can get back into the main event
-  // dispatching thing.
-  interacting_edge = edge;
-  start_x = sx;
-  start_y = sy;
-  mode = wm_reshaping;
-  ewmh_set_client_list();
-}
-
-extern void Client_Move(Client* c) {
-  Client_ReshapeEdge(c, ENone);
 }
 
 void Client_Lower(Client* c) {
@@ -670,8 +630,8 @@ extern void Client_EnterFullScreen(Client* c) {
     const int bw = borderWidth();
     c->size.x = fs.x = scr.xMin - bw;
     c->size.y = fs.y = scr.yMin - bw;
-    c->size.width = fs.width = scr.width() + 2 * borderWidth();
-    c->size.height = fs.height = scr.height() + 2 * borderWidth();
+    c->size.width = fs.width = scr.width() + 2 * bw;
+    c->size.height = fs.height = scr.height() + 2 * bw;
     XConfigureWindow(dpy, c->parent, CWX | CWY | CWWidth | CWHeight, &fs);
 
     fs.x = 0;
@@ -702,10 +662,11 @@ extern void Client_ExitFullScreen(Client* c) {
     fs.height = c->size.height + textHeight();
     XConfigureWindow(dpy, c->parent, CWX | CWY | CWWidth | CWHeight, &fs);
 
-    fs.x = borderWidth();
-    fs.y = borderWidth() + textHeight();
-    fs.width = c->size.width - (2 * borderWidth());
-    fs.height = c->size.height - (2 * borderWidth());
+    const int bw = borderWidth();
+    fs.x = bw;
+    fs.y = bw + textHeight();
+    fs.width = c->size.width - 2 * bw;
+    fs.height = c->size.height - 2 * bw;
     XConfigureWindow(dpy, c->window, CWX | CWY | CWWidth | CWHeight, &fs);
   } else {
     fs.x = c->size.x;

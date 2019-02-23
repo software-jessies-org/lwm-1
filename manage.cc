@@ -160,8 +160,7 @@ void manage(Client* c) {
       // It's a "dialogue box". Trust it.
       c->size.x = x;
       c->size.y = y;
-    } else if ((c->size.flags & USPosition) || !c->framed ||
-               mode == wm_initialising) {
+    } else if ((c->size.flags & USPosition) || !c->framed || is_initialising) {
       // Use the specified window position.
       c->size.x = x;
       c->size.y = y;

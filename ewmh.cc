@@ -397,10 +397,7 @@ void ewmh_set_strut() {
     if (c->wstate.fullscreen) {
       continue;
     }
-    Edge backup = interacting_edge;
-    interacting_edge = ENone;
     Client_MakeSane(c, ENone, x, y, 0, 0);
-    interacting_edge = backup;
     if (c->framed) {
       XMoveWindow(dpy, c->parent, c->size.x, c->size.y - textHeight());
     } else {

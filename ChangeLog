@@ -1,6 +1,17 @@
 Change Log for "lwm"
 
 
+2019-02-23	pn	Basel
+	Rewrite of the click/drag handling. This gets rid of the global vars
+	tracking which 'mode' we're in, and which window is being dragged and
+	from where. Instead, on commencement of a drag we create an instance
+	of a class which knows how to handle the specific action.
+	Because we're no longer assuming the window with input focus is the one
+	being dragged, this eliminates a whole bunch of annoying bugs, like a
+	new window appearing during a drag causing the new window to suddenly
+	be the one being moved.
+
+
 2019-02-09	pn	Basel
 	Rewrite of the way we handle xrandr notifications, so we can support odd
 	shapes caused by multiple screens (which can cause inaccessible areas).

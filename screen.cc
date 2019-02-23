@@ -50,16 +50,18 @@ void LScr::Init() {
   gv.foreground = Resources::I->GetColour(Resources::TITLE_BG_COLOUR);
   title_gc_ = XCreateGC(dpy_, root_, gv_mask, &gv);
 
-  // Create the popup window, to be used for the menu, and for the little window
-  // that shows us how big windows are while resizing them.
-  popup_ = XCreateSimpleWindow(
-      dpy_, root_, 0, 0, 1, 1, 1,
-      Resources::I->GetColour(Resources::POPUP_TEXT_COLOUR),
-      Resources::I->GetColour(Resources::POPUP_BACKGROUND_COLOUR));
+  // Create the popup window, to be used for the resize feedback window,
+  // and the menu window.
   XSetWindowAttributes attr;
   attr.event_mask = ButtonMask | ButtonMotionMask | ExposureMask;
+  const unsigned int fg = Resources::I->GetColour(Resources::POPUP_TEXT_COLOUR);
+  const unsigned int bg =
+      Resources::I->GetColour(Resources::POPUP_BACKGROUND_COLOUR);
+  popup_ = XCreateSimpleWindow(dpy_, root_, 0, 0, 1, 1, 1, fg, bg);
   XChangeWindowAttributes(dpy_, popup_, CWEventMask, &attr);
-
+  menu_ = XCreateSimpleWindow(dpy_, root_, 0, 0, 1, 1, 1, fg, bg);
+  XChangeWindowAttributes(dpy_, menu_, CWEventMask, &attr);
+  
   // Announce our interest in the root_ window.
   attr.cursor = cursor_map_->Root();
   attr.event_mask = SubstructureRedirectMask | SubstructureNotifyMask |
@@ -130,8 +132,8 @@ void LScr::scanWindowTree() {
 }
 
 Client* LScr::GetOrAddClient(Window w) {
-  if (w == Popup()) {
-    return nullptr;  // No client for our own popup window.
+  if (w == Popup() || w == Menu()) {
+    return nullptr;  // No client for our own popup windows.
   }
   Client* c = GetClient(w);
   if (c) {
@@ -456,8 +458,6 @@ void LScr::SetVisibleAreas(std::vector<Rect> visible_areas) {
   height_ = nScrHeight;
 
   // All set up now, let's move all the windows around.
-  Edge backup = interacting_edge;
-  interacting_edge = ENone;
   for (moveData& move : moves) {
     Client* c = move.c;
     Client_MakeSane(c, ENone, move.x, move.y, 0, 0);
@@ -473,7 +473,6 @@ void LScr::SetVisibleAreas(std::vector<Rect> visible_areas) {
                         c->size.height - 2 * borderWidth());
     }
   }
-  interacting_edge = backup;
 }
 
 bool LScr::ChangeStrut(const EWMHStrut& strut) {

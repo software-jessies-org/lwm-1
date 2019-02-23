@@ -45,27 +45,6 @@
 
 /* --- End of administrator-configurable defaults. --- */
 
-/*
- * Window manager mode. wm is in one of five modes: it's either getting
- * user input to move/reshape a window, getting user input to make a
- * selection from the menu, waiting for user input to confirm a window close
- * (by releasing a mouse button after prssing it in a window's box),
- * waiting for user input to confirm a window hide (by releasing a mouse
- * button after prssing it in a window's frame),
- * or it's `idle' --- responding to events arriving
- * from the server, but not directly interacting with the user.
- * OK, so I lied: there's a sixth mode so that we can tell when wm's still
- * initialising.
- */
-enum Mode {
-  wm_initialising,
-  wm_idle,
-  wm_reshaping,
-  wm_menu_up,
-  wm_closing_window,
-  wm_hiding_window
-};
-
 /** Window internal state. Yuck. */
 enum IState { IPendingReparenting, INormal };
 
@@ -434,7 +413,8 @@ class LScr {
   Display* Dpy() const { return dpy_; }
   Window Root() const { return root_; }
   Window Popup() const { return popup_; }
-
+  Window Menu() const { return menu_; }
+  
   int Width() const { return width_; }
   int Height() const { return height_; }
   void ChangeScreenDimensions(int nScrWidth, int nScrHeight);
@@ -534,6 +514,7 @@ class LScr {
   Atom utf8_string_atom_;
 
   Window popup_ = 0;
+  Window menu_ = 0;
   Window ewmh_compat_ = 0;
 
   EWMHStrut strut_;  // reserved areas
@@ -560,10 +541,19 @@ enum { Pdelete = 1, Ptakefocus = 2 };
  */
 #define ButtonMask (ButtonPressMask | ButtonReleaseMask)
 
+class DragHandler {
+ public:
+  DragHandler() = default;
+  virtual ~DragHandler() = default;
+  
+  virtual void Start(XEvent* ev) = 0;
+  // Return false to cancel the action immediately.
+  virtual bool Move(XEvent* ev) = 0;
+  virtual void End(XEvent* ev) = 0;
+};
+
 /* lwm.cc */
-extern Mode mode;
-extern int start_x;
-extern int start_y;
+extern bool is_initialising;  // Set during start-up, cleared after.
 extern Display* dpy;
 
 // New, pretty fonts:
@@ -625,12 +615,9 @@ extern bool printDebugPrefix(char const* filename, int line);
 #define DBGF(fmt, ...) DBGF_IF(1, fmt, ##__VA_ARGS__)
 
 /* client.cc */
-extern Edge interacting_edge;
 extern bool Client_MakeSane(Client*, Edge, int, int, int, int);
 extern void Client_SizeFeedback();
 extern void size_expose();
-extern void Client_ReshapeEdge(Client*, Edge);
-extern void Client_Move(Client*);
 extern void Client_Raise(Client*);
 extern void Client_Lower(Client*);
 extern void Client_Close(Client*);

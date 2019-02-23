@@ -45,8 +45,6 @@ static void enter(XEvent*);
 static void circulaterequest(XEvent*);
 static void motionnotify(XEvent*);
 
-void reshaping_motionnotify(XEvent*);
-
 //
 // Code for decoding events and printing them out in an understandable way.
 //
@@ -177,12 +175,6 @@ static Disp disps[] = {
 };
 #undef REG_DISP
 
-// pendingFrame is the LWM frame window (aka parent) of the client in which an
-// action has been started by a mouse press and we are waiting for the button
-// to be released before performing the action.
-// It may refer to a disappeared window if something closes.
-static Window pendingFrame;
-
 extern void dispatch(XEvent* ev) {
   for (Disp* p = disps; p < disps + sizeof(disps) / sizeof(disps[0]); p++) {
     if (p->type == ev->type) {
@@ -214,11 +206,9 @@ static void expose(XEvent* ev) {
 
   // Decide what needs redrawing: window frame or menu?
   if (w == LScr::I->Popup()) {
-    if (mode == wm_menu_up) {
-      LScr::I->GetHider()->Paint();
-    } else if (mode == wm_reshaping) {
-      size_expose();
-    }
+    size_expose();
+  } else if (w == LScr::I->Menu()) {
+    LScr::I->GetHider()->Paint();
   } else {
     Client* c = LScr::I->GetClient(w);
     if (c != 0) {
@@ -227,26 +217,239 @@ static void expose(XEvent* ev) {
   }
 }
 
-static void buttonpress(XEvent* ev) {
-  if (mode != wm_idle) {
-    return;  // We're already doing something, so ignore extra presses.
-  }
-  XButtonEvent* e = &ev->xbutton;
+static DragHandler* current_dragger = nullptr;
 
+// Use this to set or clear the drag handler. Will destroy the old handler if
+// one is present. The new handler's Start() function is called with ev.
+void startDragging(DragHandler* handler, XEvent* ev) {
+  delete current_dragger;
+  current_dragger = handler;
+  if (current_dragger) {
+    current_dragger->Start(ev);
+  }
+}
+
+// Stops the dragging, calling the Stop handler of current_dragger if there is
+// one.
+void stopDragging(XEvent* ev) {
+  if (ev && current_dragger) {
+    current_dragger->End(ev);
+  }
+  startDragging(nullptr, nullptr);
+}
+
+class MenuDragger : public DragHandler {
+ public:
+  MenuDragger() = default;
+
+  virtual void Start(XEvent* ev) {
+    cmapfocus(0);
+    LScr::I->GetHider()->OpenMenu(&ev->xbutton);
+  }
+
+  virtual bool Move(XEvent* ev) {
+    LScr::I->GetHider()->MouseMotion(ev);
+    return true;
+  }
+
+  virtual void End(XEvent* ev) { LScr::I->GetHider()->MouseRelease(ev); }
+};
+
+// WindowDragger handles the shared bit of actions which involve dragging, such
+// as moving or resizing windows.
+// This class keeps track of where the mouse pointer was when the button was
+// pressed, and where it ends up, and sends the offset from one to the other
+// to the subclass.
+// Subclasses must implement the moveImpl function.
+class WindowDragger : public DragHandler {
+ public:
+  WindowDragger(Client* c) : window_(c->parent) {}
+
+  virtual void Start(XEvent*) { start_pos_ = getMousePosition(); }
+
+  virtual bool Move(XEvent* ev) {
+    Client* c = LScr::I->GetClient(window_);
+    MousePos mp = getMousePosition();
+    // Cancel everything if either the client has disappeared (window closed
+    // while we were dragging it), or if we're somehow no longer holding the
+    // mouse button down. This latter hack prevents randomly dragging around
+    // windows due to a race condition in X.
+    if (!c || !(mp.modMask & MOVING_BUTTON_MASK)) {
+      // Either the client window closed underneath us, or we're somehow not
+      // holding the mouse button down, despite not having seen the unclick
+      // properly. In any case, cancel dragging.
+      End(ev);
+      return false;
+    }
+    moveImpl(c, mp.x - start_pos_.x, mp.y - start_pos_.y);
+    return true;
+  }
+
+  virtual void moveImpl(Client* c, int dx, int dy) = 0;
+
+  virtual void End(XEvent*) {
+    // Unmapping the popup only has an effect if it's open (so if this is a
+    // resize instead of a move), but it doesn't hurt to always close it.
+    XUnmapWindow(dpy, LScr::I->Popup());
+  }
+
+ private:
+  // LWM's frame window.
+  Window window_;
+  MousePos start_pos_;
+};
+
+class WindowMover : public WindowDragger {
+ public:
+  WindowMover(Client* c) : WindowDragger(c) {
+    window_start_ = {c->size.x, c->size.y};
+  }
+
+  virtual void moveImpl(Client* c, int dx, int dy) {
+    const int new_x = window_start_.x + dx;
+    const int new_y = window_start_.y + dy;
+    Client_MakeSane(c, ENone, new_x, new_y, 0, 0);
+    if (c->framed) {
+      XMoveWindow(dpy, c->parent, c->size.x, c->size.y - textHeight());
+    } else {
+      XMoveWindow(dpy, c->parent, c->size.x, c->size.y);
+    }
+    // Do I need to send a configure notify? According to this:
+    // https://tronche.com/gui/x/xlib/events/window-state-change/configure.html
+    // ...it looks like the job of the X server itself.
+    sendConfigureNotify(c);
+  }
+
+ private:
+  Point window_start_;
+};
+
+class WindowResizer : public WindowDragger {
+ public:
+  WindowResizer(Client* c, Edge edge) : WindowDragger(c), edge_(edge) {
+    orig_size_ = c->size;
+  }
+
+  virtual void moveImpl(Client* c, int dx, int dy) {
+    Client_SizeFeedback();
+    XSizeHints ns = orig_size_;
+    // Vertical.
+    if (isTopEdge(edge_)) {
+      ns.y += dy;
+      ns.height -= dy;
+    }
+    if (isBottomEdge(edge_)) {
+      ns.height += dy;
+    }
+
+    // Horizontal.
+    if (isLeftEdge(edge_)) {
+      ns.x += dx;
+      ns.width -= dx;
+    }
+    if (isRightEdge(edge_)) {
+      ns.width += dx;
+    }
+    if (Client_MakeSane(c, edge_, ns.x, ns.y, ns.width, ns.height)) {
+      XMoveResizeWindow(dpy, c->parent, c->size.x, c->size.y - textHeight(),
+                        c->size.width, c->size.height + textHeight());
+      const int border = borderWidth();
+      // We used to use some odd logic to optionally send a configureNotify.
+      // However, from my reading of this page:
+      // https://tronche.com/gui/x/xlib/events/window-state-change/configure.html
+      // ...it seems the X server is responsible for sending such things; our
+      // only job is to actually move/resize windows. So let's just do that.
+      XMoveResizeWindow(dpy, c->window, border, border + textHeight(),
+                        c->size.width - 2 * border,
+                        c->size.height - 2 * border);
+    }
+  }
+
+ private:
+  Edge edge_;
+  XSizeHints orig_size_;
+};
+
+// Max distance between click and release, for closing, iconising etc.
+#define MAX_CLICK_DISTANCE 4
+
+// WindowClicker is a dragger that handles cases when we want to deal with
+// simple clicks.
+// Such actions include closing, hiding or lowering the window, but we only take
+// action after the mouse is released, in case the user changes his or her mind.
+// This class also checks the distance the mouse has moved, and only if it is
+// released close to where it was pressed will it trigger the action.
+class WindowClicker : public DragHandler {
+ public:
+  WindowClicker(Client* c) : window_(c->parent) {}
+  virtual void Start(XEvent*) { start_pos_ = getMousePosition(); }
+  virtual bool Move(XEvent*) { return true; }
+
+  virtual void End(XEvent*) {
+    MousePos mp = getMousePosition();
+    const int dx = std::abs(start_pos_.x - mp.x);
+    const int dy = std::abs(start_pos_.y - mp.y);
+    if (std::max(dx, dy) > MAX_CLICK_DISTANCE) {
+      // Cancelled by mouse pointer having moved too far away.
+      return;
+    }
+    Client* c = LScr::I->GetClient(window_);
+    // Check if client still exists.
+    if (c) {
+      act(c);
+    }
+  }
+
+  virtual void act(Client* c) = 0;
+
+ private:
+  // LWM's frame window.
+  Window window_;
+  MousePos start_pos_;
+};
+
+class WindowCloser : public WindowClicker {
+ public:
+  WindowCloser(Client* c) : WindowClicker(c) {}
+  virtual void act(Client* c) { Client_Close(c); }
+};
+
+class WindowHider : public WindowClicker {
+ public:
+  WindowHider(Client* c) : WindowClicker(c) {}
+  virtual void act(Client* c) { c->Hide(); }
+};
+
+class WindowLowerer : public WindowClicker {
+ public:
+  WindowLowerer(Client* c) : WindowClicker(c) {}
+  virtual void act(Client* c) { Client_Lower(c); }
+};
+
+class ShellRunner : public DragHandler {
+ public:
+  explicit ShellRunner(int button) : button_(button) {}
+  virtual void Start(XEvent*) { shell(button_); }
+  virtual bool Move(XEvent*) { return false; }
+  virtual void End(XEvent*) {}
+
+ private:
+  int button_;
+};
+
+static DragHandler* getDragHandlerForEvent(XEvent* ev) {
+  XButtonEvent* e = &ev->xbutton;
   // Deal with root window button presses.
   if (e->window == e->root) {
     if (e->button == Button3) {
-      cmapfocus(0);
-      LScr::I->GetHider()->OpenMenu(e);
-    } else {
-      shell(e->button);
+      return new MenuDragger;
     }
-    return;
+    return new ShellRunner(e->button);
   }
 
   Client* c = LScr::I->GetClient(e->window);
   if (c == nullptr) {
-    return;
+    return nullptr;
   }
   if (Resources::I->ClickToFocus()) {
     LScr::I->GetFocuser()->FocusClient(c);
@@ -254,63 +457,54 @@ static void buttonpress(XEvent* ev) {
 
   // move this test up to disable scroll to focus
   if (e->button >= 4 && e->button <= 7) {
-    return;
+    return nullptr;
   }
   const Edge edge = c->EdgeAt(e->window, e->x, e->y);
   if (edge == EContents) {
-    return;
+    return nullptr;
   }
   if (edge == EClose) {
-    pendingFrame = c->parent;
-    mode = wm_closing_window;
-    return;
+    return new WindowCloser(c);
   }
 
   // Somewhere in the rest of the frame.
   if (e->button == HIDE_BUTTON) {
-    pendingFrame = c->parent;
-    mode = wm_hiding_window;
-    return;
+    if (e->state & ShiftMask) {
+      return new WindowLowerer(c);
+    }
+    return new WindowHider(c);
   }
   if (e->button == MOVE_BUTTON) {
-    Client_Move(c);
-    return;
+    // If we're moving the window because the user has used the 'move' button
+    // (generally middle), then force the mouse pointer to turn into the move
+    // pointer, even if it's over an area of the window furniture which usually
+    // has another pointer.
+    XChangeActivePointerGrab(dpy,
+                             ButtonMask | PointerMotionHintMask |
+                                 ButtonMotionMask | OwnerGrabButtonMask,
+                             LScr::I->Cursors()->ForEdge(ENone), CurrentTime);
+    return new WindowMover(c);
   }
   if (e->button == RESHAPE_BUTTON) {
     XMapWindow(dpy, c->parent);
     Client_Raise(c);
-    Client_ReshapeEdge(c, edge);
+    if (edge == ENone) {
+      return new WindowMover(c);
+    }
+    return new WindowResizer(c, edge);
   }
+  return nullptr;
+}
+
+static void buttonpress(XEvent* ev) {
+  if (current_dragger) {
+    return;  // Already doing something.
+  }
+  startDragging(getDragHandlerForEvent(ev), ev);
 }
 
 static void buttonrelease(XEvent* ev) {
-  XButtonEvent* e = &ev->xbutton;
-  Client* pendingClient = LScr::I->GetClient(pendingFrame);
-  if (mode == wm_menu_up) {
-    LScr::I->GetHider()->MouseRelease(ev);
-  } else if (mode == wm_reshaping) {
-    XUnmapWindow(dpy, LScr::I->Popup());
-  } else if (mode == wm_closing_window && pendingClient) {
-    if (pendingClient->EdgeAt(e->window, e->x, e->y) == EClose) {
-      Client_Close(pendingClient);
-    }
-  } else if (mode == wm_hiding_window && pendingClient) {
-    // Was the button release within the window's frame?
-    // Note that x11 sends is buttonrelease events which match the window the
-    // mousedown event went to, even if we let go of the mouse while hovering
-    // over the background.
-    if ((e->window == pendingClient->parent) && (e->x >= 0) && (e->y >= 0) &&
-        (e->x <= pendingClient->size.width) &&
-        (e->y <= (pendingClient->size.height + textHeight()))) {
-      if (e->state & ShiftMask) {
-        Client_Lower(pendingClient);
-      } else {
-        pendingClient->Hide();
-      }
-    }
-  }
-  pendingFrame = 0;
-  mode = wm_idle;
+  stopDragging(ev);
 }
 
 static void circulaterequest(XEvent* ev) {
@@ -480,7 +674,7 @@ static void configurereq(XEvent* ev) {
 }
 
 static void configurenotify(XEvent* ev) {
-  if (mode != wm_idle) {
+  if (current_dragger) {
     // This is probably us moving the window around, so ignore it.
     // TODO: Check if the client is the one being molested, otherwise we'll miss
     // invalid openings if we're dragging.
@@ -496,18 +690,22 @@ static void configurenotify(XEvent* ev) {
     // sub-window contained within it.
     return;
   }
-  const int bw = borderWidth();
-  const int th = textHeight();
-  const int x = xc.x + bw;
-  const int y = xc.y + th;
-  const int w = xc.width - 2 * bw;
-  const int h = xc.height - (bw + th);
-  if (Client_MakeSane(c, ENone, x, y, w, h)) {
-    XMoveResizeWindow(dpy, c->parent, c->size.x, c->size.y - textHeight(),
-                      c->size.width, c->size.height + textHeight());
-    LOGW() << "Forcing sanity upon " << c->Name() << ", at " << c->size.x
-           << ", " << c->size.y;
-  }
+  // The following does indeed force windows opened outside the visible areas
+  // to be accessible, but it also causes some dreadful bugs, for example
+  // opening a new tab in Chrome causes the chrome window to shift right by
+  // approximately borderWidth() pixels. This needs dealing with properly.
+  //  const int bw = borderWidth();
+  //  const int th = textHeight();
+  //  const int x = xc.x + bw;
+  //  const int y = xc.y + th;
+  //  const int w = xc.width - 2 * bw;
+  //  const int h = xc.height - (bw + th);
+  //  if (Client_MakeSane(c, ENone, x, y, w, h)) {
+  //    XMoveResizeWindow(dpy, c->parent, c->size.x, c->size.y - textHeight(),
+  //                      c->size.width, c->size.height + textHeight());
+  //    LOGW() << "Forcing sanity upon " << c->Name() << ", at " << c->size.x
+  //           << ", " << c->size.y;
+  //  }
 }
 
 static void destroy(XEvent* ev) {
@@ -632,10 +830,13 @@ static void clientmessage(XEvent* ev) {
       case E_LAST:
         break;
       case ENone:
-        Client_Move(c);
+        // Should do a move, but this currently can't work because we only allow
+        // the move to continue while a mouse button is pressed. We should
+        // consider adding back this functionality, but for now it's not used
+        // and won't work.
         break;
       default:
-        Client_ReshapeEdge(c, edge);
+        // Same here, this functionality can't work right now. Need to fix it.
         break;
     }
   }
@@ -717,128 +918,43 @@ static void focuschange(XEvent* ev) {
 }
 
 static void enter(XEvent* ev) {
-  if (mode == wm_idle) {
-    LScr::I->GetFocuser()->EnterWindow(ev->xcrossing.window,
-                                       ev->xcrossing.time);
-    // We receive enter events for our client windows too. When we do, we need
-    // to switch the mouse pointer's shape to the default pointer.
-    // If we don't do this, then for apps like Rhythmbox which don't
-    // aggressively set the pointer to their preferred shape, we end up showing
-    // silly icons, such as the 'resize corner' icon, while hovering over the
-    // middle of the application window.
-    Client* c = LScr::I->GetClient(ev->xcrossing.window);
-    if (c && ev->xcrossing.window != c->parent) {
-      // TODO: add a SetCursor method to Client, so we don't have to keep
-      // repeating this code everywhere.
-      XSetWindowAttributes attr;
-      attr.cursor = LScr::I->Cursors()->Root();
-      XChangeWindowAttributes(dpy, c->parent, CWCursor, &attr);
-      c->cursor = ENone;
-    }
+  if (current_dragger) {
+    return;
+  }
+  LScr::I->GetFocuser()->EnterWindow(ev->xcrossing.window, ev->xcrossing.time);
+  // We receive enter events for our client windows too. When we do, we need
+  // to switch the mouse pointer's shape to the default pointer.
+  // If we don't do this, then for apps like Rhythmbox which don't
+  // aggressively set the pointer to their preferred shape, we end up showing
+  // silly icons, such as the 'resize corner' icon, while hovering over the
+  // middle of the application window.
+  Client* c = LScr::I->GetClient(ev->xcrossing.window);
+  if (c && ev->xcrossing.window != c->parent) {
+    // TODO: add a SetCursor method to Client, so we don't have to keep
+    // repeating this code everywhere.
+    XSetWindowAttributes attr;
+    attr.cursor = LScr::I->Cursors()->Root();
+    XChangeWindowAttributes(dpy, c->parent, CWCursor, &attr);
+    c->cursor = ENone;
   }
 }
 
 static void motionnotify(XEvent* ev) {
-  if (mode == wm_reshaping) {
-    reshaping_motionnotify(ev);
-  } else if (mode == wm_menu_up) {
-    LScr::I->GetHider()->MouseMotion(ev);
-  } else if (mode == wm_idle) {
-    XMotionEvent* e = &ev->xmotion;
-    Client* c = LScr::I->GetClient(e->window);
-    if (c && (e->window == c->parent) && (e->subwindow != c->window)) {
-      Edge edge = c->EdgeAt(e->window, e->x, e->y);
-      if (edge != EContents && c->cursor != edge) {
-        XSetWindowAttributes attr;
-        attr.cursor = LScr::I->Cursors()->ForEdge(edge);
-        XChangeWindowAttributes(dpy, c->parent, CWCursor, &attr);
-        c->cursor = edge;
-      }
+  if (current_dragger) {
+    if (!current_dragger->Move(ev)) {
+      current_dragger = nullptr;
     }
-  }
-}
-
-/*ARGSUSED*/
-void reshaping_motionnotify(XEvent* ev) {
-  ev = ev;
-  int nx;   // New x.
-  int ny;   // New y.
-  int ox;   // Original x.
-  int oy;   // Original y.
-  int ndx;  // New width.
-  int ndy;  // New height.
-  int odx;  // Original width.
-  int ody;  // Original height.
-
-  Client* c = Client::FocusedClient();
-  if (mode != wm_reshaping || !c) {
     return;
   }
-
-  MousePos mp = getMousePosition();
-  // We can sometimes get into a funny situation whereby we randomly start
-  // dragging a window about. To avoid this, ensure that if we see the
-  // mouse buttons aren't being held, we drop out of reshaping mode
-  // immediately.
-  if ((mp.modMask & MOVING_BUTTON_MASK) == 0) {
-    mode = wm_idle;
-    // If we escape from the weird dragging mode and we were resizing, we should
-    // ensure the size popup is closed.
-    XUnmapWindow(dpy, LScr::I->Popup());
-    DBG("Flipped out of weird dragging mode.");
-    return;
-  }
-
-  if (interacting_edge != ENone) {
-    nx = ox = c->size.x;
-    ny = oy = c->size.y;
-    ndx = odx = c->size.width;
-    ndy = ody = c->size.height;
-
-    Client_SizeFeedback();
-
-    // Vertical.
-    if (isTopEdge(interacting_edge)) {
-      mp.y += textHeight();
-      ndy += (c->size.y - mp.y);
-      ny = mp.y;
+  XMotionEvent* e = &ev->xmotion;
+  Client* c = LScr::I->GetClient(e->window);
+  if (c && (e->window == c->parent) && (e->subwindow != c->window)) {
+    Edge edge = c->EdgeAt(e->window, e->x, e->y);
+    if (edge != EContents && c->cursor != edge) {
+      XSetWindowAttributes attr;
+      attr.cursor = LScr::I->Cursors()->ForEdge(edge);
+      XChangeWindowAttributes(dpy, c->parent, CWCursor, &attr);
+      c->cursor = edge;
     }
-    if (isBottomEdge(interacting_edge)) {
-      ndy = mp.y - c->size.y;
-    }
-
-    // Horizontal.
-    if (isRightEdge(interacting_edge)) {
-      ndx = mp.x - c->size.x;
-    }
-    if (isLeftEdge(interacting_edge)) {
-      ndx += (c->size.x - mp.x);
-      nx = mp.x;
-    }
-
-    Client_MakeSane(c, interacting_edge, nx, ny, ndx, ndy);
-    XMoveResizeWindow(dpy, c->parent, c->size.x, c->size.y - textHeight(),
-                      c->size.width, c->size.height + textHeight());
-    if (c->size.width == odx && c->size.height == ody) {
-      if (c->size.x != ox || c->size.y != oy) {
-        sendConfigureNotify(c);
-      }
-    } else {
-      const int border = borderWidth();
-      XMoveResizeWindow(dpy, c->window, border, border + textHeight(),
-                        c->size.width - 2 * border,
-                        c->size.height - 2 * border);
-    }
-  } else {
-    nx = mp.x + start_x;
-    ny = mp.y + start_y;
-
-    Client_MakeSane(c, interacting_edge, nx, ny, 0, 0);
-    if (c->framed) {
-      XMoveWindow(dpy, c->parent, c->size.x, c->size.y - textHeight());
-    } else {
-      XMoveWindow(dpy, c->parent, c->size.x, c->size.y);
-    }
-    sendConfigureNotify(c);
   }
 }

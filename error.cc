@@ -31,7 +31,7 @@ int errorHandler(Display *d, XErrorEvent *e) {
   char req[80];
   char number[80];
 
-  if (mode == wm_initialising && e->request_code == X_ChangeWindowAttributes &&
+  if (is_initialising && e->request_code == X_ChangeWindowAttributes &&
       e->error_code == BadAccess) {
     panic("another window manager is already running.");
   }
@@ -48,7 +48,7 @@ int errorHandler(Display *d, XErrorEvent *e) {
   fprintf(stderr, "%s: protocol request %s on resource %#x failed: %s\n", argv0,
           req, (unsigned int)e->resourceid, msg);
 
-  if (mode == wm_initialising) {
+  if (is_initialising) {
     panic("can't initialise.");
   }
 

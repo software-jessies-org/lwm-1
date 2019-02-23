@@ -264,13 +264,10 @@ void Hider::OpenMenu(XButtonEvent* e) {
 
   current_item_ = itemAt(e->x_root, e->y_root);
   showHighlightBox(current_item_);
-  mapAndRaise(LScr::I->Popup(), x_min_, y_min_, width_, height_);
+  mapAndRaise(LScr::I->Menu(), x_min_, y_min_, width_, height_);
   XChangeActivePointerGrab(dpy,
                            ButtonMask | ButtonMotionMask | OwnerGrabButtonMask,
                            None, CurrentTime);
-  // This is how we tell disp.cc to direct messages our way.
-  // TODO: try to figure out a nicer way to do this.
-  mode = wm_menu_up;
 }
 
 int Hider::itemAt(int x, int y) const {
@@ -287,9 +284,9 @@ void Hider::Paint() {
   // it's necessary to first blank the window background, so that we don't
   // corrupt our display when the red highlight box windows open and close over
   // the top of the menu.
-  XClearWindow(dpy, LScr::I->Popup());
+  XClearWindow(dpy, LScr::I->Menu());
   const int itemHeight = menuItemHeight();
-  const auto popup = LScr::I->Popup();
+  const auto popup = LScr::I->Menu();
   const auto gc = LScr::I->GetMenuGC();
   for (int i = 0; i < open_content_.size(); i++) {
     const int y = i * itemHeight;
@@ -318,7 +315,7 @@ void Hider::drawHighlight(int itemIndex) {
   }
   const int ih = menuItemHeight();
   const int y = itemIndex * ih;
-  XFillRectangle(dpy, LScr::I->Popup(), LScr::I->GetMenuGC(), menuLHighlight(),
+  XFillRectangle(dpy, LScr::I->Menu(), LScr::I->GetMenuGC(), menuLHighlight(),
                  y, width_ - menuHighlightMargins(), ih);
 }
 
@@ -342,7 +339,7 @@ void Hider::MouseMotion(XEvent* ev) {
 void Hider::MouseRelease(XEvent* ev) {
   hideHighlightBox();
   const int n = itemAt(ev->xbutton.x_root, ev->xbutton.y_root);
-  XUnmapWindow(dpy, LScr::I->Popup());  // Hide popup window.
+  XUnmapWindow(dpy, LScr::I->Menu());
   if (n < 0) {
     return;  // User just released the mouse without having selected anything.
   }

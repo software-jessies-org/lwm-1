@@ -31,10 +31,7 @@
 #include "lwm.h"
 #include "xlib.h"
 
-Mode mode;    // The window manager's mode. (See "lwm.h".)
-int start_x;  // The X position where the mode changed.
-int start_y;  // The Y position where the mode changed.
-
+bool is_initialising;
 Display* dpy;  // The connection to the X server.
 
 XftFont* g_font;
@@ -139,8 +136,7 @@ extern int main(int argc, char* argv[]) {
     }
   }
 
-  mode = wm_initialising;
-
+  is_initialising = true;
   setlocale(LC_ALL, "");
 
   // Open a connection to the X server.
@@ -232,10 +228,9 @@ extern int main(int argc, char* argv[]) {
   // See if the server has the Shape Window extension.
   shape = serverSupportsShapes();
 
-  // Initialisation is finished, but we start off not interacting with the
-  // user.
-  mode = wm_idle;
-
+  // Initialisation is finished; from now on, errors are not going to be fatal.
+  is_initialising = false;
+  
   // The main event loop.
   int dpy_fd = ConnectionNumber(dpy);
   int max_fd = dpy_fd + 1;
