@@ -132,7 +132,6 @@ extern int main(int argc, char* argv[]) {
       fake_screen_areas = atoi(argv[i] + 12);
     } else if (!strcmp(argv[i], "-debugcli")) {
       debugCLI = new DebugCLI;
-      std::cout << "Debug CLI enabled. Will listen for commands on stdin.\n";
     }
   }
 

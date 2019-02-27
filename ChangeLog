@@ -1,6 +1,11 @@
 Change Log for "lwm"
 
 
+2019-02-27	pn	Basel
+	Embellished debug handler a bit, added support for enabling debug
+	logging per client. Should help me figure out various bugs.
+
+
 2019-02-23	pn	Basel
 	Rewrite of the click/drag handling. This gets rid of the global vars
 	tracking which 'mode' we're in, and which window is being dragged and

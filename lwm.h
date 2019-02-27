@@ -129,7 +129,7 @@ struct EWMHStrut {
 struct Point {
   int x;
   int y;
-  
+
   // Returns b - a.
   static Point Sub(Point a, Point b);
 };
@@ -148,28 +148,24 @@ struct Rect {
   int height() const { return yMax - yMin; }
   int area() const { return width() * height(); }
   bool empty() const { return area() == 0; }
-  
-  Point middle() const {
-    return Point{(xMin + xMax)/2, (yMin + yMax)/2};
-  }
-  
+
+  Point middle() const { return Point{(xMin + xMax) / 2, (yMin + yMax) / 2}; }
+
   inline bool operator==(const Rect& o) const {
     return xMin == o.xMin && yMin == o.yMin && xMax == o.xMax && yMax == o.yMax;
   }
-  
-  inline bool operator!=(const Rect& o) const {
-    return !operator==(o);
-  }
-  
+
+  inline bool operator!=(const Rect& o) const { return !operator==(o); }
+
   static Rect FromXYWH(int x, int y, int w, int h);
-  
+
   // Returns a new Rect which is shifted by the given x and y translation.
   static Rect Translate(Rect r, Point p);
-  
+
   // Returns the intersection of the two rectangles or, if they don't intersect,
   // the empty rectangle 0,0,0,0.
   static Rect Intersect(const Rect& a, const Rect& b);
-  
+
   // Parse rectangles in X11 style (1280x960+23+25).
   // Returns the canonical empty rectangle if parsing fails.
   static Rect Parse(std::string str);
@@ -250,11 +246,11 @@ class Client {
 
   // Draws the contents of the furniture window.
   void DrawBorder();
-  
+
   bool HasStruts() const {
     return strut.top || strut.bottom || strut.left || strut.right;
   }
-  
+
   // Rect defining the bounds of the window, either including LWM's window
   // furniture (WithBorder) or not (NoBorder).
   Rect RectWithBorder() const;
@@ -295,6 +291,8 @@ class Client {
   Client(const Client&) = delete;
   Client& operator=(const Client&) = delete;
 };
+
+std::ostream& operator<<(std::ostream& os, const Client& c);
 
 class CursorMap {
  public:
@@ -414,7 +412,7 @@ class LScr {
   Window Root() const { return root_; }
   Window Popup() const { return popup_; }
   Window Menu() const { return menu_; }
-  
+
   int Width() const { return width_; }
   int Height() const { return height_; }
   void ChangeScreenDimensions(int nScrWidth, int nScrHeight);
@@ -437,7 +435,7 @@ class LScr {
   // Calling this function will cause all client windows to be resized and
   // repositioned if necessary to ensure they're still accessible.
   void SetVisibleAreas(std::vector<Rect> visible_areas);
-  
+
   // Returns the rectangle describing the 'main' screen area. This is chosen
   // essentially by finding the largest monitor, and if there are several with
   // the same size, tie-breaking according to which has the lower Y, followed
@@ -445,7 +443,7 @@ class LScr {
   // If withStruts is true, only the part of the visible area not used by
   // strutting furniture will be returned.
   Rect GetPrimaryVisibleArea(bool withStruts) const;
-  
+
   // Returns all the visible areas. The areas returned are returned in no
   // specific order, and will abut *or overlap*.
   std::vector<Rect> VisibleAreas(bool withStruts) const;
@@ -545,7 +543,7 @@ class DragHandler {
  public:
   DragHandler() = default;
   virtual ~DragHandler() = default;
-  
+
   virtual void Start(XEvent* ev) = 0;
   // Return false to cancel the action immediately.
   virtual bool Move(XEvent* ev) = 0;
@@ -743,16 +741,25 @@ class Resources {
 // passed on the command line.
 class DebugCLI {
  public:
-  DebugCLI() = default;
+  DebugCLI();
   void Read();
+
+  static bool DebugEnabled(const Client* c);
+  static std::string NameFor(const Client* c);
   
  private:
   void cmdXRandr(std::string line);
+  void cmdDbg(std::string line);
   void resetDeadZones(const std::vector<Rect>& visible);
+  bool debugEnabled(const Client* c);
+  std::string nameFor(const Client* c);
   
   // Windows which cover the areas of the desktop that are not visible, due to
   // the debug CLI fake xrandr commands.
   std::vector<Window> dead_zones_;
+  
+  // Windows we're debugging (value is their dbg name).
+  std::map<Window, std::string> debug_windows_;
 };
 
 // Handy accessors which parse resources if necessary, and return the relevant

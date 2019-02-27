@@ -36,6 +36,11 @@
 #define LOGE_IF(cond) Log("E", __FILE__, __LINE__, 0, cond)
 #define LOGF_IF(cond) Log("F", __FILE__, __LINE__, 1, cond)
 
+// LOGD can be called for any object which can have debugging enabled on it.
+#define LOGD(x)                                              \
+  Log("D", __FILE__, __LINE__, 0, DebugCLI::DebugEnabled(x)) \
+      << DebugCLI::NameFor(x) << ": "
+
 class Log {
  public:
   // Use << Log::Errno(errno) into the Log object in order to pretty-print

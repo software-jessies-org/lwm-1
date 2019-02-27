@@ -265,7 +265,11 @@ class WindowDragger : public DragHandler {
  public:
   WindowDragger(Client* c) : window_(c->parent) {}
 
-  virtual void Start(XEvent*) { start_pos_ = getMousePosition(); }
+  virtual void Start(XEvent*) {
+    start_pos_ = getMousePosition();
+    LOGD(LScr::I->GetClient(window_))
+        << "Window drag from " << start_pos_.x << ", " << start_pos_.y;
+  }
 
   virtual bool Move(XEvent* ev) {
     Client* c = LScr::I->GetClient(window_);
@@ -288,6 +292,10 @@ class WindowDragger : public DragHandler {
   virtual void moveImpl(Client* c, int dx, int dy) = 0;
 
   virtual void End(XEvent*) {
+    MousePos mp = getMousePosition();
+    LOGD(LScr::I->GetClient(window_))
+        << "Window drag to " << mp.x << ", " << mp.y << " (moved "
+        << (mp.x - start_pos_.x) << ", " << (mp.y - start_pos_.y) << ")";
     // Unmapping the popup only has an effect if it's open (so if this is a
     // resize instead of a move), but it doesn't hurt to always close it.
     XUnmapWindow(dpy, LScr::I->Popup());
@@ -411,19 +419,28 @@ class WindowClicker : public DragHandler {
 class WindowCloser : public WindowClicker {
  public:
   WindowCloser(Client* c) : WindowClicker(c) {}
-  virtual void act(Client* c) { Client_Close(c); }
+  virtual void act(Client* c) {
+    LOGD(c) << "Closing (user action)";
+    Client_Close(c);
+  }
 };
 
 class WindowHider : public WindowClicker {
  public:
   WindowHider(Client* c) : WindowClicker(c) {}
-  virtual void act(Client* c) { c->Hide(); }
+  virtual void act(Client* c) {
+    LOGD(c) << "Hiding (user action)";
+    c->Hide();
+  }
 };
 
 class WindowLowerer : public WindowClicker {
  public:
   WindowLowerer(Client* c) : WindowClicker(c) {}
-  virtual void act(Client* c) { Client_Lower(c); }
+  virtual void act(Client* c) {
+    LOGD(c) << "Lowering (user action)";
+    Client_Lower(c);
+  }
 };
 
 class ShellRunner : public DragHandler {
@@ -510,6 +527,7 @@ static void buttonrelease(XEvent* ev) {
 static void circulaterequest(XEvent* ev) {
   XCirculateRequestEvent* e = &ev->xcirculaterequest;
   Client* c = LScr::I->GetClient(e->window);
+  LOGD(c) << "CirculateRequest";
   if (c == 0) {
     if (e->place == PlaceOnTop) {
       XRaiseWindow(e->display, e->window);
@@ -528,12 +546,7 @@ static void circulaterequest(XEvent* ev) {
 static void maprequest(XEvent* ev) {
   XMapRequestEvent* e = &ev->xmaprequest;
   Client* c = LScr::I->GetOrAddClient(e->window);
-  DBGF_IF(debug_map, "in maprequest, client %p", (void*)c);
-  if (!c) {
-    DBGF("MapRequest for non-existent window: %lx!", c->window);
-    return;
-  }
-
+  LOGD(c) << "MapRequest";
   if (c->hidden) {
     c->Unhide();
   }
@@ -572,6 +585,7 @@ static void maprequest(XEvent* ev) {
 
 static void unmap(XEvent* ev) {
   Client* c = LScr::I->GetClient(ev->xunmap.window);
+  LOGD(c) << "UnmapNotify";
   if (c == nullptr) {
     return;
   }
@@ -590,6 +604,7 @@ static void configurereq(XEvent* ev) {
   XWindowChanges wc;
   XConfigureRequestEvent* e = &ev->xconfigurerequest;
   Client* c = LScr::I->GetClient(e->window);
+  LOGD(c) << "ConfigureRequest";
 
   if (c && c->window == e->window) {
     // ICCCM section 4.1.5 says that the x and y coordinates here
@@ -682,6 +697,7 @@ static void configurenotify(XEvent* ev) {
   }
   const XConfigureEvent& xc = ev->xconfigure;
   Client* c = LScr::I->GetClient(xc.window);
+  LOGD(c) << "ConfigureNotify";
   if (!c || !c->framed || c->IsHidden()) {
     return;
   }
@@ -865,19 +881,25 @@ static void property(XEvent* ev) {
   }
 
   if (e->atom == _mozilla_url || e->atom == XA_WM_NAME) {
+    LOGD(c) << "Property change: XA_WM_NAME";
     getWindowName(c);
   } else if (e->atom == XA_WM_TRANSIENT_FOR) {
+    LOGD(c) << "Property change: XA_WM_TRANSIENT_FOR";
     getTransientFor(c);
   } else if (e->atom == XA_WM_NORMAL_HINTS) {
+    LOGD(c) << "Property change: XA_WM_NORMAL_HINTS";
     getNormalHints(c);
   } else if (e->atom == wm_colormaps) {
+    LOGD(c) << "Property change: wm_colormaps";
     getColourmaps(c);
     if (c->HasFocus()) {
       cmapfocus(c);
     }
   } else if (e->atom == ewmh_atom[_NET_WM_STRUT]) {
+    LOGD(c) << "Property change: _NET_WM_STRUT";
     ewmh_get_strut(c);
   } else if (e->atom == ewmh_atom[_NET_WM_STATE]) {
+    LOGD(c) << "Property change: _NET_WM_STATE";
     // Received notice that client wants to change its state
     //  update internal wstate tracking
     bool wasFullscreen = c->wstate.fullscreen;
@@ -912,6 +934,7 @@ static void focuschange(XEvent* ev) {
   int revert_to;
   XGetInputFocus(dpy, &focus_window, &revert_to);
   Client* c = LScr::I->GetClient(focus_window);
+  LOGD(c) << "Focus change";
   if (c) {
     LScr::I->GetFocuser()->FocusClient(c);
   }

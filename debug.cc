@@ -2,6 +2,8 @@
 #include "lwm.h"
 #include "xlib.h"
 
+using namespace std;
+
 // String manipulation functions.
 // Yes, these are crude and inefficient, and involve a lot of string copying.
 // However, this is a command-line debug interface, so I don't care.
@@ -9,10 +11,10 @@
 // This is basically strtok in C++. Returns the bit of victim up to the next
 // space, or end, removing the same part from victim. Yes, it modifies its
 // argument. Do I care? No.
-std::string nextToken(std::string& victim) {
+string nextToken(string& victim) {
   const size_t sep = victim.find(' ');
-  std::string res = victim.substr(0, sep);
-  if (sep == std::string::npos) {
+  string res = victim.substr(0, sep);
+  if (sep == string::npos) {
     victim = "";
   } else {
     victim = victim.substr(sep);
@@ -34,15 +36,15 @@ unsigned long deadColour() {
   return colour.pixel;
 }
 
-void DebugCLI::cmdXRandr(std::string line) {
+void DebugCLI::cmdXRandr(string line) {
   if (line == "?") {
-    LOGI() << "With struts:    " << LScr::I->VisibleAreas(true);
-    LOGI() << "Without struts: " << LScr::I->VisibleAreas(false);
+    cout << "With struts:    " << LScr::I->VisibleAreas(true) << "\n";
+    cout << "Without struts: " << LScr::I->VisibleAreas(false) << "\n";
     return;
   }
-  std::vector<Rect> rects;
+  vector<Rect> rects;
   while (!line.empty()) {
-    const std::string tok = nextToken(line);
+    const string tok = nextToken(line);
     Rect r = Rect::Parse(tok);
     if (r.empty()) {
       LOGE() << "Failed to parse rect '" << tok << "'";
@@ -53,15 +55,143 @@ void DebugCLI::cmdXRandr(std::string line) {
   if (rects.empty()) {
     rects.push_back(fullScreenRect());
   }
-  LOGI() << "Setting visible areas to " << rects;
+  cout << "Setting visible areas to " << rects << "\n";
   resetDeadZones(rects);
   LScr::I->SetVisibleAreas(rects);
 }
 
-void DebugCLI::resetDeadZones(const std::vector<Rect>& visible) {
-  std::vector<Rect> dead(1, fullScreenRect());
+static string windowEnding(int num) {
+  if (num == 0) {
+    return "s.";
+  } else if (num == 1) {
+    return ":";
+  }
+  return "s:";
+}
+
+void DebugCLI::cmdDbg(string line) {
+  if (line == "help") {
+    cout << "Usage:\n";
+    cout << "  dbg ?             list of debug-enabled things\n";
+    cout << "  dbg 0x123 foo     debug window 0x123, debug label foo\n";
+    cout << "  dbg off 0x123     remove debugging from window 0x123\n";
+    cout << "  dbg off foo       remove debugging from window with label foo\n";
+    cout << "  dbg off           remove debugging from everything\n";
+    return;
+  }
+  if (line == "?" || line == "") {
+    cout << "Debug enabled for " << debug_windows_.size() << " window"
+         << windowEnding(debug_windows_.size()) << "\n";
+    for (const auto& kv : debug_windows_) {
+      Client* c = LScr::I->GetClient(kv.first);
+      cout << "  0x" << hex << kv.first << dec << "/" << kv.second << " : ";
+      if (c) {
+        cout << *c;
+      } else {
+        cout << "(null Client)";
+      }
+      cout << "\n";
+    }
+    return;
+  }
+  const string tok = nextToken(line);
+  if (tok == "off") {
+    const string tok = nextToken(line);
+    if (tok.empty()) {
+      cout << "Removed all debug clients\n";
+      debug_windows_.clear();
+      return;
+    }
+    if (tok[0] == '0') {
+      const Window w = Window(strtol(tok.c_str(), nullptr, 0));
+      map<Window, string>::iterator it = debug_windows_.find(w);
+      if (it != debug_windows_.end()) {
+        Log("D", __FILE__, __LINE__, 0, true)
+            << it->second << ": Debugging disabled for client";
+        debug_windows_.erase(it);
+        return;
+      }
+    }
+    // Remove by name.
+    for (map<Window, string>::iterator it = debug_windows_.begin();
+         it != debug_windows_.end(); it++) {
+      if (it->second == tok) {
+        Log("D", __FILE__, __LINE__, 0, true)
+            << it->second << ": Debugging disabled for client";
+        debug_windows_.erase(it);
+        return;
+      }
+    }
+    cout << "No debug-enabled client found matching '" << tok << "'\n";
+    return;
+  }
+  // If we get here, we're enabling a new client.
+  const Window w = Window(strtol(tok.c_str(), nullptr, 0));
+  const Client* c = LScr::I->GetClient(w);
+  if (!c) {
+    cout << "Unknown client for 0x" << hex << w << dec << " (" << tok << ")\n";
+    return;
+  }
+  string name = nextToken(line);
+  if (name.empty()) {
+    name = tok;
+  }
+  debug_windows_[w] = name;
+  LOGD(c) << "Debugging enabled for client";
+}
+
+static void cmdLS() {
+  for (const auto& kv : LScr::I->Clients()) {
+    cout << *(kv.second) << "\n";
+  }
+}
+
+// We maintain an internal pointer to the only possible instance of a DebugCLI,
+// so we can provide nice global functions.
+static DebugCLI* debugCLI;
+
+DebugCLI::DebugCLI() {
+  LOGF_IF(debugCLI) << "Only one DebugCLI may be created";
+  debugCLI = this;
+  cout << "Debug CLI enabled. Will listen for commands on stdin.\n";
+  cout << "Type 'help' for help\n> " << flush;
+}
+
+// static
+bool DebugCLI::DebugEnabled(const Client* c) {
+  if (!debugCLI || !c) {
+    return false;
+  }
+  return debugCLI->debugEnabled(c);
+}
+
+bool DebugCLI::debugEnabled(const Client* c) {
+  return debug_windows_.count(c->window) || debug_windows_.count(c->parent);
+}
+
+// static
+string DebugCLI::NameFor(const Client* c) {
+  if (!debugCLI || !c) {
+    return "";
+  }
+  return debugCLI->nameFor(c);
+}
+
+string DebugCLI::nameFor(const Client* c) {
+  map<Window, string>::iterator it = debug_windows_.find(c->window);
+  if (it == debug_windows_.end()) {
+    it = debug_windows_.find(c->parent);
+  }
+  if (it == debug_windows_.end()) {
+    return "";
+  }
+  return it->second;
+}
+
+void DebugCLI::resetDeadZones(const vector<Rect>& visible) {
+  vector<Rect> dead(1, fullScreenRect());
   for (const Rect& vis : visible) {
-    std::vector<Rect> new_dead;
+    vector<Rect> new_dead;
     for (const Rect& d : dead) {
       const Rect i = Rect::Intersect(vis, d);
       if (i.empty()) {
@@ -101,7 +231,7 @@ void DebugCLI::resetDeadZones(const std::vector<Rect>& visible) {
     XMapRaised(dpy, w);
     dead_zones_.push_back(w);
   }
-  LOGI() << "Inaccessible areas are: " << dead;
+  cout << "Inaccessible areas are: " << dead << "\n";
 }
 
 void DebugCLI::Read() {
@@ -111,14 +241,26 @@ void DebugCLI::Read() {
     LOGE() << "A whole " << bytes << " bytes on one line? You're crazy.";
     return;
   }
-  std::string line;
+  string line;
   for (int i = 0; i < sizeof(buf) && buf[i] != '\n'; i++) {
     line.push_back(buf[i]);
   }
-  const std::string& cmd = nextToken(line);
+  const string& cmd = nextToken(line);
   if (cmd == "xrandr") {
     cmdXRandr(line);
+  } else if (cmd == "ls") {
+    cmdLS();
+  } else if (cmd == "dbg") {
+    cmdDbg(line);
+  } else if (cmd == "help") {
+    cout << "Available commands:\n";
+    cout << "  dbg     enable/disable per-client debug messages\n";
+    cout << "  help    print this help message\n";
+    cout << "  ls      list active clients\n";
+    cout << "  xrandr  simulate xrandr desktop screen config changes\n";
   } else {
-    LOGI() << "Didn't understand command '" << cmd << "'";
+    cout << "Didn't understand command '" << cmd << "'\n";
   }
+  // Print the prompt again, so we look like we're listening.
+  cout << "> " << flush;
 }

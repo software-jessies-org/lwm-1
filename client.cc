@@ -61,6 +61,26 @@ Rect titleBarBounds(int windowWidth) {
   return Rect{x, 0, w, titleBarHeight()};
 }
 
+std::ostream& operator<<(std::ostream& os, const Client& c) {
+  os << "0x" << std::hex << c.window;
+  if (c.parent) {
+    os << " (frame=0x" << c.parent << ")";
+  }
+  if (c.trans) {
+    os << " (trans=0x" << c.trans << ")";
+  }
+  os << std::dec;
+  os << " " << c.RectWithBorder() << " ";
+  if (c.hidden) {
+    os << "(";
+  }
+  os << "\"" << c.Name() << "\"";
+  if (c.hidden) {
+    os << ")";
+  }
+  return os;
+}
+
 Rect Client::edgeBounds(Edge e) const {
   const int inset = titleBarHeight();
   const int wh = size.height + textHeight();

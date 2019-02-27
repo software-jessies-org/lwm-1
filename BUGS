@@ -68,13 +68,24 @@ stdin. It doesn't have advanced editing functions, it's just a plain stdin
 pipe which reads a line at a time. If you want editing functions, edit the lines
 you want to paste in an editor.
 
+It is recommended to redirect stderr into a file, and 'tail -f' it in a separate
+terminal from the one in which the debug CLI is running. That way, your
+interaction with the embedded debugger doesn't interfere with the debug logs,
+and vice versa.
+
 Available commands are:
+
+help   - print out help.
+ls     - lists the active clients.
+dbg    - control over per-client debug messages (type 'dbg help' for details).
+xrandr - test xrandr handling without fiddling with cables.
+
+TODO: move the following xrandr help into the debug code.
+TODO: refactor the debug handlers so there's a nice simple structure, and the
+      help handling has a bit more structure.
 
 xrandr (test xrandr handling without fiddling with cables)
 ~~~~~~
 xrandr ?                         Print current visible areas.
 xrandr                           Set visible area to be the full screen.
 xrandr 100x200+0+0 100x50+100+0  Set visible areas.
-
-TODO: We need some tool which shows where the visible areas are, as when using
-the above debug CLI on VNC, it's tricky to spot where the screen edges are.
