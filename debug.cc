@@ -69,6 +69,17 @@ static string windowEnding(int num) {
   return "s:";
 }
 
+bool DebugCLI::disableDebugging(Window w) {
+  map<Window, string>::iterator it = debug_windows_.find(w);
+  if (it == debug_windows_.end()) {
+    return false;
+  }
+  Log("D", __FILE__, __LINE__, 0, true)
+      << it->second << ": Debugging disabled for client";
+  debug_windows_.erase(it);
+  return true;
+}
+
 void DebugCLI::cmdDbg(string line) {
   if (line == "help") {
     cout << "Usage:\n";
@@ -77,6 +88,8 @@ void DebugCLI::cmdDbg(string line) {
     cout << "  dbg off 0x123     remove debugging from window 0x123\n";
     cout << "  dbg off foo       remove debugging from window with label foo\n";
     cout << "  dbg off           remove debugging from everything\n";
+    cout << "  dbg auto          auto-enable debugging of new windows\n";
+    cout << "  dbg noauto        disable auto-debugging\n";
     return;
   }
   if (line == "?" || line == "") {
@@ -98,31 +111,40 @@ void DebugCLI::cmdDbg(string line) {
   if (tok == "off") {
     const string tok = nextToken(line);
     if (tok.empty()) {
+      vector<Window> ws;
+      for (const auto& kv : debug_windows_) {
+        ws.push_back(kv.first);
+      }
+      for (Window w : ws) {
+        disableDebugging(w);
+      }
       cout << "Removed all debug clients\n";
-      debug_windows_.clear();
       return;
     }
     if (tok[0] == '0') {
       const Window w = Window(strtol(tok.c_str(), nullptr, 0));
-      map<Window, string>::iterator it = debug_windows_.find(w);
-      if (it != debug_windows_.end()) {
-        Log("D", __FILE__, __LINE__, 0, true)
-            << it->second << ": Debugging disabled for client";
-        debug_windows_.erase(it);
+      if (disableDebugging(w)) {
         return;
       }
     }
     // Remove by name.
-    for (map<Window, string>::iterator it = debug_windows_.begin();
-         it != debug_windows_.end(); it++) {
-      if (it->second == tok) {
-        Log("D", __FILE__, __LINE__, 0, true)
-            << it->second << ": Debugging disabled for client";
-        debug_windows_.erase(it);
+    for (const auto& kv : debug_windows_) {
+      if (kv.second == tok) {
+        disableDebugging(kv.first);
         return;
       }
     }
     cout << "No debug-enabled client found matching '" << tok << "'\n";
+    return;
+  }
+  if (tok == "auto") {
+    debug_new_ = true;
+    cout << "Auto-debug enabled for new windows\n";
+    return;
+  }
+  if (tok == "noauto") {
+    debug_new_ = false;
+    cout << "Auto-debug disabled for new windows\n";
     return;
   }
   // If we get here, we're enabling a new client.
@@ -186,6 +208,32 @@ string DebugCLI::nameFor(const Client* c) {
     return "";
   }
   return it->second;
+}
+
+// static
+void DebugCLI::NotifyClientAdd(Client* c) {
+  if (!debugCLI || !c || !debugCLI->debug_new_) {
+    return;
+  }
+  // Auto-enable debugging for new windows is active, so do so.
+  // Keep a counter, so we can construct a good name.
+  static int name_counter;
+  char buf[64];
+  snprintf(buf, sizeof(buf), "auto%d", name_counter++);
+  debugCLI->debug_windows_[c->window] = buf;
+  LOGD(c) << "Debugging auto-enabled for client";
+}
+
+// static
+void DebugCLI::NotifyClientRemove(Client* c) {
+  if (!debugCLI || !c) {
+    return;
+  }
+  // Client has gone away, disable debugging for it.
+  debugCLI->disableDebugging(c->window);
+  if (c->framed) {
+    debugCLI->disableDebugging(c->parent);
+  }
 }
 
 void DebugCLI::resetDeadZones(const vector<Rect>& visible) {

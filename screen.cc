@@ -139,7 +139,9 @@ Client* LScr::GetOrAddClient(Window w) {
   if (c) {
     return c;
   }
-  return addClient(w);
+  c = addClient(w);
+  DebugCLI::NotifyClientAdd(c);
+  return c;
 }
 
 Client* LScr::addClient(Window w) {
@@ -208,6 +210,7 @@ void LScr::Remove(Client* c) {
   }
   parents_.erase(it->second->parent);
   clients_.erase(it);
+  DebugCLI::NotifyClientRemove(c);
   delete c;
 }
 

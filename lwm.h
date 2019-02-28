@@ -747,12 +747,20 @@ class DebugCLI {
   static bool DebugEnabled(const Client* c);
   static std::string NameFor(const Client* c);
   
+  // Called by LScr on client appearance/disappearance. Has no effect if
+  // debugging is disabled.
+  static void NotifyClientAdd(Client* c);
+  static void NotifyClientRemove(Client* c);
+  
  private:
   void cmdXRandr(std::string line);
   void cmdDbg(std::string line);
   void resetDeadZones(const std::vector<Rect>& visible);
   bool debugEnabled(const Client* c);
+  bool disableDebugging(Window w);
   std::string nameFor(const Client* c);
+  
+  bool debug_new_;
   
   // Windows which cover the areas of the desktop that are not visible, due to
   // the debug CLI fake xrandr commands.
