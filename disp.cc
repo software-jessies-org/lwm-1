@@ -600,11 +600,44 @@ static void unmap(XEvent* ev) {
   c->internal_state = INormal;
 }
 
+std::ostream& operator<<(std::ostream& os, const XConfigureRequestEvent& e) {
+  os << (e.send_event ? "S" : "s") << e.serial << WinID(e.window) << " "
+     << Rect::FromXYWH(e.x, e.y, e.width, e.height) << ", b=" << e.border_width;
+  return os;
+}
+
+std::ostream& operator<<(std::ostream& os, const XWindowChanges& c) {
+  os << Rect::FromXYWH(c.x, c.y, c.width, c.height) << ", b=" << c.border_width;
+  return os;
+}
+
+struct XCfgValMask {
+  explicit XCfgValMask(unsigned m) : m(m) {}
+  unsigned long m;
+};
+
+static char upper(char c, bool up) {
+  return up ? toupper(c) : tolower(c);
+}
+
+std::ostream& operator<<(std::ostream& os, const XCfgValMask& m) {
+#define OP(flag, ch) os << upper(ch, m.m & flag)
+  OP(CWX, 'x');
+  OP(CWY, 'y');
+  OP(CWWidth, 'w');
+  OP(CWHeight, 'h');
+  OP(CWBorderWidth, 'b');
+  OP(CWSibling, 'i');
+  OP(CWStackMode, 't');
+#undef OP
+  return os;
+}
+
 static void configurereq(XEvent* ev) {
   XWindowChanges wc;
   XConfigureRequestEvent* e = &ev->xconfigurerequest;
   Client* c = LScr::I->GetClient(e->window);
-  LOGD(c) << "ConfigureRequest";
+  LOGD(c) << "ConfigureRequest: " << *e;
 
   if (c && c->window == e->window) {
     // ICCCM section 4.1.5 says that the x and y coordinates here
@@ -655,6 +688,8 @@ static void configurereq(XEvent* ev) {
       wc.sibling = e->above;
       wc.stack_mode = e->detail;
 
+      LOGD(c) << "XConfigureWindow of " << WinID(e->parent)
+              << "; mask=" << XCfgValMask(e->value_mask) << ": " << wc;
       XConfigureWindow(dpy, e->parent, e->value_mask, &wc);
       sendConfigureNotify(c);
     }
@@ -674,18 +709,28 @@ static void configurereq(XEvent* ev) {
   wc.stack_mode = e->detail;
   e->value_mask |= CWBorderWidth;
 
+  LOGD(c) << "XConfigureWindow of " << WinID(e->window)
+          << "; mask=" << XCfgValMask(e->value_mask) << ": " << wc;
   XConfigureWindow(dpy, e->window, e->value_mask, &wc);
 
   if (c) {
     if (c->framed) {
+      LOGD(c) << "framed - moving/resizing to " << c->size;
       XMoveResizeWindow(dpy, c->parent, c->size.x, c->size.y - textHeight(),
                         c->size.width, c->size.height + textHeight());
       XMoveWindow(dpy, c->window, borderWidth(), borderWidth() + textHeight());
     } else {
+      LOGD(c) << "unframed - moving/resizing to " << c->size;
       XMoveResizeWindow(dpy, c->window, c->size.x, c->size.y, c->size.width,
                         c->size.height);
     }
   }
+}
+
+std::ostream& operator<<(std::ostream& os, const XConfigureEvent& e) {
+  os << WinID(e.window) << " " << (e.send_event ? "S" : "s") << e.serial << " ";
+  os << Rect::FromXYWH(e.x, e.y, e.width, e.height) << ", b=" << e.border_width;
+  return os;
 }
 
 static void configurenotify(XEvent* ev) {
@@ -697,7 +742,7 @@ static void configurenotify(XEvent* ev) {
   }
   const XConfigureEvent& xc = ev->xconfigure;
   Client* c = LScr::I->GetClient(xc.window);
-  LOGD(c) << "ConfigureNotify";
+  LOGD(c) << "ConfigureNotify: " << xc;
   if (!c || !c->framed || c->IsHidden()) {
     return;
   }
@@ -873,6 +918,43 @@ static void colormap(XEvent* ev) {
   }
 }
 
+struct diff {
+  EWMHWindowState o;
+  EWMHWindowState n;
+};
+
+std::ostream& operator<<(std::ostream& os, const diff& d) {
+  bool changed = false;
+#define D(x)                                            \
+  do {                                                  \
+    if (d.o.x != d.n.x) {                               \
+      changed = true;                                   \
+      os << " " #x << " " << (d.o.x ? "t->f" : "f->t"); \
+    }                                                   \
+  } while (false)
+  D(skip_taskbar);
+  D(skip_pager);
+  D(fullscreen);
+  D(above);
+  D(below);
+#undef D
+  if (!changed) {
+    os << " no changes (" << d.n << ")";
+  }
+  return os;
+}
+
+std::ostream& operator<<(std::ostream& os, const EWMHWindowState& s) {
+#define D(x) os << " " #x << (s.x ? "=t" : "=f")
+  D(skip_taskbar);
+  D(skip_pager);
+  D(fullscreen);
+  D(above);
+  D(below);
+#undef D
+  return os;
+}
+
 static void property(XEvent* ev) {
   XPropertyEvent* e = &ev->xproperty;
   Client* c = LScr::I->GetClient(e->window);
@@ -899,15 +981,12 @@ static void property(XEvent* ev) {
     LOGD(c) << "Property change: _NET_WM_STRUT";
     ewmh_get_strut(c);
   } else if (e->atom == ewmh_atom[_NET_WM_STATE]) {
-    LOGD(c) << "Property change: _NET_WM_STATE";
-    // Received notice that client wants to change its state
-    //  update internal wstate tracking
-    bool wasFullscreen = c->wstate.fullscreen;
+    const EWMHWindowState old = c->wstate;
     ewmh_get_state(c);
-    // make any changes requested
-    if (c->wstate.fullscreen && !wasFullscreen) {
+    LOGD(c) << "Property change: _NET_WM_STATE:" << diff{old, c->wstate};
+    if (c->wstate.fullscreen && !old.fullscreen) {
       Client_EnterFullScreen(c);
-    } else if (!c->wstate.fullscreen && wasFullscreen) {
+    } else if (!c->wstate.fullscreen && old.fullscreen) {
       Client_ExitFullScreen(c);
     }
   }

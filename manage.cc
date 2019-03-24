@@ -443,7 +443,10 @@ void getNormalHints(Client* c) {
   // Do the get.
   long msize;
   if (XGetWMNormalHints(dpy, c->window, &c->size, &msize) == 0) {
+    LOGD(c) << "Got normal hints: " << c->size;
     c->size.flags = 0;
+  } else {
+    LOGD(c) << "No hints; current is: " << c->size;
   }
 
   if (c->framed) {
@@ -493,6 +496,7 @@ void getNormalHints(Client* c) {
   c->size.y = y;
   c->size.width = w;
   c->size.height = h;
+  LOGD(c) << "Post-processed hints: " << c->size;
 }
 
 static int getWindowState(Window w, int* state) {

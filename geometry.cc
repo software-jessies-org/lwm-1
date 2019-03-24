@@ -49,6 +49,22 @@ std::ostream& operator<<(std::ostream& os, const std::vector<Rect>& rs) {
   return os;
 }
 
+std::ostream& operator<<(std::ostream& os, const XSizeHints& s) {
+  os << "XSizeHints[";
+#define D(x) (s.flags & x ? "" : "!") << #x << " "
+  os << D(USPosition) << D(USSize) << D(PPosition) << D(PSize) << D(PMinSize)
+     << D(PMaxSize) << D(PResizeInc) << D(PAspect) << D(PBaseSize)
+     << D(PWinGravity) << "pos:" << s.width << "x" << s.height << "+" << s.x
+     << "+" << s.y << " size: min=" << s.min_width << "," << s.min_height
+     << "; max=" << s.max_width << "," << s.max_height
+     << " aspect: min=" << s.min_aspect.x << ":" << s.min_aspect.y
+     << "; max=" << s.max_aspect.x << ":" << s.max_aspect.y
+     << " base=" << s.base_width << "," << s.base_height
+     << " gravity=" << s.win_gravity << "]";
+#undef D
+  return os;
+}
+
 // static
 Point Point::Sub(Point a, Point b) {
   return Point{a.x - b.x, a.y - b.y};

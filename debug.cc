@@ -60,15 +60,6 @@ void DebugCLI::cmdXRandr(string line) {
   LScr::I->SetVisibleAreas(rects);
 }
 
-static string windowEnding(int num) {
-  if (num == 0) {
-    return "s.";
-  } else if (num == 1) {
-    return ":";
-  }
-  return "s:";
-}
-
 bool DebugCLI::disableDebugging(Window w) {
   map<Window, string>::iterator it = debug_windows_.find(w);
   if (it == debug_windows_.end()) {
@@ -93,8 +84,10 @@ void DebugCLI::cmdDbg(string line) {
     return;
   }
   if (line == "?" || line == "") {
+    const int n = debug_windows_.size();
     cout << "Debug enabled for " << debug_windows_.size() << " window"
-         << windowEnding(debug_windows_.size()) << "\n";
+         << (n == 1 ? "" : "s") << " (auto " << (debug_new_ ? "on" : "off")
+         << ")" << (n ? ":" : ".") << "\n";
     for (const auto& kv : debug_windows_) {
       Client* c = LScr::I->GetClient(kv.first);
       cout << "  0x" << hex << kv.first << dec << "/" << kv.second << " : ";
@@ -175,8 +168,6 @@ static DebugCLI* debugCLI;
 DebugCLI::DebugCLI() {
   LOGF_IF(debugCLI) << "Only one DebugCLI may be created";
   debugCLI = this;
-  cout << "Debug CLI enabled. Will listen for commands on stdin.\n";
-  cout << "Type 'help' for help\n> " << flush;
 }
 
 // static
@@ -293,6 +284,20 @@ void DebugCLI::Read() {
   for (int i = 0; i < sizeof(buf) && buf[i] != '\n'; i++) {
     line.push_back(buf[i]);
   }
+  processLine(line);
+  // Print the prompt again, so we look like we're listening.
+  cout << "> " << flush;
+}
+
+void DebugCLI::Init(const std::vector<std::string>& init_commands) {
+  for (const std::string& s : init_commands) {
+    processLine(s);
+  }
+  cout << "Debug CLI enabled. Will listen for commands on stdin.\n";
+  cout << "Type 'help' for help\n> " << flush;
+}
+
+void DebugCLI::processLine(string line) {
   const string& cmd = nextToken(line);
   if (cmd == "xrandr") {
     cmdXRandr(line);
@@ -309,6 +314,4 @@ void DebugCLI::Read() {
   } else {
     cout << "Didn't understand command '" << cmd << "'\n";
   }
-  // Print the prompt again, so we look like we're listening.
-  cout << "> " << flush;
 }

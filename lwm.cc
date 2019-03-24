@@ -119,10 +119,26 @@ static void setFakeScreenAreasForTesting() {
   LScr::I->SetVisibleAreas(rects);
 }
 
+std::vector<std::string> Split(const std::string& in,
+                               const std::string& split) {
+  std::vector<std::string> res;
+  int start = 0;
+  while (true) {
+    int end = in.find(split, start);
+    if (end == std::string::npos) {
+      res.push_back(in.substr(start));
+      return res;
+    }
+    res.push_back(in.substr(start, end - start));
+    start = end + split.size();
+  }
+}
+
 /*ARGSUSED*/
 extern int main(int argc, char* argv[]) {
-  DebugCLI *debugCLI = nullptr;
+  DebugCLI* debugCLI = nullptr;
   argv0 = argv[0];
+  std::vector<std::string> debug_init_commands;
   for (int i = 1; i < argc; i++) {
     if (!strncmp(argv[i], "-d=", 3)) {
       for (int j = 3; argv[i][j]; j++) {
@@ -130,8 +146,12 @@ extern int main(int argc, char* argv[]) {
       }
     } else if (!strncmp(argv[i], "-fakescreen=", 12)) {
       fake_screen_areas = atoi(argv[i] + 12);
-    } else if (!strcmp(argv[i], "-debugcli")) {
+    } else if (!strncmp(argv[i], "-debugcli", 9)) {
       debugCLI = new DebugCLI;
+      if (argv[i][9] == '=') {
+        // Argument is a sequence of commands, separated by ;.
+        debug_init_commands = Split(std::string(argv[i]+10), ";");
+      }
     }
   }
 
@@ -229,13 +249,20 @@ extern int main(int argc, char* argv[]) {
 
   // Initialisation is finished; from now on, errors are not going to be fatal.
   is_initialising = false;
-  
+
   // The main event loop.
   int dpy_fd = ConnectionNumber(dpy);
   int max_fd = dpy_fd + 1;
   if (ice_fd > dpy_fd) {
     max_fd = ice_fd + 1;
   }
+  
+  // Just before we start the loop, execute any commands we've been told to
+  // run on start-up.
+  if (debugCLI) {
+    debugCLI->Init(debug_init_commands);
+  }
+  
   while (!forceRestart) {
     fd_set readfds;
 
@@ -294,7 +321,7 @@ static void rrScreenChangeNotify(XEvent* ev) {
 
   static long lastSerial;
   if (rrev->serial == lastSerial) {
-    LOGI() << "Dropping duplicate event for serial " << std::hex << lastSerial;
+    LOGI() << "Dropping duplicate event for serial " << lastSerial;
     return;  // Drop duplicate message (we get lots of these).
   }
   lastSerial = rrev->serial;

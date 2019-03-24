@@ -73,6 +73,17 @@ terminal from the one in which the debug CLI is running. That way, your
 interaction with the embedded debugger doesn't interfere with the debug logs,
 and vice versa.
 
+If -debugcli is specified with an argument, the argument is a sequence of
+commands to run at start-up. This can be useful if you repeatedly want to set
+auto-debug of new clients, or some other stuff.
+
+For example, to print help on start-up, run:
+./lwm -debugcli=help
+
+To start up with xrandr faking on, and with an inaccessible area on the bottom-
+right of the screen, and auto-debug of new clients, run:
+./lwm -debugcli="xrandr 800x1200+0+0 800x500+800+0;dbg auto"
+
 Available commands are:
 
 help   - print out help.

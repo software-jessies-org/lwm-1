@@ -115,6 +115,9 @@ struct EWMHWindowState {
   bool below;
 };
 
+std::ostream& operator<<(std::ostream& os, const EWMHWindowState& s);
+std::ostream& operator<<(std::ostream& os, const XSizeHints& s);
+
 /**
  * EWMH "strut", or area on each edge of the screen reserved for docking
  * bars/panels.
@@ -292,7 +295,14 @@ class Client {
   Client& operator=(const Client&) = delete;
 };
 
+// WinID is only used to pretty-print window IDs in hex.
+struct WinID {
+  explicit WinID(Window w) : w(w) {}
+  Window w;
+};
+
 std::ostream& operator<<(std::ostream& os, const Client& c);
+std::ostream& operator<<(std::ostream& os, const WinID& w);
 
 class CursorMap {
  public:
@@ -743,32 +753,40 @@ class DebugCLI {
  public:
   DebugCLI();
   void Read();
+  // Init runs commands on start-up (provided on the command line), and prints
+  // out the hello message. Should be run even if there are no commands.
+  void Init(const std::vector<std::string>& init_commands);
 
   static bool DebugEnabled(const Client* c);
   static std::string NameFor(const Client* c);
-  
+
   // Called by LScr on client appearance/disappearance. Has no effect if
   // debugging is disabled.
   static void NotifyClientAdd(Client* c);
   static void NotifyClientRemove(Client* c);
-  
+
  private:
+  void processLine(std::string line);
   void cmdXRandr(std::string line);
   void cmdDbg(std::string line);
   void resetDeadZones(const std::vector<Rect>& visible);
   bool debugEnabled(const Client* c);
   bool disableDebugging(Window w);
   std::string nameFor(const Client* c);
-  
+
   bool debug_new_;
-  
+
   // Windows which cover the areas of the desktop that are not visible, due to
   // the debug CLI fake xrandr commands.
   std::vector<Window> dead_zones_;
-  
+
   // Windows we're debugging (value is their dbg name).
   std::map<Window, std::string> debug_windows_;
 };
+
+// String functions.
+extern std::vector<std::string> Split(const std::string& in,
+                                      const std::string& split);
 
 // Handy accessors which parse resources if necessary, and return the relevant
 // bit of config info.

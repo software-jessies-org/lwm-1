@@ -62,14 +62,13 @@ Rect titleBarBounds(int windowWidth) {
 }
 
 std::ostream& operator<<(std::ostream& os, const Client& c) {
-  os << "0x" << std::hex << c.window;
+  os << WinID(c.window);
   if (c.parent) {
-    os << " (frame=0x" << c.parent << ")";
+    os << " (frame=" << WinID(c.parent) << ")";
   }
   if (c.trans) {
-    os << " (trans=0x" << c.trans << ")";
+    os << " (trans=" << WinID(c.trans) << ")";
   }
-  os << std::dec;
   os << " " << c.RectWithBorder() << " ";
   if (c.hidden) {
     os << "(";
@@ -78,6 +77,11 @@ std::ostream& operator<<(std::ostream& os, const Client& c) {
   if (c.hidden) {
     os << ")";
   }
+  return os;
+}
+
+std::ostream& operator<<(std::ostream& os, const WinID& w) {
+  os << "0x" << std::hex << w.w << std::dec;
   return os;
 }
 
