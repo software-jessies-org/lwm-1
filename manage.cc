@@ -439,6 +439,7 @@ void getNormalHints(Client* c) {
   int y = c->size.y;
   int w = c->size.width;
   int h = c->size.height;
+  LOGD(c) << "Initial size = " << Rect::FromXYWH(x, y, w, h);
 
   // Do the get.
   long msize;

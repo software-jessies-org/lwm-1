@@ -554,26 +554,23 @@ static void maprequest(XEvent* ev) {
   switch (c->State()) {
     case WithdrawnState:
       if (c->parent == LScr::I->Root()) {
-        DBGF_IF(debug_map,
-                "in maprequest, taking over management of window %lx.",
-                c->window);
+        LOGD(c) << "(map) taking management of " << WinID(c->window);
         manage(c);
         LScr::I->GetFocuser()->FocusClient(c);
         break;
       }
       if (c->framed) {
-        DBGF_IF(debug_map, "in maprequest, reparenting window %lx.", c->parent);
+        LOGD(c) << "(map) reparenting framed window " << WinID(c->parent);
         XReparentWindow(dpy, c->window, c->parent, borderWidth(),
                         borderWidth() + textHeight());
       } else {
-        DBGF_IF(debug_map, "in maprequest, reparenting (2) window %lx.",
-                c->parent);
+        LOGD(c) << "(map) reparenting unframed window " << WinID(c->parent);
         XReparentWindow(dpy, c->window, c->parent, c->size.x, c->size.y);
       }
       XAddToSaveSet(dpy, c->window);
       // FALLTHROUGH
     case NormalState:
-      DBG_IF(debug_map, "in maprequest, NormalState");
+      LOGD(c) << "(map) NormalState " << WinID(c->window);
       XMapWindow(dpy, c->parent);
       XMapWindow(dpy, c->window);
       Client_Raise(c);
