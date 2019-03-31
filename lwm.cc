@@ -82,7 +82,6 @@ bool debug_all_events;        // -d=e
 bool debug_focus;             // -d=f
 bool debug_map;               // -d=m
 bool debug_property_notify;   // -d=p
-int fake_screen_areas;        // -fakescreen
 
 bool printDebugPrefix(char const* file, int line) {
   char buf[16];
@@ -103,21 +102,6 @@ char* argv0;
 
 static void rrScreenChangeNotify(XEvent* ev);
 static void setScreenAreasFromXRandR();
-
-// Enable this using the -fakescreen flag. When this is used, we pretend that
-// xrandr has told us our display area is divided in half, with a left and a
-// right monitor. We adjust the left so it begins some pixels down from the
-// top, and the right side extends to some pixels up from the bottom.
-// This is for testing xrandr support on VNC (which itself doesn't support
-// xrandr, at least the one I'm using).
-static void setFakeScreenAreasForTesting() {
-  const int w = DisplayWidth(dpy, 0);
-  const int h = DisplayHeight(dpy, 0);
-  std::vector<Rect> rects;
-  rects.push_back(Rect{0, fake_screen_areas, w / 2, h});
-  rects.push_back(Rect{w / 2, 0, w, h - fake_screen_areas});
-  LScr::I->SetVisibleAreas(rects);
-}
 
 std::vector<std::string> Split(const std::string& in,
                                const std::string& split) {
@@ -144,8 +128,6 @@ extern int main(int argc, char* argv[]) {
       for (int j = 3; argv[i][j]; j++) {
         setDebugArg(argv[i][j]);
       }
-    } else if (!strncmp(argv[i], "-fakescreen=", 12)) {
-      fake_screen_areas = atoi(argv[i] + 12);
     } else if (!strncmp(argv[i], "-debugcli", 9)) {
       debugCLI = new DebugCLI;
       if (argv[i][9] == '=') {
@@ -236,12 +218,6 @@ extern int main(int argc, char* argv[]) {
   if (have_rr) {
     XRRSelectInput(dpy, LScr::I->Root(), RRScreenChangeNotifyMask);
     setScreenAreasFromXRandR();
-  }
-
-  // If the user has run us with 'fake screen areas', then set up two pretend
-  // visible areas, to simulate running on a two-monitor system.
-  if (fake_screen_areas) {
-    setFakeScreenAreasForTesting();
   }
 
   // See if the server has the Shape Window extension.
