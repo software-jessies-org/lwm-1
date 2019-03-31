@@ -23,9 +23,7 @@
 // Dispatcher for main event loop.
 struct Disp {
   int type;
-  char const* const name;
   void (*handler)(XEvent*);
-  void (*debug)(XEvent*, char const*);
 };
 
 static void expose(XEvent*);
@@ -45,149 +43,45 @@ static void enter(XEvent*);
 static void circulaterequest(XEvent*);
 static void motionnotify(XEvent*);
 
-//
-// Code for decoding events and printing them out in an understandable way.
-//
-
-// Helper functions for decoding specific types of X integers.
-#define CASE_STR(x) \
-  case x:           \
-    return #x
-#define WEIRD(x) \
-  default:       \
-    return "Weird" #x
-
-static char const* debugFocusType(int v) {
-  switch (v) {
-    CASE_STR(FocusIn);
-    CASE_STR(FocusOut);
-    WEIRD(Focus);
-  }
-}
-
-static char const* debugPropertyState(int v) {
-  switch (v) {
-    CASE_STR(PropertyNewValue);
-    CASE_STR(PropertyDelete);
-    WEIRD(PropertyState);
-  }
-}
-
-static char const* debugFocusMode(int v) {
-  switch (v) {
-    CASE_STR(NotifyNormal);
-    CASE_STR(NotifyGrab);
-    CASE_STR(NotifyUngrab);
-    WEIRD(FocusMode);
-  }
-}
-
-static char const* debugFocusDetail(int v) {
-  switch (v) {
-    CASE_STR(NotifyAncestor);
-    CASE_STR(NotifyVirtual);
-    CASE_STR(NotifyInferior);
-    CASE_STR(NotifyNonlinear);
-    CASE_STR(NotifyNonlinearVirtual);
-    CASE_STR(NotifyPointer);
-    CASE_STR(NotifyPointerRoot);
-    CASE_STR(NotifyDetailNone);
-    WEIRD(FocusDetail);
-  }
-}
-
-// Undefine our helper macros, so they don't pollute anyone else.
-#undef CASE_STR
-#undef WEIRD
-
-static void debugGeneric(XEvent* ev, char const* evName) {
-  if (debug_all_events) {
-    DBGF("%s: window 0x%lx", evName, ev->xany.window);
-  }
-}
-
-static void debugConfigureNotify(XEvent* ev, char const* evName) {
-  if (debug_all_events || debug_configure_notify) {
-    XConfigureEvent* xc = &(ev->xconfigure);
-    DBGF("%s: ev window 0x%lx, window 0x%lx; pos %d, %d; size %d, %d", evName,
-         xc->event, xc->window, xc->x, xc->y, xc->width, xc->height);
-  }
-}
-
-static void debugPropertyNotify(XEvent* ev, char const* evName) {
-  if (debug_all_events || debug_property_notify) {
-    XPropertyEvent* xp = &(ev->xproperty);
-    DBGF("%s: window 0x%lx, atom %ld (%s); state %s", evName, xp->window,
-         xp->atom, ewmh_atom_name(xp->atom), debugPropertyState(xp->state));
-  }
-}
-
-static void debugFocusChange(XEvent* ev, char const* evName) {
-  if (debug_all_events || debug_focus) {
-    XFocusChangeEvent* xf = &(ev->xfocus);
-    DBGF("%s: %s, window 0x%lx, mode=%s, detail=%s", evName,
-         debugFocusType(xf->type), xf->window, debugFocusMode(xf->mode),
-         debugFocusDetail(xf->detail));
-  }
-}
-
-static void debugMapRequest(XEvent* ev, char const* evName) {
-  if (debug_all_events || debug_map) {
-    XMapRequestEvent* e = &ev->xmaprequest;
-    DBGF("%s: window 0x%lx, parent 0x%lx, send=%d, serial=%lu", evName,
-         e->window, e->parent, e->send_event, e->serial);
-  }
-}
-
-//
-// End of all the debugging support.
-//
-
-#define REG_DISP(ev, hand, dbg) \
-  { ev, #ev, hand, dbg }
 static Disp disps[] = {
-    REG_DISP(Expose, expose, debugGeneric),
-    REG_DISP(MotionNotify, motionnotify, debugGeneric),
-    REG_DISP(ButtonPress, buttonpress, debugGeneric),
-    REG_DISP(ButtonRelease, buttonrelease, debugGeneric),
-    REG_DISP(FocusIn, focuschange, debugFocusChange),
-    REG_DISP(FocusOut, focuschange, debugFocusChange),
-    REG_DISP(MapRequest, maprequest, debugMapRequest),
-    REG_DISP(ConfigureRequest, configurereq, debugGeneric),
-    REG_DISP(UnmapNotify, unmap, debugGeneric),
-    REG_DISP(DestroyNotify, destroy, debugGeneric),
-    REG_DISP(ClientMessage, clientmessage, debugGeneric),
-    REG_DISP(ColormapNotify, colormap, debugGeneric),
-    REG_DISP(PropertyNotify, property, debugPropertyNotify),
-    REG_DISP(ReparentNotify, reparent, debugGeneric),
-    REG_DISP(EnterNotify, enter, debugGeneric),
-    REG_DISP(CirculateRequest, circulaterequest, debugGeneric),
-    REG_DISP(LeaveNotify, 0, debugGeneric),
-    REG_DISP(ConfigureNotify, configurenotify, debugConfigureNotify),
-    REG_DISP(CreateNotify, 0, debugGeneric),
-    REG_DISP(GravityNotify, 0, debugGeneric),
-    REG_DISP(MapNotify, 0, debugGeneric),
-    REG_DISP(MappingNotify, 0, debugGeneric),
-    REG_DISP(SelectionClear, 0, debugGeneric),
-    REG_DISP(SelectionNotify, 0, debugGeneric),
-    REG_DISP(SelectionRequest, 0, debugGeneric),
-    REG_DISP(NoExpose, 0, debugGeneric),
+    {Expose, expose},
+    {MotionNotify, motionnotify},
+    {ButtonPress, buttonpress},
+    {ButtonRelease, buttonrelease},
+    {FocusIn, focuschange},
+    {FocusOut, focuschange},
+    {MapRequest, maprequest},
+    {ConfigureRequest, configurereq},
+    {UnmapNotify, unmap},
+    {DestroyNotify, destroy},
+    {ClientMessage, clientmessage},
+    {ColormapNotify, colormap},
+    {PropertyNotify, property},
+    {ReparentNotify, reparent},
+    {EnterNotify, enter},
+    {CirculateRequest, circulaterequest},
+    {LeaveNotify, 0},
+    {ConfigureNotify, configurenotify},
+    {CreateNotify, 0},
+    {GravityNotify, 0},
+    {MapNotify, 0},
+    {MappingNotify, 0},
+    {SelectionClear, 0},
+    {SelectionNotify, 0},
+    {SelectionRequest, 0},
+    {NoExpose, 0},
 };
-#undef REG_DISP
 
 extern void dispatch(XEvent* ev) {
   for (Disp* p = disps; p < disps + sizeof(disps) / sizeof(disps[0]); p++) {
     if (p->type == ev->type) {
-      p->debug(ev, p->name);
       if (p->handler) {
         p->handler(ev);
       }
       return;
     }
   }
-  if (!shapeEvent(ev)) {
-    DBGF("%s: unknown event %d", argv0, ev->type);
-  }
+  LOGI_IF(!shapeEvent(ev)) << "unknown event " << ev->type;
 }
 
 static void expose(XEvent* ev) {

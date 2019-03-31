@@ -54,45 +54,6 @@ Atom compound_text;
 // Netscape uses this to give information about the URL it's displaying.
 Atom _mozilla_url;
 
-// Debugging support.
-static void setDebugArg(char ch) {
-  switch (ch) {
-    case 'c':
-      debug_configure_notify = true;
-      break;
-    case 'e':
-      debug_all_events = true;
-      break;
-    case 'f':
-      debug_focus = true;
-      break;
-    case 'm':
-      debug_map = true;
-      break;
-    case 'p':
-      debug_property_notify = true;
-      break;
-    default:
-      fprintf(stderr, "Unrecognised debug option: '%c'\n", ch);
-  }
-}
-
-bool debug_configure_notify;  // -d=c
-bool debug_all_events;        // -d=e
-bool debug_focus;             // -d=f
-bool debug_map;               // -d=m
-bool debug_property_notify;   // -d=p
-
-bool printDebugPrefix(char const* file, int line) {
-  char buf[16];
-  time_t t;
-  time(&t);
-  struct tm tm = *localtime(&t);
-  strftime(buf, sizeof(buf), "%H:%M:%S", &tm);
-  fprintf(stderr, "%s %s:%d : ", buf, file, line);
-  return true;
-}
-
 // if we're really short of a clue we might look at motif hints, and
 // we're not going to link with motif, so we'll have to do it by hand
 Atom motif_wm_hints;
@@ -124,11 +85,7 @@ extern int main(int argc, char* argv[]) {
   argv0 = argv[0];
   std::vector<std::string> debug_init_commands;
   for (int i = 1; i < argc; i++) {
-    if (!strncmp(argv[i], "-d=", 3)) {
-      for (int j = 3; argv[i][j]; j++) {
-        setDebugArg(argv[i][j]);
-      }
-    } else if (!strncmp(argv[i], "-debugcli", 9)) {
+    if (!strncmp(argv[i], "-debugcli", 9)) {
       debugCLI = new DebugCLI;
       if (argv[i][9] == '=') {
         // Argument is a sequence of commands, separated by ;.

@@ -595,33 +595,6 @@ extern bool forceRestart;
 extern void shell(int);
 extern void sendConfigureNotify(Client*);
 
-// Debugging support (in lwm.cc).
-extern bool debug_configure_notify;  // -d=c
-extern bool debug_all_events;        // -d=e
-extern bool debug_focus;             // -d=f
-extern bool debug_map;               // -d=m
-extern bool debug_property_notify;   // -d=p
-extern bool printDebugPrefix(char const* filename, int line);
-
-#define DBGF_IF(cond, fmt, ...)                         \
-  do {                                                  \
-    if (cond && printDebugPrefix(__FILE__, __LINE__)) { \
-      fprintf(stderr, fmt, ##__VA_ARGS__);              \
-      fputc('\n', stderr);                              \
-    }                                                   \
-  } while (0)
-
-#define DBG_IF(cond, str)                               \
-  do {                                                  \
-    if (cond && printDebugPrefix(__FILE__, __LINE__)) { \
-      fputs(str, stderr);                               \
-      fputc('\n', stderr);                              \
-    }                                                   \
-  } while (0)
-
-#define DBG(str) DBG_IF(1, str)
-#define DBGF(fmt, ...) DBGF_IF(1, fmt, ##__VA_ARGS__)
-
 /* client.cc */
 extern bool Client_MakeSane(Client*, Edge, int, int, int, int);
 extern void Client_SizeFeedback();
