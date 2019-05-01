@@ -1,6 +1,15 @@
 Change Log for "lwm"
 
 
+2019-05-01	pn	Basel
+	Added 'xdbg.cc', a simple debug tool to measure locations on screen.
+	Useful for debugging mouse positioning issues with LWM.
+
+	Finally fixed LWM's issues with popup windows being opened outside
+	the visible area of the screen (happens after a few laptop external
+	screen add/remove sequences, with evergreen and terminator).
+
+
 2019-02-27	pn	Basel
 	Embellished debug handler a bit, added support for enabling debug
 	logging per client. Should help me figure out various bugs.
