@@ -41,6 +41,7 @@ static void applyGravity(Client*);
 
 /*ARGSUSED*/
 void manage(Client* c) {
+  LOGD(c) << ">>> manage";
   // get the EWMH window type, as this might overrule some hints
   c->wtype = ewmh_get_window_type(c->window);
   // get in the initial EWMH state
@@ -268,6 +269,7 @@ void manage(Client* c) {
     cmapfocus(Client::FocusedClient());
     c->FocusLost();
   }
+  LOGD(c) << "<<< manage";
 }
 
 static void applyGravity(Client* c) {

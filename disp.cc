@@ -210,16 +210,7 @@ class WindowMover : public WindowDragger {
   virtual void moveImpl(Client* c, int dx, int dy) {
     const int new_x = window_start_.x + dx;
     const int new_y = window_start_.y + dy;
-    Client_MakeSane(c, ENone, new_x, new_y, 0, 0);
-    if (c->framed) {
-      XMoveWindow(dpy, c->parent, c->size.x, c->size.y - textHeight());
-    } else {
-      XMoveWindow(dpy, c->parent, c->size.x, c->size.y);
-    }
-    // Do I need to send a configure notify? According to this:
-    // https://tronche.com/gui/x/xlib/events/window-state-change/configure.html
-    // ...it looks like the job of the X server itself.
-    sendConfigureNotify(c);
+    Client_MakeSaneAndMove(c, ENone, new_x, new_y, 0, 0);
   }
 
  private:
@@ -252,19 +243,7 @@ class WindowResizer : public WindowDragger {
     if (isRightEdge(edge_)) {
       ns.width += dx;
     }
-    if (Client_MakeSane(c, edge_, ns.x, ns.y, ns.width, ns.height)) {
-      XMoveResizeWindow(dpy, c->parent, c->size.x, c->size.y - textHeight(),
-                        c->size.width, c->size.height + textHeight());
-      const int border = borderWidth();
-      // We used to use some odd logic to optionally send a configureNotify.
-      // However, from my reading of this page:
-      // https://tronche.com/gui/x/xlib/events/window-state-change/configure.html
-      // ...it seems the X server is responsible for sending such things; our
-      // only job is to actually move/resize windows. So let's just do that.
-      XMoveResizeWindow(dpy, c->window, border, border + textHeight(),
-                        c->size.width - 2 * border,
-                        c->size.height - 2 * border);
-    }
+    Client_MakeSaneAndMove(c, edge_, ns.x, ns.y, ns.width, ns.height);
   }
 
  private:
@@ -524,6 +503,75 @@ std::ostream& operator<<(std::ostream& os, const XCfgValMask& m) {
   return os;
 }
 
+static void moveResize(Window w, const Rect& r) {
+  XMoveResizeWindow(dpy, w, r.xMin, r.yMin, r.width(), r.height());
+}
+
+static int absDist(int min1, int max1, int min2, int max2) {
+  if (min1 > max2) {
+    return min1 - max2;
+  }
+  if (min2 > max1) {
+    return min2 - max1;
+  }
+  return 0;
+}
+
+static Rect findBestScreenFor(const Rect& r) {
+  const std::vector<Rect> vis = LScr::I->VisibleAreas(true);  // With struts.
+  // First try to find the one with the largest overlap.
+  Rect res;
+  int ra = 0;
+  for (Rect v : vis) {
+    const int area = Rect::Intersect(r, v).area();
+    if (area > ra) {
+      ra = area;
+      res = v;
+    }
+  }
+  // If we found an overlapping screen, return it.
+  if (ra) {
+    return res;
+  }
+  // Found no overlapping screens. Try again, this time picking the screen
+  // closest to the query rectangle.
+  int rd = INT_MAX;
+  for (Rect v : vis) {
+    // These will be absolute distances.
+    const int xd = absDist(r.xMin, r.xMax, v.xMin, v.xMax);
+    const int yd = absDist(r.yMin, r.yMax, v.yMin, v.yMax);
+    // Just sum the distances; it'll do.
+    const int d = xd + yd;
+    if (d < rd) {
+      rd = d;
+      res = v;
+    }
+  }
+  return res;
+}
+
+static Rect makeVisible(Rect r) {
+  const Rect scr = findBestScreenFor(r);
+  Point translation = {};
+  if (r.width() >= scr.width()) {
+    r.xMin = scr.xMin;
+    r.xMax = scr.xMax;
+  } else if (r.xMax > scr.xMax) {
+    translation.x = scr.xMax - r.xMax;
+  } else if (r.xMin < scr.xMin) {
+    translation.x = scr.xMin - r.xMin;
+  }
+  if (r.height() >= scr.height()) {
+    r.yMin = scr.yMin;
+    r.yMax = scr.yMax;
+  } else if (r.yMax > scr.yMax) {
+    translation.y = scr.yMax - r.yMax;
+  } else if (r.yMin < scr.yMin) {
+    translation.y = scr.yMin - r.yMin;
+  }
+  return Rect::Translate(r, translation);
+}
+
 static void configurereq(XEvent* ev) {
   XWindowChanges wc;
   XConfigureRequestEvent* e = &ev->xconfigurerequest;
@@ -586,8 +634,9 @@ static void configurereq(XEvent* ev) {
     }
   }
   if (c && (c->internal_state == INormal) && c->framed) {
+    // Offsets from outer frame window to inner window.
     wc.x = borderWidth();
-    wc.y = borderWidth();
+    wc.y = titleBarHeight();
   } else {
     wc.x = e->x;
     wc.y = e->y;
@@ -604,16 +653,23 @@ static void configurereq(XEvent* ev) {
           << "; mask=" << XCfgValMask(e->value_mask) << ": " << wc;
   XConfigureWindow(dpy, e->window, e->value_mask, &wc);
 
-  if (c) {
+  if (c && (c->window == e->window)) {
     if (c->framed) {
-      LOGD(c) << "framed - moving/resizing to " << c->size;
-      XMoveResizeWindow(dpy, c->parent, c->size.x, c->size.y - textHeight(),
-                        c->size.width, c->size.height + textHeight());
-      XMoveWindow(dpy, c->window, borderWidth(), borderWidth() + textHeight());
+      LOGD(c) << "framed - moving/resizing to " << c->size << "; state is "
+              << (c->IsHidden()
+                      ? "hidden"
+                      : (c->IsWithdrawn()
+                             ? "withdrawn"
+                             : (c->IsNormal() ? "normal" : "unknown")));
+      Rect r_orig =
+          Rect::FromXYWH(c->size.x, c->size.y, c->size.width, c->size.height);
+      Rect r = makeVisible(r_orig);
+      Client_MakeSaneAndMove(c, ENone, r.xMin, r.yMin, r.width(), r.height());
     } else {
       LOGD(c) << "unframed - moving/resizing to " << c->size;
-      XMoveResizeWindow(dpy, c->window, c->size.x, c->size.y, c->size.width,
-                        c->size.height);
+      const Rect& r = makeVisible(c->RectNoBorder());
+      moveResize(c->window, r);
+      c->SetSize(r);
     }
   }
 }
@@ -642,22 +698,6 @@ static void configurenotify(XEvent* ev) {
     // sub-window contained within it.
     return;
   }
-  // The following does indeed force windows opened outside the visible areas
-  // to be accessible, but it also causes some dreadful bugs, for example
-  // opening a new tab in Chrome causes the chrome window to shift right by
-  // approximately borderWidth() pixels. This needs dealing with properly.
-  //  const int bw = borderWidth();
-  //  const int th = textHeight();
-  //  const int x = xc.x + bw;
-  //  const int y = xc.y + th;
-  //  const int w = xc.width - 2 * bw;
-  //  const int h = xc.height - (bw + th);
-  //  if (Client_MakeSane(c, ENone, x, y, w, h)) {
-  //    XMoveResizeWindow(dpy, c->parent, c->size.x, c->size.y - textHeight(),
-  //                      c->size.width, c->size.height + textHeight());
-  //    LOGW() << "Forcing sanity upon " << c->Name() << ", at " << c->size.x
-  //           << ", " << c->size.y;
-  //  }
 }
 
 static void destroy(XEvent* ev) {

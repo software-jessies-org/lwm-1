@@ -427,11 +427,7 @@ void LScr::SetVisibleAreas(std::vector<Rect> visible_areas) {
     // including its frame. Translate that down to the client window
     // coordinates (if the client is framed).
     if (c->framed) {
-      const int bw = borderWidth();
-      newRect.xMin += bw;
-      newRect.xMax -= bw;
-      newRect.yMin += titleBarHeight();
-      newRect.yMax -= bw;
+      newRect.yMin += textHeight();
     }
 
     const int oldx = c->size.x;

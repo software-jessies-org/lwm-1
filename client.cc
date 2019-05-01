@@ -69,7 +69,7 @@ std::ostream& operator<<(std::ostream& os, const Client& c) {
   if (c.trans) {
     os << " (trans=" << WinID(c.trans) << ")";
   }
-  os << " " << c.RectWithBorder() << " ";
+  os << " outer=" << c.RectWithBorder() << " inner=" << c.RectNoBorder() << " ";
   if (c.hidden) {
     os << "(";
   }
@@ -265,21 +265,31 @@ void Client::DrawBorder() {
   drawString(parent, x, y, Name(), color);
 }
 
+void Client::SetSize(const Rect& r) {
+  size.x = r.xMin;
+  size.y = r.yMin;
+  size.width = r.width();
+  size.height = r.height();
+}
+
 Rect Client::RectWithBorder() const {
-  Rect res = RectNoBorder();
-  if (!framed) {
-    return res;
+  Rect res = Rect{size.x, size.y, size.x + size.width, size.y + size.height};
+  if (framed) {
+    res.yMin -= textHeight();
   }
-  const int bw = borderWidth();
-  res.xMin -= bw;
-  res.xMax += bw;
-  res.yMin -= titleBarHeight();
-  res.yMax += bw;
   return res;
 }
 
 Rect Client::RectNoBorder() const {
-  return Rect{size.x, size.y, size.x + size.width, size.y + size.height};
+  Rect res = Rect{size.x, size.y, size.x + size.width, size.y + size.height};
+  if (framed) {
+    const int bw = borderWidth();
+    res.xMin += bw;
+    res.xMax -= bw;
+    res.yMin += bw;
+    res.yMax -= bw;
+  }
+  return res;
 }
 
 void Client_Remove(Client* c) {
@@ -304,6 +314,42 @@ static int getResistanceOffset(int diff) {
     return 0;
   }
   return diff;
+}
+
+bool Client_MakeSaneAndMove(Client* c, Edge edge, int x, int y, int w, int h) {
+  const Rect before = c->RectNoBorder();
+  Client_MakeSane(c, edge, x, y, w, h);
+  const Rect after = c->RectNoBorder();
+  LOGD(c) << "Sanity changed rect from " << before << " to " << after;
+  const bool resized = (before.width() != after.width()) || (before.height() != after.height());
+  const bool moved = (before.xMin != after.xMin) || (before.yMin != after.yMin);
+  if (resized) {
+    // May need to deal with framed windows here.
+    const int th = textHeight();
+    XMoveResizeWindow(dpy, c->parent, c->size.x, c->size.y - th,
+                      c->size.width, c->size.height + th);
+    const int border = borderWidth();
+    // We used to use some odd logic to optionally send a configureNotify.
+    // However, from my reading of this page:
+    // https://tronche.com/gui/x/xlib/events/window-state-change/configure.html
+    // ...it seems the X server is responsible for sending such things; our
+    // only job is to actually move/resize windows. So let's just do that.
+    XMoveResizeWindow(dpy, c->window, border, border + th,
+                      c->size.width - 2 * border,
+                      c->size.height - 2 * border);
+    sendConfigureNotify(c);
+  } else if (moved) {
+    if (c->framed) {
+      XMoveWindow(dpy, c->parent, c->size.x, c->size.y - textHeight());
+    } else {
+      XMoveWindow(dpy, c->parent, c->size.x, c->size.y);
+    }
+    // Do I need to send a configure notify? According to this:
+    // https://tronche.com/gui/x/xlib/events/window-state-change/configure.html
+    // ...it looks like the job of the X server itself.
+    sendConfigureNotify(c);
+  }
+  return moved || resized;
 }
 
 // x and y are the proposed new coordinates of the window. w and h are the

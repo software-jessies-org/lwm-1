@@ -174,6 +174,7 @@ struct Rect {
   static Rect Parse(std::string str);
 };
 
+std::ostream& operator<<(std::ostream& os, const Point& p);
 std::ostream& operator<<(std::ostream& os, const Rect& r);
 std::ostream& operator<<(std::ostream& os, const std::vector<Rect>& rs);
 
@@ -253,6 +254,8 @@ class Client {
   bool HasStruts() const {
     return strut.top || strut.bottom || strut.left || strut.right;
   }
+  
+  void SetSize(const Rect& r);
 
   // Rect defining the bounds of the window, either including LWM's window
   // furniture (WithBorder) or not (NoBorder).
@@ -597,6 +600,7 @@ extern void sendConfigureNotify(Client*);
 
 /* client.cc */
 extern bool Client_MakeSane(Client*, Edge, int, int, int, int);
+extern bool Client_MakeSaneAndMove(Client* c, Edge edge, int x, int y, int w, int h);
 extern void Client_SizeFeedback();
 extern void size_expose();
 extern void Client_Raise(Client*);

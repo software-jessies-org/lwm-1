@@ -61,6 +61,26 @@ vncserver -geometry 1600x1200 -name test
 vncviewer localhost:1
 
 
+=== MY FAVOURITE DEBUGGING ENVIRONMENT ===
+
+# Three terminals. In one, I do:
+vncserver -geometry 1600x1200 -name test
+vncviewer localhost:1
+# Then, after login, ctrl-z and bg to background the vncviewer.
+cd $HOME/dev/lwm
+DISPLAY=:1 ./lwm -debugcli="xrandr 800x1200+0+0 800x500+800+0;dbg auto" 2>$HOME/stderr
+
+# Second terminal:
+tail -f $HOME/stderr
+
+# Third terminal, used for rebuilding LWM:
+cd $HOME/dev/lwm
+make -j20
+# Or, if I'm feeling really experimental, I might do:
+while sleep 1; do make -j20; done
+# ...which auto-rebuilds LWM every time I save a file.
+
+
 DEBUG CLI
 ~~~~~~~~~
 LWM can be run with the -debugcli command to have it listen for commands on
@@ -81,8 +101,15 @@ For example, to print help on start-up, run:
 ./lwm -debugcli=help
 
 To start up with xrandr faking on, and with an inaccessible area on the bottom-
-right of the screen, and auto-debug of new clients, run:
-./lwm -debugcli="xrandr 800x1200+0+0 800x500+800+0;dbg auto"
+right of the screen, and auto-debug of new clients, and with stderr going to a
+file called 'stderr' in your home dir:
+./lwm -debugcli="xrandr 800x1200+0+0 800x500+800+0;dbg auto" 2>$HOME/stderr
+
+In another terminal, do:
+tail -f $HOME/stderr
+
+This keeps stdout/stderr separate (so interactions with the debug cli separate
+from debugging output).
 
 Available commands are:
 

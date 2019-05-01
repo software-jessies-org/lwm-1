@@ -24,6 +24,11 @@ bool isBottomEdge(Edge e) {
   return e == EBottomLeft || e == EBottom || e == EBottomRight;
 }
 
+std::ostream& operator<<(std::ostream& os, const Point& p) {
+  os << p.x << "," << p.y;
+  return os;
+}
+
 std::ostream& operator<<(std::ostream& os, const Rect& r) {
   os << (r.xMax - r.xMin) << "x" << (r.yMax - r.yMin);
   if (r.xMin >= 0) {
