@@ -10,10 +10,10 @@ Right at the bottom of the file there's a cheat sheet of debugging tools.
 
 === FUNCTIONAL BREAKAGES ===
 
-For multi-screen displays (xrandr), LWM thinks the total surface space of the
-display is a rectangle. If you have a laptop connected to a larger external
-monitor, this means there are inaccessible spaces that LWM thinks it can put
-windows in.
+LWM does not honour 'struts' set by windows it does not actively manage. This
+seems particularly silly, as it's mainly windows LWM doesn't manage (eg 'menu'),
+that are going to need to set struts, as they can't be moved around the screen.
+
 
 
 === THINGS THAT LOOK SILLY ===
@@ -45,6 +45,14 @@ and would benefit from a larger pointer (and 4k displays exacerbate this).
 The way disp.cc keeps track of the mode is not very OO. Maybe this could be
 refactored, so we don't have to have a global 'mode' variable.
 
+The way we deal with window sizes seems rather odd. The 'size' variable in a
+Client is actually the client window size, plus the width of LWM's frame on all
+sides, *BUT* excluding the title bar! I vaguely remember something about an old
+version of LWM where a title bar was only shown on the focused window; maybe
+it's from way back then. Anyway, the way sizes are manipulated is unclear,
+badly-indicated in code/comments, and inconsistent. I'm not at all confident
+it's correct in all cases.
+
 
 === DEBUGGING TOOLS ===
 
@@ -59,6 +67,13 @@ the same X session as you're using to edit its code is a seriously painful
 experience.
 vncserver -geometry 1600x1200 -name test
 vncviewer localhost:1
+
+In this directory there's a file called 'xdbg.cc', which can be compiled and
+run. It shows a window which displays the mouse coordinates, and its last
+configure request coordinates. Also, if you press and hold the shift key, it
+will measure the mouse coordinates from when you press down shift until when you
+release it, and on release also prints the start, end and distance to stdout.
+This is very useful for comparing coordinates, and checking window positioning.
 
 
 === MY FAVOURITE DEBUGGING ENVIRONMENT ===
