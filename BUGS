@@ -10,11 +10,6 @@ Right at the bottom of the file there's a cheat sheet of debugging tools.
 
 === FUNCTIONAL BREAKAGES ===
 
-LWM does not honour 'struts' set by windows it does not actively manage. This
-seems particularly silly, as it's mainly windows LWM doesn't manage (eg 'menu'),
-that are going to need to set struts, as they can't be moved around the screen.
-
-
 
 === THINGS THAT LOOK SILLY ===
 
@@ -41,9 +36,6 @@ and would benefit from a larger pointer (and 4k displays exacerbate this).
 
 
 === CLEANUPS ===
-
-The way disp.cc keeps track of the mode is not very OO. Maybe this could be
-refactored, so we don't have to have a global 'mode' variable.
 
 The way we deal with window sizes seems rather odd. The 'size' variable in a
 Client is actually the client window size, plus the width of LWM's frame on all
