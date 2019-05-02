@@ -312,6 +312,25 @@ void LScr::SetVisibleAreas(std::vector<Rect> visible_areas) {
   // conform to the new screen layout.
   for (auto it : clients_) {
     Client* c = it.second;
+    // Ignore clients that set struts; we expect these to watch for screen
+    // changes for themselves, and move their windows if necessary.
+    // Of course, if we were to move them, we'd want to be using the strutless
+    // visible areas, not the ones with the struts removed, otherwise we'd
+    // reposition strutty windows so they don't interesect their own struts,
+    // which is wrong.
+    if (c->HasStruts()) {
+      // If this client has set a strut, it's reserved an area of the screen for
+      // it to place its own window in. As such, we must avoid forcing that
+      // window into the visible area with struts excluded, as doing so would
+      // prevent the client from placing its window in its own reserved area.
+      // A better approach may be to use the visible areas *without* the struts
+      // removed in order to potential force strutted windows into the visible
+      // area of the screen. However, as they're reserving a window edge
+      // already, they probably should be listening for xrandr events and moving
+      // their windows appropriately, in which case there's nothing for us to
+      // do here.
+      continue;
+    }
     Rect rect = c->RectWithBorder();
     // Find the visible area in the old setup which has the largest overlap with
     // this rect. We use this to determine whether the window is maximised in
