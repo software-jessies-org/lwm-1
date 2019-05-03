@@ -517,8 +517,8 @@ static int absDist(int min1, int max1, int min2, int max2) {
   return 0;
 }
 
-static Rect findBestScreenFor(const Rect& r) {
-  const std::vector<Rect> vis = LScr::I->VisibleAreas(true);  // With struts.
+static Rect findBestScreenFor(const Rect& r, bool withStruts) {
+  const std::vector<Rect> vis = LScr::I->VisibleAreas(withStruts);
   // First try to find the one with the largest overlap.
   Rect res;
   int ra = 0;
@@ -550,8 +550,8 @@ static Rect findBestScreenFor(const Rect& r) {
   return res;
 }
 
-static Rect makeVisible(Rect r) {
-  const Rect scr = findBestScreenFor(r);
+static Rect makeVisible(Rect r, bool withStruts) {
+  const Rect scr = findBestScreenFor(r, withStruts);
   Point translation = {};
   if (r.width() >= scr.width()) {
     r.xMin = scr.xMin;
@@ -663,11 +663,11 @@ static void configurereq(XEvent* ev) {
                              : (c->IsNormal() ? "normal" : "unknown")));
       Rect r_orig =
           Rect::FromXYWH(c->size.x, c->size.y, c->size.width, c->size.height);
-      Rect r = makeVisible(r_orig);
+      Rect r = makeVisible(r_orig, !c->HasStruts());
       Client_MakeSaneAndMove(c, ENone, r.xMin, r.yMin, r.width(), r.height());
     } else {
       LOGD(c) << "unframed - moving/resizing to " << c->size;
-      const Rect& r = makeVisible(c->RectNoBorder());
+      const Rect& r = makeVisible(c->RectNoBorder(), !c->HasStruts());
       moveResize(c->window, r);
       c->SetSize(r);
     }

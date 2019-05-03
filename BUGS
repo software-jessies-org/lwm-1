@@ -10,6 +10,11 @@ Right at the bottom of the file there's a cheat sheet of debugging tools.
 
 === FUNCTIONAL BREAKAGES ===
 
+There's a race condition in focus-follows-mouse where if the user tries to
+move the mouse from window A to B, which passes across window C, which
+covers a small gap between A and B, focus is given to C, despite the fact
+that the pointer last enters B.
+
 
 === THINGS THAT LOOK SILLY ===
 
@@ -33,6 +38,19 @@ monitors) and bring up some visual indication of where the pointer has gone.
 
 Make the size of the mouse pointer configurable. Some people have poor vision,
 and would benefit from a larger pointer (and 4k displays exacerbate this).
+
+Have some mechanism for the user adding a human-defined prefix to a window's
+title. Or possibly an alternative name (or prefix) for when the window is shown
+in the unhide menu. Basically, some nice way to quickly identify the window.
+
+Maybe implement keyboard control? Grabbing the 'Menu' key, for example, might be
+a reasonable thing to do (although probably best to specify the key to grab as
+an Xresource, and let the user define it). This could be used to open the unhide
+menu where the mouse is, warp the pointer to the middle of the menu item which
+currently has focus, and then (as the pointer is over the menu) take control of
+the arrow keys to navigate up and down the menu, using pointer-warping. Hitting
+Return would do the normal unhide action on the selected window, and warp the
+pointer to its middle.
 
 
 === CLEANUPS ===
