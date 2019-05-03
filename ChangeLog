@@ -1,6 +1,11 @@
 Change Log for "lwm"
 
 
+2019-05-03	pn	Basel
+	Fixed another silly bug where strutted windows would be forcibly pushed
+	out of their reserved areas.
+
+
 2019-05-02	pn	Basel
 	Fixed a silly bug where strutted windows would be forcibly pushed out of
 	their own reserved areas on an xrandr screen change.
