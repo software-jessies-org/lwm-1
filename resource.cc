@@ -70,6 +70,10 @@ Resources::Resources() {
   set(POPUP_BACKGROUND_COLOUR, db, "popupBackgroundColour", "String", "white");
   // Click to focus enabled if this is the string "click".
   set(FOCUS_MODE, db, "focus", "String", "sloppy");
+  // APP_ICON describes where we show the application's icon, if there is one.
+  // Valid values are "none", "title" (title bars of windows), "menu" (the
+  // unhide menu) or "both" (both title bars and unhide menu).
+  set(APP_ICON, db, "appIcon", "String", "both");
   
   // The width of the border LWM adds to each window to allow resizing.
   set(BORDER_WIDTH, db, "border", "Border", 6);

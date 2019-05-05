@@ -30,3 +30,6 @@ lwm*popupBackgroundColour: blue
 lwm*border: 4
 
 lwm*windowHighlightColour: green
+
+lwm*appIcon: title
+

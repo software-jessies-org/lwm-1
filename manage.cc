@@ -66,11 +66,13 @@ void manage(Client* c) {
 
   // Get the hints, window name, and normal hints (see ICCCM section 4.1.2.3).
   XWMHints* hints = XGetWMHints(dpy, c->window);
-  if (hints) {
-    c->SetIcon(ImageIcon::Create(hints->icon_pixmap, hints->icon_mask));
+  if (Resources::I->ProcessAppIcons()) {
+    if (hints) {
+      c->SetIcon(ImageIcon::Create(hints->icon_pixmap, hints->icon_mask));
+    }
+    c->SetIcon(ewmh_get_window_icon(c));
   }
-  c->SetIcon(ewmh_get_window_icon(c));
-
+  
   getWindowName(c);
   getNormalHints(c);
 

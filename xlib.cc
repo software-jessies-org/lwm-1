@@ -147,15 +147,43 @@ static void allocateDataForXImage(XImage* img) {
   img->data = (char*)calloc(img->height, img->bytes_per_line);
 }
 
+// Background is a little helper, used to provide a suitable background colour
+// to the xImageDataToImage function.
+// The case this is used in is when the user has configured a top border width,
+// which means the top edge of the icon used for an active window needs the
+// active border colour for its background, rather than the title background.
+// For this reason, we only really need two colours, and a vertical index from
+// which to use the second colour (so we ignore the X coordinate entirely).
+// It should be noted that as xImageDataToImage works on the original image,
+// baking in the expected background colour before scaling the image down,
+// calls to .At(x, y) provide coordinates in the original image's coordinate
+// system, not in the (usually more restricted) space of the destination image.
+class Background {
+ public:
+  explicit Background(unsigned long colour)
+      : top_(colour), boundary_(0), bottom_(colour) {}
+  Background(unsigned long top, int boundary, unsigned long bottom)
+      : top_(top), boundary_(boundary), bottom_(bottom) {}
+
+  unsigned long At(int x, int y) const {
+    x = x;  // Unused, but the API looks a bit weird without X.
+    return (y > boundary_ ? bottom_ : top_) | 0xff000000;
+  }
+
+ private:
+  unsigned long top_;
+  int boundary_;
+  unsigned long bottom_;
+};
+
 void xImageDataToImage(XImage* dest,
                        XImage* orig,
                        XImage* mask,
-                       unsigned long background) {
-  background |= 0xff000000;
+                       const Background& background) {
   for (int y = 0; y < orig->height; y++) {
     for (int x = 0; x < orig->width; x++) {
       unsigned long rgb = XGetPixel(orig, x, y) | 0xff000000;
-      XPutPixel(dest, x, y, XGetPixel(mask, x, y) ? rgb : background);
+      XPutPixel(dest, x, y, XGetPixel(mask, x, y) ? rgb : background.At(x, y));
     }
   }
 }
@@ -233,18 +261,27 @@ ImageIcon* ImageIcon::Create(Pixmap img, Pixmap mask) {
 
   // For each possible background, generate the RGB values by applying the
   // image values and background value with the alpha channel.
-  xImageDataToImage(src_img, orig_img, mask_img,
-                    Resources::I->GetColour(Resources::TITLE_BG_COLOUR));
+  // If the user has configured a top border width, the 'active' icon has two
+  // background colours, one for the top edge and one for the rest. Note that
+  // the vertical separation is at topBorderWidth(), but we scale that to the
+  // source image's coordinates, as xImageDataToImage runs before we scale the
+  // image down to our target size.
+  xImageDataToImage(
+      src_img, orig_img, mask_img,
+      Background(LScr::I->ActiveBorder(),
+                 topBorderWidth() * src_height / targetSize,
+                 Resources::I->GetColour(Resources::TITLE_BG_COLOUR)));
   copyWithScaling(src_img, dest_img);
   const Pixmap active_pm = pixmapFromXImage(dest_img);
 
-  xImageDataToImage(src_img, orig_img, mask_img, LScr::I->InactiveBorder());
+  xImageDataToImage(src_img, orig_img, mask_img,
+                    Background(LScr::I->InactiveBorder()));
   copyWithScaling(src_img, dest_img);
   const Pixmap inactive_pm = pixmapFromXImage(dest_img);
 
   xImageDataToImage(
       src_img, orig_img, mask_img,
-      Resources::I->GetColour(Resources::POPUP_BACKGROUND_COLOUR));
+      Background(Resources::I->GetColour(Resources::POPUP_BACKGROUND_COLOUR)));
   copyWithScaling(src_img, dest_img);
   const Pixmap menu_pm = pixmapFromXImage(dest_img);
 

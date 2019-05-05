@@ -257,7 +257,7 @@ void Client::DrawBorder() {
   int y = bw / 2 + g_font->ascent;
 
   // Do we have an icon? If so, draw it to the left of the title text.
-  if (Icon()) {
+  if (Icon() && Resources::I->AppIconInWindowTitle()) {
     if (active) {
       Icon()->PaintActive(parent, x, 0, titleBarHeight(), titleBarHeight());
     } else {

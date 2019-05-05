@@ -677,6 +677,7 @@ class Resources {
     POPUP_TEXT_COLOUR,
     POPUP_BACKGROUND_COLOUR,
     FOCUS_MODE,
+    APP_ICON,
     S_END,  // This must be the last.
   };
 
@@ -707,7 +708,22 @@ class Resources {
     // strcmp instead.
     return !strcmp(fm.c_str(), "click");
   }
-
+  
+  // Interpret the APP_ICON resource for the cases in which we need it.
+  bool ProcessAppIcons() {
+    std::string ai = Get(APP_ICON);
+    LOGI() << "Checking appicon: " << ai;
+    return strcmp(ai.c_str(), "none");
+  }
+  bool AppIconInWindowTitle() {
+    std::string ai = Get(APP_ICON);
+    return !strcmp(ai.c_str(), "both") || !strcmp(ai.c_str(), "title");
+  }
+  bool AppIconInUnhideMenu() {
+    std::string ai = Get(APP_ICON);
+    return !strcmp(ai.c_str(), "both") || !strcmp(ai.c_str(), "menu");
+  }
+  
  private:
   Resources();
   void set(SR res,

@@ -301,7 +301,7 @@ void Hider::Paint() {
     }
 
     Client* c = LScr::I->GetClient(open_content_[i].w);
-    if (c && c->Icon()) {
+    if (c && c->Icon() && Resources::I->AppIconInUnhideMenu()) {
       c->Icon()->PaintMenu(popup, menuIconXPad(), y + menuIconYPad(),
                            menuIconSize(), menuIconSize());
     }

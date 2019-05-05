@@ -128,6 +128,10 @@ text colour of the popup window (unhide menu and resizing popup)
 .TP 12
 .B popupBackgroundColour
 background colour of the popup window
+.TP 12
+.B appIcon
+where to show application icons. Possible values are 'none', 'title' (show only
+in the app's window title bar), 'menu' (only in the unhide menu) or 'both'.
 .SH "SEE ALSO"
 .PP
 X(7)
