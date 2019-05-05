@@ -398,6 +398,7 @@ void ewmh_set_strut() {
       continue;
     }
     Client_MakeSane(c, ENone, x, y, 0, 0);
+    LOGD(c) << "MakeSane done; y=" << c->size.y << "; framed=" << c->framed;
     if (c->framed) {
       XMoveWindow(dpy, c->parent, c->size.x, c->size.y - textHeight());
     } else {

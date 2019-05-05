@@ -712,7 +712,6 @@ class Resources {
   // Interpret the APP_ICON resource for the cases in which we need it.
   bool ProcessAppIcons() {
     std::string ai = Get(APP_ICON);
-    LOGI() << "Checking appicon: " << ai;
     return strcmp(ai.c_str(), "none");
   }
   bool AppIconInWindowTitle() {

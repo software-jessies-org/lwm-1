@@ -488,8 +488,13 @@ bool Client_MakeSane(Client* c, Edge edge, int x, int y, int w, int h) {
       // Check for top/bottom if the horizontal location of the window overlaps
       // with that of the screen area.
       if ((x < r.xMax) && (x + w > r.xMin)) {
-        y += getResistanceOffset(r.yMin - (y - textHeight()));  // Top.
-        y -= getResistanceOffset((y + h) - r.yMax);             // Bottom.
+        // Make sure we only adjust textHeight() if this is not a framed window,
+        // or we'll mess up our initial idea of the position of this window.
+        // Failure to do this was the cause of a bug where lwm would move menu's
+        // window down by textHeight() when it quit.
+        int yTop = c->framed ? (y - textHeight()) : y;
+        y += getResistanceOffset(r.yMin - yTop);     // Top.
+        y -= getResistanceOffset((y + h) - r.yMax);  // Bottom.
       }
       // Check for left/right if the vertical location of the window overlaps
       // with that of the screen area.
@@ -515,6 +520,7 @@ bool Client_MakeSane(Client* c, Edge edge, int x, int y, int w, int h) {
     }
   }
   const Rect new_pos = Rect::FromXYWH(x, y, w, h);
+  LOGD(c) << "MakeSane; old pos " << old_pos << "; new pos " << new_pos;
   return new_pos != old_pos;
 }
 
@@ -662,6 +668,8 @@ extern void Client_FreeAll() {
     Client* c = it.second;
 
     // Reparent the client window to the root, to elide our furniture window.
+    LOGD(c) << "Client_FreeAll: reparenting window at " << c->size.x << "x"
+            << c->size.y;
     XReparentWindow(dpy, c->window, LScr::I->Root(), c->size.x, c->size.y);
     if (c->hidden) {
       // The window was iconised, so map it back into view so it isn't lost

@@ -641,7 +641,7 @@ static void configurereq(XEvent* ev) {
     wc.x = e->x;
     wc.y = e->y;
   }
-
+  
   wc.width = e->width;
   wc.height = e->height;
   wc.border_width = 0;

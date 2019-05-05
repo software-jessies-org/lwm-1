@@ -72,7 +72,7 @@ void manage(Client* c) {
     }
     c->SetIcon(ewmh_get_window_icon(c));
   }
-  
+
   getWindowName(c);
   getNormalHints(c);
 

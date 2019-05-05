@@ -12,6 +12,11 @@ Change Log for "lwm"
 	Added an 'appIcon' Xresource, which allows application icons to be
 	enabled or disabled for title bars and the unhide menu.
 
+	Fixed another little bug where LWM was moving menu's window on shutdown.
+	This was caused by Client_MakeSane always subtracting textHeight() from
+	the Y position, irrespective of whether the client is framed. The
+	treatment of window sizes *really* needs more structure.
+
 
 2019-05-03	pn	Basel
 	Fixed another silly bug where strutted windows would be forcibly pushed
