@@ -73,6 +73,11 @@ Resources::Resources() {
   
   // The width of the border LWM adds to each window to allow resizing.
   set(BORDER_WIDTH, db, "border", "Border", 6);
+  // How many of the top pixels of the title bar will be treated as a resize
+  // widget, as opposed to moving the window. If you set this to zero, the title
+  // bar cannot be used to resize the window up and down (although the top-left
+  // and top-right corners will work).
+  set(TOP_BORDER_WIDTH, db, "topBorder", "Border", 4);
 }
 
 const std::string& Resources::Get(SR sr) {
@@ -166,4 +171,8 @@ void Resources::set(IR res,
 // Border width is used a lot, so let's make it easily accessible.
 int borderWidth() {
   return Resources::I->GetInt(Resources::BORDER_WIDTH);
+}
+
+int topBorderWidth() {
+  return Resources::I->GetInt(Resources::TOP_BORDER_WIDTH);
 }

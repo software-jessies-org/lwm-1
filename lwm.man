@@ -87,6 +87,12 @@ font used in window titles, and in the popup menu and size indicator
 .B border
 width in pixels of window borders
 .TP 12
+.B topBorder
+how many of the top pixels of the title bar should be used as a resize widget.
+Set this to zero to disable resizing on the title bar entirely (in which case,
+the whole title bar, except the top-left and -right corners, will move the
+window).
+.TP 12
 .B button1
 program spawned when button 1 is clicked on the root window
 .TP 12

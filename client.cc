@@ -57,8 +57,9 @@ Rect closeBounds(bool displayBounds) {
 
 Rect titleBarBounds(int windowWidth) {
   const int x = titleBarHeight();
+  const int topB = topBorderWidth();
   const int w = windowWidth - 2 * x;
-  return Rect{x, 0, w, titleBarHeight()};
+  return Rect{x, topB, w, titleBarHeight() - topB};
 }
 
 std::ostream& operator<<(std::ostream& os, const Client& c) {
@@ -162,8 +163,9 @@ Edge Client::EdgeAt(Window w, int x, int y) const {
   if (titleBarBounds(size.width).contains(x, y)) {
     return ENone;  // Rename to ETitleBar.
   }
-  const std::vector<Edge> movementEdges{
-      ETopLeft, ETopRight, ERight, ELeft, EBottomLeft, EBottom, EBottomRight};
+  const std::vector<Edge> movementEdges{ETopLeft, ETop,        ETopRight,
+                                        ERight,   ELeft,       EBottomLeft,
+                                        EBottom,  EBottomRight};
   for (Edge e : movementEdges) {
     if (edgeBounds(e).contains(x, y)) {
       return e;
@@ -236,19 +238,23 @@ void Client::DrawBorder() {
   const GC close_gc = lscr->GetCloseIconGC(active);
   XDrawLine(dpy, parent, close_gc, r.xMin, r.yMin, r.xMax, r.yMax);
   XDrawLine(dpy, parent, close_gc, r.xMin, r.yMax, r.xMax, r.yMin);
+  const int bw = borderWidth();
   if (active) {
     // Give the title a nice background, and differentiate it from the
     // rest of the furniture to show it acts differently (moves the window
     // rather than resizing it).
-    const int x = borderWidth() + 3 * quarter;
+    // However, skip the top few pixels if the 'topBorderWidth' is non-zero, to
+    // show where the resize handle is.
+    const int topBW = topBorderWidth();
+    const int x = bw + 3 * quarter;
     const int w = size.width - 2 * x;
-    XFillRectangle(dpy, parent, lscr->GetTitleGC(), x, 0, w,
-                   textHeight() + borderWidth());
+    const int h = textHeight() + bw - topBW;
+    XFillRectangle(dpy, parent, lscr->GetTitleGC(), x, topBW, w, h);
   }
 
   // Find where the title stuff is going to go.
-  int x = borderWidth() + 2 + (3 * quarter);
-  int y = borderWidth() / 2 + g_font->ascent;
+  int x = bw + 2 + (3 * quarter);
+  int y = bw / 2 + g_font->ascent;
 
   // Do we have an icon? If so, draw it to the left of the title text.
   if (Icon()) {
@@ -321,13 +327,14 @@ bool Client_MakeSaneAndMove(Client* c, Edge edge, int x, int y, int w, int h) {
   Client_MakeSane(c, edge, x, y, w, h);
   const Rect after = c->RectNoBorder();
   LOGD(c) << "Sanity changed rect from " << before << " to " << after;
-  const bool resized = (before.width() != after.width()) || (before.height() != after.height());
+  const bool resized =
+      (before.width() != after.width()) || (before.height() != after.height());
   const bool moved = (before.xMin != after.xMin) || (before.yMin != after.yMin);
   if (resized) {
     // May need to deal with framed windows here.
     const int th = textHeight();
-    XMoveResizeWindow(dpy, c->parent, c->size.x, c->size.y - th,
-                      c->size.width, c->size.height + th);
+    XMoveResizeWindow(dpy, c->parent, c->size.x, c->size.y - th, c->size.width,
+                      c->size.height + th);
     const int border = borderWidth();
     // We used to use some odd logic to optionally send a configureNotify.
     // However, from my reading of this page:
@@ -335,8 +342,7 @@ bool Client_MakeSaneAndMove(Client* c, Edge edge, int x, int y, int w, int h) {
     // ...it seems the X server is responsible for sending such things; our
     // only job is to actually move/resize windows. So let's just do that.
     XMoveResizeWindow(dpy, c->window, border, border + th,
-                      c->size.width - 2 * border,
-                      c->size.height - 2 * border);
+                      c->size.width - 2 * border, c->size.height - 2 * border);
     sendConfigureNotify(c);
   } else if (moved) {
     if (c->framed) {

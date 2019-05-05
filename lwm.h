@@ -684,6 +684,7 @@ class Resources {
   enum IR {
     I_BEGIN,  // Don't use this.
     BORDER_WIDTH,
+    TOP_BORDER_WIDTH,
     I_END,  // This must be the last.
   };
 
@@ -768,6 +769,7 @@ extern std::vector<std::string> Split(const std::string& in,
 // Handy accessors which parse resources if necessary, and return the relevant
 // bit of config info.
 int borderWidth();
+int topBorderWidth();
 
 /* session.cc */
 extern int ice_fd;
