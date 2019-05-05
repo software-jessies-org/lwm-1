@@ -10,26 +10,69 @@
 ! they all look and act very differently from the (hopefully nicer) defaults.
 
 ! You may need to change the font, in case you do not have this one.
-lwm*titleFont: Utopia-16
-lwm*titleBGColour: deepskyblue
+lwm*titleFont: Roboto-16
+
 lwm*titleColour: black
-lwm*inactiveTitleColour: blue
+lwm*titleBGColour: LightGoldenrod
+lwm*borderColour: grey85
+lwm*closeIconColour: black
 
-lwm*inactiveBorderColour: deepskyblue4
-lwm*borderColour: deepskyblue3
+lwm*inactiveTitleColour: black
+lwm*inactiveBorderColour: grey70
+lwm*inactiveCloseIconColour: grey20
 
-lwm*closeIconColour: red
-lwm*inactiveCloseIconColour: brown
+lwm*popupTextColour: black
+lwm*popupBackgroundColour: white
+
+lwm*windowHighlightColour: orange
 
 lwm*button1: xcalc
 lwm*button2: xclock
 lwm*focus: click
 
-lwm*popupTextColour: yellow
-lwm*popupBackgroundColour: blue
-lwm*border: 4
+lwm*border: 8
 
-lwm*windowHighlightColour: green
 
 lwm*appIcon: title
 
+
+!!! Similar to original LWM colours.
+! lwm*titleColour: white
+! lwm*titleBGColour: black
+! lwm*borderColour: grey15
+! lwm*closeIconColour: white
+! 
+! lwm*inactiveTitleColour: grey90
+! lwm*inactiveBorderColour: grey30
+! lwm*inactiveCloseIconColour: grey80
+! 
+! lwm*popupTextColour: black
+! lwm*popupBackgroundColour: white
+
+
+!!! A bit like RISC-OS.
+! lwm*titleColour: black
+! lwm*titleBGColour: LightGoldenrod
+! lwm*borderColour: grey85
+! lwm*closeIconColour: black
+! 
+! lwm*inactiveTitleColour: black
+! lwm*inactiveBorderColour: grey70
+! lwm*inactiveCloseIconColour: grey20
+! 
+! lwm*popupTextColour: black
+! lwm*popupBackgroundColour: white
+
+
+!!! Smart Brown.
+! lwm*titleColour: white
+! lwm*titleBGColour: #A0522D
+! lwm*borderColour: #B87058
+! lwm*closeIconColour: white
+! 
+! lwm*inactiveTitleColour: #afafaf
+! lwm*inactiveBorderColour: #785840
+! lwm*inactiveCloseIconColour: #afafaf
+! 
+! lwm*popupTextColour: black
+! lwm*popupBackgroundColour: white
