@@ -1,13 +1,16 @@
 Change Log for "lwm"
 
 
-2019-05-04	pn	Basel
+2019-05-05	pn	Basel
 	Added back the ability to resize windows by dragging the top edge of the
 	window frame. There's a new xresource called 'topBorder' which describes
 	how many pixels thick this is (so it can be a different thickness to the
 	normal window border); setting this to zero makes the whole title bar
 	a move, not resize, widget. JFC likes resizing from the top, so this
 	should make this branch of LWM more appealing.
+
+	Added an 'appIcon' Xresource, which allows application icons to be
+	enabled or disabled for title bars and the unhide menu.
 
 
 2019-05-03	pn	Basel
