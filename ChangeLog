@@ -1,6 +1,17 @@
 Change Log for "lwm"
 
 
+2019-05-07	pn	Basel
+	Fixed calculation of the title bar bounds, so that we don't have a
+	little square at the right edge of the title bar, which is a resize
+	widget when it should be a move one.
+
+	Fixed the parsing of numeric Xresources so they don't treat all 0 values
+	as being parse failures. This allows the top-of-window size-change area
+	to be switched off (previously it would have fallen back to the
+	default).
+
+
 2019-05-05	pn	Basel
 	Added back the ability to resize windows by dragging the top edge of the
 	window frame. There's a new xresource called 'topBorder' which describes

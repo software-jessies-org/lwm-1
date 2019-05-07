@@ -57,9 +57,7 @@ Rect closeBounds(bool displayBounds) {
 
 Rect titleBarBounds(int windowWidth) {
   const int x = titleBarHeight();
-  const int topB = topBorderWidth();
-  const int w = windowWidth - 2 * x;
-  return Rect{x, topB, w, titleBarHeight() - topB};
+  return Rect{x, topBorderWidth(), windowWidth - x, titleBarHeight()};
 }
 
 std::ostream& operator<<(std::ostream& os, const Client& c) {

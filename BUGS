@@ -15,6 +15,10 @@ move the mouse from window A to B, which passes across window C, which
 covers a small gap between A and B, focus is given to C, despite the fact
 that the pointer last enters B.
 
+There's a 1 pixel area around the edge of the window which is always a move
+widget. I think it's the window border. It should be a resize widget though.
+This is a failure in how the bounding boxes for the edges is calculated.
+
 
 === THINGS THAT LOOK SILLY ===
 

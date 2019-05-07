@@ -167,9 +167,8 @@ void Resources::set(IR res,
     return;
   }
   const int val = (int)strtol(strVal.c_str(), (char**)0, 0);
-  // We assume 0 means failure; if 0 is a valid value, its default should be
-  // 0 to allow default to be set.
-  ints_[res] = val ? val : dflt;
+  // man strtol says that on failure, zero is returned and errno is EINVAL.
+  ints_[res] = (errno == EINVAL) ? dflt : val;
 }
 
 // Border width is used a lot, so let's make it easily accessible.
