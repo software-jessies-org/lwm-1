@@ -30,7 +30,8 @@ LDFLAGS = -lXext -lX11 -lICE -lSM -lstdc++ -lXrandr -lXft
 # -----------------------------------------------------------------------------
 
 OFILES = client.o cursor.o debug.o disp.o error.o ewmh.o geometry.o log.o \
-	lwm.o manage.o mouse.o resource.o screen.o session.o shape.o xlib.o
+	lwm.o manage.o mouse.o resource.o screen.o session.o shape.o tests.o \
+	xlib.o
 HFILES = ewmh.h log.h lwm.h xlib.h
 
 # -----------------------------------------------------------------------------

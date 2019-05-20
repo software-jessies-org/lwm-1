@@ -91,6 +91,9 @@ extern int main(int argc, char* argv[]) {
         // Argument is a sequence of commands, separated by ;.
         debug_init_commands = Split(std::string(argv[i]+10), ";");
       }
+    } else if (!strcmp(argv[i], "-test")) {
+      LOGI() << "Run in self-test mode; will run all tests, then exit";
+      return RunAllTests() ? 0 : 1;
     }
   }
 

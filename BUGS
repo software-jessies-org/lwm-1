@@ -19,11 +19,16 @@ There's a 1 pixel area around the edge of the window which is always a move
 widget. I think it's the window border. It should be a resize widget though.
 This is a failure in how the bounding boxes for the edges is calculated.
 
+ImageMagick's "display" program doesn't work well *at all* with LWM - it has a
+tendency to open the main window far too large, and then make it disappear when
+anything is done to it. My current guess is that this has something to do with
+its use of 'group leader' windows, and possibly also due to the specification
+that if a window manager tries to impose an unacceptable size, a client should
+respond by iconifying itself. LWM may be mishandling the size constraints of
+the display program.
+
 
 === THINGS THAT LOOK SILLY ===
-
-Window repositioning after xrandr changes doesn't work well. This needs a lot of
-testing and tweaking to get it working right.
 
 
 === ERROR LOGS ===
@@ -88,6 +93,21 @@ configure request coordinates. Also, if you press and hold the shift key, it
 will measure the mouse coordinates from when you press down shift until when you
 release it, and on release also prints the start, end and distance to stdout.
 This is very useful for comparing coordinates, and checking window positioning.
+
+
+UNIT TESTS
+~~~~~~~~~~
+LWM has built-in unit tests. Welcome to modernity! They're all in 'tests.cc',
+and are built into the main LWM binary. To run:
+ ./lwm -test
+
+I know building tests directly into the main binary isn't best practice, but
+making LWM properly unit-testable would involve splitting up lwm.h and the
+inevitable refactoring that'd require, plus bashing my head against Makefile.
+Neither of these is appealing right now. The size of the unit test module is
+not going to incur a serious drain on memory.
+
+After all, we already have a built-in debug CLI; why not add a test suite? :-)
 
 
 === MY FAVOURITE DEBUGGING ENVIRONMENT ===

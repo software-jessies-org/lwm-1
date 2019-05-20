@@ -816,4 +816,7 @@ extern bool isRightEdge(Edge e);
 extern bool isTopEdge(Edge e);
 extern bool isBottomEdge(Edge e);
 
+// tests.cc
+extern bool RunAllTests();
+
 #endif  // LWM_LWM_H_included

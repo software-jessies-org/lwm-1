@@ -61,7 +61,7 @@ void LScr::Init() {
   XChangeWindowAttributes(dpy_, popup_, CWEventMask, &attr);
   menu_ = XCreateSimpleWindow(dpy_, root_, 0, 0, 1, 1, 1, fg, bg);
   XChangeWindowAttributes(dpy_, menu_, CWEventMask, &attr);
-  
+
   // Announce our interest in the root_ window.
   attr.cursor = cursor_map_->Root();
   attr.event_mask = SubstructureRedirectMask | SubstructureNotifyMask |
@@ -282,6 +282,248 @@ static int quantise(int dimension, int increment) {
   return dimension - (dimension % increment);
 }
 
+static int xMaxFrom(const std::vector<Rect>& rs) {
+  int res = 0;
+  for (const Rect& r : rs) {
+    res = std::max(res, r.xMax);
+  }
+  return res;
+}
+
+static Rect mirrorX(const Rect& r, int xMax) {
+  return Rect{xMax - r.xMax, r.yMin, xMax - r.xMin, r.yMax};
+}
+
+static std::vector<Rect> mirrorAllX(const std::vector<Rect>& rs, int xMax) {
+  std::vector<Rect> res;
+  for (const Rect& r : rs) {
+    res.push_back(mirrorX(r, xMax));
+  }
+  return res;
+}
+
+static Rect flipXY(const Rect& r) {
+  return Rect{r.yMin, r.xMin, r.yMax, r.xMax};
+}
+
+static std::vector<Rect> flipAllXY(const std::vector<Rect>& rs) {
+  std::vector<Rect> res;
+  for (const Rect& r : rs) {
+    res.push_back(flipXY(r));
+  }
+  return res;
+}
+
+static Rect mapLeftEdge(Rect rect,
+                        const std::vector<Rect>& oldVis,
+                        const std::vector<Rect>& newVis) {
+  Rect oldLE;
+  int oldLEOverlap = 0;
+  // Find the old monitor the window overlaps the most.
+  for (const Rect& r : oldVis) {
+    if (r.xMin != 0) {
+      continue;
+    }
+    const int h = Rect::Intersect(rect, r).height();
+    if (h > oldLEOverlap) {
+      oldLEOverlap = h;
+      oldLE = r;
+    }
+  }
+  // Find the first screen at x=0, and try to position it at roughly the same
+  // height.
+  for (const Rect& r : newVis) {
+    if (r.xMin != 0) {
+      continue;
+    }
+    Rect res = rect;
+    // If the window was Y maximised, or its height is larger than that of the
+    // new screen at this position, then maximise it.
+    if (oldLEOverlap == oldLE.height() || rect.height() >= r.height()) {
+      res.yMin = r.yMin;
+      res.yMax = r.yMax;
+    } else {
+      // Window fits within the screen - ensure its Y position is relatively
+      // similar to what it was.
+      int yoff = rect.yMin - oldLE.yMin;
+      if (yoff <= 0) {
+        yoff = 0;
+      } else {
+        yoff = yoff * (r.height() - rect.height()) /
+               (oldLE.height() - rect.height());
+      }
+      res.yMin = r.yMin + yoff;
+      res.yMax = res.yMin + rect.height();
+    }
+    // Ensure the window isn't wider than the screen.
+    if (res.width() > r.width()) {
+      res.xMax = res.xMin + r.width();
+      // ...but that means we have to ensure we don't lose it, if its xMin is
+      // more than the width of the screen off the left.
+      const int fixOffset = 10 - res.xMax;
+      if (fixOffset > 0) {
+        res.xMin += fixOffset;
+        res.xMax += fixOffset;
+      }
+    }
+    return res;
+    break;
+  }
+  // Didn't manage to figure anything out - return same thing.
+  return rect;
+}
+
+static bool mapEdges(Rect rect,
+                     const std::vector<Rect>& oldVis,
+                     const std::vector<Rect>& newVis,
+                     Rect* newRect) {
+  // If the window abuts the left edge of the screen, or extends beyond it,
+  // keep it there, but ensure that its Y span is within the new vertical area
+  // of the left edge, and that it's no wider than that screen.
+  if (rect.xMin <= 0) {
+    *newRect = mapLeftEdge(rect, oldVis, newVis);
+    return true;
+  }
+  // Same for the right edge. Because this code is a bit complicated, we
+  // implement this by mirroring the before/after screens horizontally, then
+  // calling mapLeftEdge, before mirroring back the resulting rect.
+  const int oldXMax = xMaxFrom(oldVis);
+  const int newXMax = xMaxFrom(newVis);
+  if (rect.xMax >= oldXMax) {
+    Rect res = mapLeftEdge(mirrorX(rect, oldXMax), mirrorAllX(oldVis, oldXMax),
+                           mirrorAllX(newVis, newXMax));
+    *newRect = mirrorX(res, newXMax);
+    return true;
+  }
+  return false;
+}
+
+static Rect tallestScreenAtX(const std::vector<Rect>& vis, int x) {
+  int maxHeight = 0;
+  Rect res;
+  for (const Rect& r : vis) {
+    if (x < r.xMin || x > r.xMax) {
+      continue;
+    }
+    if (r.height() > maxHeight) {
+      maxHeight = r.height();
+      res = r;
+    }
+  }
+  return res;
+}
+
+static Rect sourceScreen(const std::vector<Rect>& vis, const Rect& r) {
+  int area = 0;
+  Rect res;
+  for (const Rect& scr : vis) {
+    const int ra = Rect::Intersect(scr, r).area();
+    if (ra > area) {
+      area = ra;
+      res = scr;
+    }
+  }
+  if (area) {
+    return res;
+  }
+  // No overlap found anywhere; fall back to...
+  return tallestScreenAtX(vis, r.xMin);
+}
+
+static Rect forceWithinRectX(Rect r, Rect target) {
+  Rect res = r;
+  if (res.width() >= target.width()) {
+    res.xMin = target.xMin;
+    res.xMax = target.xMax;
+    return res;
+  }
+  if (res.xMin < target.xMin) {
+    res.xMin = target.xMin;
+  } else if (res.xMin > target.xMax - r.width()) {
+    res.xMin = target.xMax - r.width();
+  }
+  res.xMax = res.xMin + r.width();
+  return res;
+}
+
+Rect MapToNewAreas(Rect rect,
+                   const std::vector<Rect>& oldVis,
+                   const std::vector<Rect>& newVis) {
+  Rect res;
+  const int oldXMax = xMaxFrom(oldVis);
+  const int newXMax = xMaxFrom(newVis);
+  // If this window is height-maximised on any of the original visible areas,
+  // we deal with it specially.
+  for (const Rect& r : oldVis) {
+    if (Rect::Intersect(r, rect).height() == r.height()) {
+      res.xMin = rect.xMin * (newXMax - rect.width()) / (oldXMax - rect.width());
+      // Find the highest screen at the middle X location, and use that as a target.
+      const Rect target = tallestScreenAtX(newVis, res.xMin + rect.width() / 2);
+      res.xMax = res.xMin + rect.width();
+      res = forceWithinRectX(res, target);
+      res.yMin = target.yMin;
+      res.yMax = target.yMax;
+      return res;
+    }
+  }
+  // Deal with windows that are up against the X or Y extremes of the
+  // old visible area. To save on code, which do this by using mirroring and
+  // flipping, and just implement code for the x=0 edge.
+  if (mapEdges(rect, oldVis, newVis, &res)) {
+    return res;
+  }
+  if (mapEdges(flipXY(rect), flipAllXY(oldVis), flipAllXY(newVis), &res)) {
+    return flipXY(res);
+  }
+  // If we got here, the window is floating about within some screen.
+  // One thing we can be reasonably certain of is that if the window was
+  // maximised in either dimension, it will have been taken care of by one of
+  // the mapEdges calls. So we can happily ignore that.
+  // Possibly the simplest approach now is to:
+  // Map the X position according to old vs new X extents.
+  res.xMin = rect.xMin * (newXMax - rect.width()) / (oldXMax - rect.width());
+  // Find the highest screen at the middle X location, and use that as a target.
+  const Rect target = tallestScreenAtX(newVis, res.xMin + rect.width() / 2);
+  // If the window is too wide to fit in the screen, force it down to occupy
+  // the whole screen area.
+  if (rect.width() >= target.width()) {
+    res.xMin = target.xMin;
+    res.xMax = target.xMax;
+  } else {
+    // Window is small enough to fit in the target window. However, we want
+    // to ensure it's entirely within one monitor, so adjust accordingly.
+    res.xMax = res.xMin + rect.width();
+    res = forceWithinRectX(res, target);
+  }
+  // At this point, res has xMin and xMax set correctly. Now deal with the Y
+  // coordinate.
+  // Again, if the window is too tall to fit in the monitor, force its y
+  // coordinates.
+  if (rect.height() > target.height()) {
+    res.yMin = target.yMin;
+    res.yMax = target.yMax;
+  } else {
+    // Find the screen that the old rect mostly intersected (or just pick one at
+    // its x position).
+    const Rect source = sourceScreen(oldVis, rect);
+    // If the window was off the top or bottom, push it entirely within the
+    // target.
+    if (rect.yMin < source.yMin) {
+      res.yMin = target.yMin;
+    } else if (rect.yMax >= source.yMax) {
+      res.yMin = target.yMax - rect.height();
+    } else {
+      // Window was entirely within the Y scope of the source. Scale it so it
+      // occupies the same kind of Y position in the target.
+      res.yMin = target.yMin + (rect.yMin - source.yMin) *
+                                   (target.height() - rect.height()) /
+                                   (source.height() - rect.height());
+    }
+    res.yMax = res.yMin + rect.height();
+  }
+  return res;
+}
+
 // How to do this:
 // Find the old visible area containing the window.
 // Scale window centre to new display w/h, and map that to new visible area.
@@ -306,8 +548,6 @@ void LScr::SetVisibleAreas(std::vector<Rect> visible_areas) {
 
   std::vector<moveData> moves;
 
-  const int oScrWidth = Width();
-  const int oScrHeight = Height();
   // Now, go through the windows and adjust their sizes and locations to
   // conform to the new screen layout.
   for (auto it : clients_) {
@@ -331,116 +571,8 @@ void LScr::SetVisibleAreas(std::vector<Rect> visible_areas) {
       // do here.
       continue;
     }
-    Rect rect = c->RectWithBorder();
-    // Find the visible area in the old setup which has the largest overlap with
-    // this rect. We use this to determine whether the window is maximised in
-    // either direction.
-    bool maxX = false;
-    bool maxY = false;
-    // The wasTotallyIn variables are set if the window was entirely visible
-    // before this screen change. This is used to force the window to still be
-    // entirely visible in the same dimension after the change, but we don't
-    // want to force that if the user deliberately had the window dangling off
-    // the side.
-    bool wasTotallyInX = false;
-    bool wasTotallyInY = false;
-    Rect biggestOverlap = {};
-    for (const Rect& r : oldVis) {
-      Rect overlap = Rect::Intersect(rect, r);
-      maxX |= overlap.width() == r.width();
-      maxY |= overlap.height() == r.height();
-      wasTotallyInX |= overlap.width() == rect.width();
-      wasTotallyInY |= overlap.height() == rect.height();
-      if (overlap.area() > biggestOverlap.area()) {
-        biggestOverlap = overlap;
-      }
-    }
-    // Map the old centre of the window into the new screen coordinates.
-    Point newPos = rect.middle();
-    newPos.x = newPos.x * nScrWidth / oScrWidth;
-    newPos.y = newPos.y * nScrHeight / oScrHeight;
-    // Shift the bounds so its centre moves to newPos.
-    Rect newRect = Rect::Translate(rect, Point::Sub(newPos, rect.middle()));
-    // Try to find a new screen which intersects most with newRect.
-    Rect bestScreen = {};
-    int bestArea = 0;
-    for (const Rect& r : newVis) {
-      const int area = Rect::Intersect(newRect, r).area();
-      if (area > bestArea) {
-        bestArea = area;
-        bestScreen = r;
-      }
-    }
-    // If we found no intersections, try to find the closest.
-    if (bestArea == 0) {
-      int bestDistance = INT_MAX;
-      for (const Rect& r : newVis) {
-        int xd = 0;
-        if (newRect.xMax < r.xMin) {
-          xd = r.xMin - newRect.xMax;
-        } else if (r.xMax < newRect.xMin) {
-          xd = newRect.xMin - r.xMax;
-        }
-        int yd = 0;
-        if (newRect.yMax < r.yMin) {
-          yd = r.yMin - newRect.yMax;
-        } else if (r.yMax < newRect.yMin) {
-          yd = newRect.yMin - r.yMax;
-        }
-        const int dist = std::max(xd, yd);
-        if (dist < bestDistance) {
-          bestDistance = dist;
-          bestScreen = r;
-        }
-      }
-    }
-    // Now figure out the rectangle we want to end up with. Start off with
-    // newRect, which is the same size as the old rect, but has been shifted to
-    // an equivalent position in the new desktop bounds.
-    // Use all the width if we were X-maximised, or larger than this screen.
-    if (maxX || newRect.width() >= bestScreen.width()) {
-      newRect.xMin = bestScreen.xMin;
-      newRect.xMax = bestScreen.xMax;
-    } else if (wasTotallyInX) {  // Keep entirely inside the rectangle.
-      if (newRect.xMax > bestScreen.xMax) {
-        newRect =
-            Rect::Translate(newRect, Point{bestScreen.xMax - newRect.xMax, 0});
-      } else if (newRect.xMin < bestScreen.xMin) {
-        newRect =
-            Rect::Translate(newRect, Point{bestScreen.xMin - newRect.xMin, 0});
-      }
-    } else {  // Keep the same amount of window width visible as before.
-      const int ol = biggestOverlap.width();
-      if (newRect.xMin > bestScreen.xMax - ol) {
-        newRect = Rect::Translate(
-            newRect, Point{bestScreen.xMax - ol - newRect.xMin, 0});
-      } else if (newRect.xMax < bestScreen.xMin + ol) {
-        newRect = Rect::Translate(
-            newRect, Point{bestScreen.xMin + ol - newRect.xMax, 0});
-      }
-    }
-    // Now do all the same things, but for the Y direction.
-    if (maxY || newRect.height() >= bestScreen.height()) {
-      newRect.yMin = bestScreen.yMin;
-      newRect.yMax = bestScreen.yMax;
-    } else if (wasTotallyInY) {  // Keep entirely inside the rectangle.
-      if (newRect.yMax > bestScreen.yMax) {
-        newRect =
-            Rect::Translate(newRect, Point{0, bestScreen.yMax - newRect.yMax});
-      } else if (newRect.yMin < bestScreen.yMin) {
-        newRect =
-            Rect::Translate(newRect, Point{0, bestScreen.yMin - newRect.yMin});
-      }
-    } else {  // Keep the same amount of window height visible as before.
-      const int ol = biggestOverlap.height();
-      if (newRect.yMin > bestScreen.yMax - ol) {
-        newRect = Rect::Translate(
-            newRect, Point{0, bestScreen.yMax - ol - newRect.yMin});
-      } else if (newRect.yMax < bestScreen.yMin + ol) {
-        newRect = Rect::Translate(
-            newRect, Point{0, bestScreen.yMin + ol - newRect.yMax});
-      }
-    }
+
+    Rect newRect = MapToNewAreas(c->RectWithBorder(), oldVis, newVis);
 
     // Now we have newRect, which describes where we'd like to put the window,
     // including its frame. Translate that down to the client window

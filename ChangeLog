@@ -1,6 +1,20 @@
 Change Log for "lwm"
 
 
+2019-05-20	pn	Basel
+	New algorithm for calculating where to position windows after a change
+	of screen layout.
+
+	This also introduces 'tests.cc', LWM's first ever unit tests! They're
+	not using any standard library, and are compiled into the main binary
+	(call by running 'lwm -test'). This isn't strictly proper unit testing,
+	but it means I don't need to bother with a more complicated Makefile.
+	And since LWM really isn't set up for easy unit testing (still having
+	nearly everything in lwm.h), doing things properly would involve serious
+	refactoring. Anyway, as far as I can tell, adding the tests in this way
+	increases the binary size by 71KiB, which isn't going to hurt anyone.
+
+
 2019-05-07	pn	Basel
 	Fixed calculation of the title bar bounds, so that we don't have a
 	little square at the right edge of the title bar, which is a resize
