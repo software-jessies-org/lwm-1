@@ -71,10 +71,16 @@ corner of its frame.
 specifies a client ID for the X Session Management system, and is used
 exclusively by session managers.
 .TP 8
-.B \-debugcli
+.B \-debugcli[=command1;command2...]
 enables the debug CLI (command line interface), which allows LWM to be given
 certain commands on stdin.  This is intended for debugging, not for normal LWM
 use.  For details of commands available on the CLI, refer to the BUGS file.
+If an '=commands' suffix is present, it is interpreted as a sequence of debugcli
+commands, separated by ';', which LWM's debugcli will execute after startup is
+complete.
+.TP 8
+.B \-test
+runs all LWM's unit tests, exiting successfully if all tests pass.
 .SH RESOURCES
 \fILwm\fP understands the following X resources:
 .TP 12

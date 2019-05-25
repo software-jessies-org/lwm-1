@@ -400,8 +400,12 @@ static bool mapEdges(Rect rect,
 
 static Rect tallestScreenAtX(const std::vector<Rect>& vis, int x) {
   int maxHeight = 0;
-  Rect res;
+  Rect res = Rect{0, 0, 0, 0};
+  Rect rightmost = Rect{0, 0, 0, 0};
   for (const Rect& r : vis) {
+    if (r.xMax > rightmost.xMax) {
+      rightmost = r;
+    }
     if (x < r.xMin || x > r.xMax) {
       continue;
     }
@@ -410,7 +414,7 @@ static Rect tallestScreenAtX(const std::vector<Rect>& vis, int x) {
       res = r;
     }
   }
-  return res;
+  return res.empty() ? rightmost : res;
 }
 
 static Rect sourceScreen(const std::vector<Rect>& vis, const Rect& r) {
@@ -446,6 +450,17 @@ static Rect forceWithinRectX(Rect r, Rect target) {
   return res;
 }
 
+static int scale(int pos, int size, int oldMax, int newMax) {
+  if (oldMax <= size || newMax <= size) {
+    return pos;
+  }
+  return pos * (newMax - size) / (oldMax - size);
+}
+
+static int maybeScaleDown(int v, int oldMax, int newMax) {
+  return (newMax >= oldMax) ? v : (v * newMax / oldMax);
+}
+
 Rect MapToNewAreas(Rect rect,
                    const std::vector<Rect>& oldVis,
                    const std::vector<Rect>& newVis) {
@@ -456,9 +471,11 @@ Rect MapToNewAreas(Rect rect,
   // we deal with it specially.
   for (const Rect& r : oldVis) {
     if (Rect::Intersect(r, rect).height() == r.height()) {
-      res.xMin = rect.xMin * (newXMax - rect.width()) / (oldXMax - rect.width());
-      // Find the highest screen at the middle X location, and use that as a target.
-      const Rect target = tallestScreenAtX(newVis, res.xMin + rect.width() / 2);
+      res.xMin = scale(rect.xMin, rect.width(), oldXMax, newXMax);
+      // Find the highest screen at the middle X location, and use that as a
+      // target.
+      const int scaledWidth = maybeScaleDown(rect.width(), oldXMax, newXMax);
+      const Rect target = tallestScreenAtX(newVis, res.xMin + scaledWidth / 2);
       res.xMax = res.xMin + rect.width();
       res = forceWithinRectX(res, target);
       res.yMin = target.yMin;
@@ -481,9 +498,10 @@ Rect MapToNewAreas(Rect rect,
   // the mapEdges calls. So we can happily ignore that.
   // Possibly the simplest approach now is to:
   // Map the X position according to old vs new X extents.
-  res.xMin = rect.xMin * (newXMax - rect.width()) / (oldXMax - rect.width());
+  res.xMin = scale(rect.xMin, rect.width(), oldXMax, newXMax);
   // Find the highest screen at the middle X location, and use that as a target.
-  const Rect target = tallestScreenAtX(newVis, res.xMin + rect.width() / 2);
+  const int scaledWidth = maybeScaleDown(rect.width(), oldXMax, newXMax);
+  const Rect target = tallestScreenAtX(newVis, res.xMin + scaledWidth / 2);
   // If the window is too wide to fit in the screen, force it down to occupy
   // the whole screen area.
   if (rect.width() >= target.width()) {

@@ -1,6 +1,10 @@
 Change Log for "lwm"
 
 
+2019-05-25	pn	Basel
+	Fixed sloppy divide-by-zero bug in xrandr window moving code.
+
+
 2019-05-20	pn	Basel
 	New algorithm for calculating where to position windows after a change
 	of screen layout.

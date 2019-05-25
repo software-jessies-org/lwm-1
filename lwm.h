@@ -254,7 +254,7 @@ class Client {
   bool HasStruts() const {
     return strut.top || strut.bottom || strut.left || strut.right;
   }
-  
+
   void SetSize(const Rect& r);
 
   // Rect defining the bounds of the window, either including LWM's window
@@ -600,7 +600,12 @@ extern void sendConfigureNotify(Client*);
 
 /* client.cc */
 extern bool Client_MakeSane(Client*, Edge, int, int, int, int);
-extern bool Client_MakeSaneAndMove(Client* c, Edge edge, int x, int y, int w, int h);
+extern bool Client_MakeSaneAndMove(Client* c,
+                                   Edge edge,
+                                   int x,
+                                   int y,
+                                   int w,
+                                   int h);
 extern void Client_SizeFeedback();
 extern void size_expose();
 extern void Client_Raise(Client*);
@@ -708,7 +713,7 @@ class Resources {
     // strcmp instead.
     return !strcmp(fm.c_str(), "click");
   }
-  
+
   // Interpret the APP_ICON resource for the cases in which we need it.
   bool ProcessAppIcons() {
     std::string ai = Get(APP_ICON);
@@ -722,7 +727,7 @@ class Resources {
     std::string ai = Get(APP_ICON);
     return !strcmp(ai.c_str(), "both") || !strcmp(ai.c_str(), "menu");
   }
-  
+
  private:
   Resources();
   void set(SR res,

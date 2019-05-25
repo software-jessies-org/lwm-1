@@ -69,6 +69,10 @@ static const mapToNewAreasCase mapToNewAreasTestCases[] = {
      "700x500+0+0", "200x500+384+0"},
     {"to small r wide", "800x1000+1000+0", "700x500+0+500 800x1000+700+0",
      "700x500+0+0", "700x500+0+0"},
+    {"full size no crash", "500x500+0+0", "500x500+0+0", "900x500+0+0",
+     "500x500+0+0"},
+    {"full width no crash", "500x300+0+50", "500x500+0+0", "900x500+0+0",
+     "500x300+0+50"},
 };
 
 static std::vector<Rect> parseRects(const std::string& rects) {

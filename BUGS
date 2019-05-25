@@ -13,7 +13,8 @@ Right at the bottom of the file there's a cheat sheet of debugging tools.
 There's a race condition in focus-follows-mouse where if the user tries to
 move the mouse from window A to B, which passes across window C, which
 covers a small gap between A and B, focus is given to C, despite the fact
-that the pointer last enters B.
+that the pointer last enters B. This only seems to happen for me on linux,
+not on FreeBSD.
 
 There's a 1 pixel area around the edge of the window which is always a move
 widget. I think it's the window border. It should be a resize widget though.
@@ -26,6 +27,9 @@ its use of 'group leader' windows, and possibly also due to the specification
 that if a window manager tries to impose an unacceptable size, a client should
 respond by iconifying itself. LWM may be mishandling the size constraints of
 the display program.
+
+I believe LWM isn't properly extracting struts on start-up; several times I've
+had to pkill -HUP menu, after which its struts reappear. Not sure precisely why.
 
 
 === THINGS THAT LOOK SILLY ===
