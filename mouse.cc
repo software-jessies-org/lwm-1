@@ -38,11 +38,9 @@ MousePos getMousePosition() {
 // hiddenIDFor returns the parent Window ID for the given client. We have a
 // specially-named function for this so that we don't get confused about which
 // Window ID we're using, as this is used in both Hide and OpenMenu.
-static Window hiddenIDFor(const Client* c) {
-  return c->parent;
-}
+Window hiddenIDFor(const Client* c) { return c->parent; }
 
-static void mapAndRaise(Window w, int xmin, int ymin, int width, int height) {
+void mapAndRaise(Window w, int xmin, int ymin, int width, int height) {
   XMoveResizeWindow(dpy, w, xmin, ymin, width, height);
   XMapRaised(dpy, w);
 }
@@ -143,49 +141,29 @@ void Hider::Unhide(Client* c) {
   }
 }
 
-int menuItemHeight() {
-  return textHeight() + MENU_Y_PADDING;
-}
+int menuItemHeight() { return textHeight() + MENU_Y_PADDING; }
 
-static int menuIconYPad() {
-  return 1;
-}
+int menuIconYPad() { return 1; }
 
-static int menuIconXPad() {
-  return 5;
-}
+int menuIconXPad() { return 5; }
 
-static int menuIconSize() {
-  return menuItemHeight() - menuIconYPad() * 2;
-}
+int menuIconSize() { return menuItemHeight() - menuIconYPad() * 2; }
 
-static int menuLHighlight() {
-  return menuItemHeight() + menuIconXPad() * 2;
-}
+int menuLHighlight() { return menuItemHeight() + menuIconXPad() * 2; }
 
-static int menuRHighlight() {
-  return menuItemHeight() - menuIconXPad();
-}
+int menuRHighlight() { return menuItemHeight() - menuIconXPad(); }
 
-static int menuHighlightMargins() {
-  return menuLHighlight() + menuRHighlight();
-}
+int menuHighlightMargins() { return menuLHighlight() + menuRHighlight(); }
 
-static int menuLMargin() {
-  return menuItemHeight() + menuIconXPad() * 3;
-}
+int menuLMargin() { return menuItemHeight() + menuIconXPad() * 3; }
 
-static int menuRMargin() {
-  return menuItemHeight();
-}
+int menuRMargin() { return menuItemHeight(); }
 
-static int menuMargins() {
-  return menuLMargin() + menuRMargin();
-}
+int menuMargins() { return menuLMargin() + menuRMargin(); }
 
 // Returns val if it's within the range described by min and max, or min or
 // max according to which side val extends off.
-static int clamp(int val, int min, int max) {
+int clamp(int val, int min, int max) {
   if (val >= min && val < max) {
     return val;
   }
@@ -195,7 +173,7 @@ static int clamp(int val, int min, int max) {
 // visibleAreaAt returns the rectangle describing the current visible area which
 // contains the given coordinates. This allows us to keep the popup menu within
 // a single monitor at a time.
-static Rect visibleAreaAt(int x, int y) {
+Rect visibleAreaAt(int x, int y) {
   for (const Rect& r : LScr::I->VisibleAreas(true)) {
     if (r.contains(x, y)) {
       return r;

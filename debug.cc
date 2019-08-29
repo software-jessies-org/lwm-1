@@ -155,7 +155,7 @@ void DebugCLI::cmdDbg(string line) {
   LOGD(c) << "Debugging enabled for client";
 }
 
-static void cmdLS() {
+void cmdLS() {
   for (const auto& kv : LScr::I->Clients()) {
     cout << *(kv.second) << "\n";
   }

@@ -27,7 +27,7 @@ Window WindowTree::ParentOf(Window w) {
 // This is determined by the minimum of the space available in the two places
 // we display icons, which are the title bar of the window, and the 'unhide'
 // menu.
-static int targetImageIconSize() {
+int targetImageIconSize() {
   const int mh = menuItemHeight();
   const int th = titleBarHeight();
   return (mh < th) ? mh : th;
@@ -49,8 +49,20 @@ void ImageIcon::ConfigureIconSizes() {
 }
 
 static std::map<unsigned long, ImageIcon*>* image_icon_cache;
+// The refcounts are used to keep track of how many clones of the same image
+// have been returned. The internally-kept ImageIcon doesn't count, only clones
+// cause the refcount to be increased.
+// When an image is cloned, an internal variable is set (gc_hash_), which causes
+// the removeCacheRef function to be called when that ImageIcon is destroyed.
+// Note (particularly for testing) that windows which specify a pixmap directly
+// typically don't trigger the caching behaviour, as each window has its own
+// copy of the pixmap. To definitely test the reference counting, use Chrome
+// or Firefox, both of which have their icons as a bunch of pixels embedded in
+// the _NET_WM_ICON property. As we calculate the hash based on the pixel data,
+// this triggers reuse of scaled images.
+static std::map<unsigned long, int>* image_cache_refcounts;
 
-static ImageIcon* fromCache(unsigned long hash) {
+ImageIcon* fromCache(unsigned long hash) {
   if (!image_icon_cache) {
     return nullptr;
   }
@@ -61,33 +73,42 @@ static ImageIcon* fromCache(unsigned long hash) {
   return it->second;
 }
 
-static void toCache(unsigned long hash, ImageIcon* icon) {
-  if (!image_icon_cache) {
-    image_icon_cache = new std::map<unsigned long, ImageIcon*>;
+void removeCacheRef(unsigned long hash) {
+  const int remainingRefs = --((*image_cache_refcounts)[hash]);
+  if (remainingRefs == 0) {
+    ImageIcon* icon = (*image_icon_cache)[hash];
+    image_icon_cache->erase(hash);
+    image_cache_refcounts->erase(hash);
+    icon->destroyResources();
+    delete icon;
   }
-  (*image_icon_cache)[hash] = icon;
 }
 
-static unsigned long hashData(unsigned long* data, unsigned long len) {
+void toCache(unsigned long hash, ImageIcon* icon) {
+  if (!image_icon_cache) {
+    image_icon_cache = new std::map<unsigned long, ImageIcon*>;
+    image_cache_refcounts = new std::map<unsigned long, int>;
+  }
+  (*image_icon_cache)[hash] = icon;
+  // Don't add a refcount here; instead we increment refcounts only on clone.
+}
+
+unsigned long hashData(unsigned long* data, unsigned long len) {
   // For simplicity, coerce the data into a string, and then hash it.
   std::string s((char*)data, len * sizeof(unsigned long));
   std::hash<std::string> h;
   return h(s);
 }
 
-static unsigned long hashPixmaps(Pixmap img, Pixmap mask) {
+unsigned long hashPixmaps(Pixmap img, Pixmap mask) {
   // Assuming the same image and mask are used together (which is probably a
   // safe assumption), we can just use the img as the hash.
   mask = mask;
   return (unsigned long)img;
 }
 
-ImageIcon::ImageIcon(Pixmap active_img,
-                     Pixmap inactive_img,
-                     Pixmap menu_img,
-                     unsigned int img_w,
-                     unsigned int img_h,
-                     unsigned int depth)
+ImageIcon::ImageIcon(Pixmap active_img, Pixmap inactive_img, Pixmap menu_img,
+                     unsigned int img_w, unsigned int img_h, unsigned int depth)
     : active_img_(active_img),
       inactive_img_(inactive_img),
       menu_img_(menu_img),
@@ -95,12 +116,31 @@ ImageIcon::ImageIcon(Pixmap active_img,
       img_h_(img_h),
       depth_(depth) {}
 
+ImageIcon::~ImageIcon() {
+  if (gc_hash_) {
+    removeCacheRef(gc_hash_);
+  }
+}
+
+ImageIcon* ImageIcon::clone(unsigned long hash) {
+  ImageIcon* res = new ImageIcon(active_img_, inactive_img_, menu_img_, img_w_,
+                                 img_h_, depth_);
+  res->gc_hash_ = hash;
+  return res;
+}
+
+void ImageIcon::destroyResources() {
+  XFreePixmap(dpy, active_img_);
+  XFreePixmap(dpy, inactive_img_);
+  XFreePixmap(dpy, menu_img_);
+}
+
 // copyWithScaling scales down the contents of src into dest.
 // The src image *must* be at least as large as the dest image.
 // This function applies some very simple anti-aliasing. It could be improved
 // by using sub-pixel accuracy, and weighted averages, but this doesn't seem to
 // be necessary, given the results we get from this much simpler approach.
-static void copyWithScaling(XImage* src, XImage* dest) {
+void copyWithScaling(XImage* src, XImage* dest) {
   for (int y = 0; y < dest->height; y++) {
     const int src_min_y = y * src->height / dest->height;
     const int src_max_y = (y + 1) * src->height / dest->height;  // exclusive
@@ -134,7 +174,7 @@ static void copyWithScaling(XImage* src, XImage* dest) {
   }
 }
 
-static Pixmap pixmapFromXImage(XImage* img) {
+Pixmap pixmapFromXImage(XImage* img) {
   Pixmap pm =
       XCreatePixmap(dpy, LScr::I->Root(), img->width, img->height, img->depth);
   GC igc = XCreateGC(dpy, pm, 0, nullptr);
@@ -143,7 +183,7 @@ static Pixmap pixmapFromXImage(XImage* img) {
   return pm;
 }
 
-static void allocateDataForXImage(XImage* img) {
+void allocateDataForXImage(XImage* img) {
   img->data = (char*)calloc(img->height, img->bytes_per_line);
 }
 
@@ -176,9 +216,7 @@ class Background {
   unsigned long bottom_;
 };
 
-void xImageDataToImage(XImage* dest,
-                       XImage* orig,
-                       XImage* mask,
+void xImageDataToImage(XImage* dest, XImage* orig, XImage* mask,
                        const Background& background) {
   for (int y = 0; y < orig->height; y++) {
     for (int x = 0; x < orig->width; x++) {
@@ -188,11 +226,8 @@ void xImageDataToImage(XImage* dest,
   }
 }
 
-static void pixelDataToImage(XImage* img,
-                             unsigned long* data,
-                             int width,
-                             int height,
-                             unsigned long background) {
+void pixelDataToImage(XImage* img, unsigned long* data, int width, int height,
+                      unsigned long background) {
   const unsigned long bgr = background & 0xff0000;
   const unsigned long bgg = background & 0xff00;
   const unsigned long bgb = background & 0xff;
@@ -219,7 +254,7 @@ ImageIcon* ImageIcon::Create(Pixmap img, Pixmap mask) {
   const unsigned long pm_hash = hashPixmaps(img, mask);
   ImageIcon* result = fromCache(pm_hash);
   if (result) {
-    return result->clone();
+    return result->clone(pm_hash);
   }
 
   Window ign1;
@@ -294,7 +329,7 @@ ImageIcon* ImageIcon::Create(Pixmap img, Pixmap mask) {
 
   result = new ImageIcon(active_pm, inactive_pm, menu_pm, width, height, 24);
   toCache(pm_hash, result);
-  return result->clone();
+  return result->clone(pm_hash);
 }
 
 // Use Google Chrome or Chromium to test CreateFromPixels.
@@ -306,7 +341,7 @@ ImageIcon* ImageIcon::CreateFromPixels(unsigned long* data, unsigned long len) {
   const unsigned long pm_hash = hashData(data, len);
   ImageIcon* result = fromCache(pm_hash);
   if (result) {
-    return result->clone();
+    return result->clone(pm_hash);
   }
 
   const int src_width = data[0];
@@ -358,14 +393,10 @@ ImageIcon* ImageIcon::CreateFromPixels(unsigned long* data, unsigned long len) {
   XDestroyImage(dest_img);
   result = new ImageIcon(active_pm, inactive_pm, menu_pm, width, height, 24);
   toCache(pm_hash, result);
-  return result->clone();
+  return result->clone(pm_hash);
 }
 
-void ImageIcon::paint(Window w,
-                      Pixmap pm,
-                      int x,
-                      int y,
-                      int width,
+void ImageIcon::paint(Window w, Pixmap pm, int x, int y, int width,
                       int height) {
   if (!pm) {
     return;

@@ -20,71 +20,7 @@
 #include "ewmh.h"
 #include "lwm.h"
 
-// Dispatcher for main event loop.
-struct Disp {
-  int type;
-  void (*handler)(XEvent*);
-};
-
-static void expose(XEvent*);
-static void buttonpress(XEvent*);
-static void buttonrelease(XEvent*);
-static void focuschange(XEvent*);
-static void maprequest(XEvent*);
-static void configurereq(XEvent*);
-static void configurenotify(XEvent*);
-static void unmap(XEvent*);
-static void destroy(XEvent*);
-static void clientmessage(XEvent*);
-static void colormap(XEvent*);
-static void property(XEvent*);
-static void reparent(XEvent*);
-static void enter(XEvent*);
-static void circulaterequest(XEvent*);
-static void motionnotify(XEvent*);
-
-static Disp disps[] = {
-    {Expose, expose},
-    {MotionNotify, motionnotify},
-    {ButtonPress, buttonpress},
-    {ButtonRelease, buttonrelease},
-    {FocusIn, focuschange},
-    {FocusOut, focuschange},
-    {MapRequest, maprequest},
-    {ConfigureRequest, configurereq},
-    {UnmapNotify, unmap},
-    {DestroyNotify, destroy},
-    {ClientMessage, clientmessage},
-    {ColormapNotify, colormap},
-    {PropertyNotify, property},
-    {ReparentNotify, reparent},
-    {EnterNotify, enter},
-    {CirculateRequest, circulaterequest},
-    {LeaveNotify, 0},
-    {ConfigureNotify, configurenotify},
-    {CreateNotify, 0},
-    {GravityNotify, 0},
-    {MapNotify, 0},
-    {MappingNotify, 0},
-    {SelectionClear, 0},
-    {SelectionNotify, 0},
-    {SelectionRequest, 0},
-    {NoExpose, 0},
-};
-
-extern void dispatch(XEvent* ev) {
-  for (Disp* p = disps; p < disps + sizeof(disps) / sizeof(disps[0]); p++) {
-    if (p->type == ev->type) {
-      if (p->handler) {
-        p->handler(ev);
-      }
-      return;
-    }
-  }
-  LOGI_IF(!shapeEvent(ev)) << "unknown event " << ev->type;
-}
-
-static void expose(XEvent* ev) {
+void EvExpose(XEvent* ev) {
   // Only handle the last in a group of Expose events.
   if (ev->xexpose.count != 0) {
     return;
@@ -161,8 +97,8 @@ class WindowDragger : public DragHandler {
 
   virtual void Start(XEvent*) {
     start_pos_ = getMousePosition();
-    LOGD(LScr::I->GetClient(window_))
-        << "Window drag from " << start_pos_.x << ", " << start_pos_.y;
+    LOGD(LScr::I->GetClient(window_)) << "Window drag from " << start_pos_.x
+                                      << ", " << start_pos_.y;
   }
 
   virtual bool Move(XEvent* ev) {
@@ -327,7 +263,7 @@ class ShellRunner : public DragHandler {
   int button_;
 };
 
-static DragHandler* getDragHandlerForEvent(XEvent* ev) {
+DragHandler* getDragHandlerForEvent(XEvent* ev) {
   XButtonEvent* e = &ev->xbutton;
   // Deal with root window button presses.
   if (e->window == e->root) {
@@ -369,9 +305,8 @@ static DragHandler* getDragHandlerForEvent(XEvent* ev) {
     // (generally middle), then force the mouse pointer to turn into the move
     // pointer, even if it's over an area of the window furniture which usually
     // has another pointer.
-    XChangeActivePointerGrab(dpy,
-                             ButtonMask | PointerMotionHintMask |
-                                 ButtonMotionMask | OwnerGrabButtonMask,
+    XChangeActivePointerGrab(dpy, ButtonMask | PointerMotionHintMask |
+                                      ButtonMotionMask | OwnerGrabButtonMask,
                              LScr::I->Cursors()->ForEdge(ENone), CurrentTime);
     return new WindowMover(c);
   }
@@ -386,18 +321,16 @@ static DragHandler* getDragHandlerForEvent(XEvent* ev) {
   return nullptr;
 }
 
-static void buttonpress(XEvent* ev) {
+void EvButtonPress(XEvent* ev) {
   if (current_dragger) {
     return;  // Already doing something.
   }
   startDragging(getDragHandlerForEvent(ev), ev);
 }
 
-static void buttonrelease(XEvent* ev) {
-  stopDragging(ev);
-}
+void EvButtonRelease(XEvent* ev) { stopDragging(ev); }
 
-static void circulaterequest(XEvent* ev) {
+void EvCirculateRequest(XEvent* ev) {
   XCirculateRequestEvent* e = &ev->xcirculaterequest;
   Client* c = LScr::I->GetClient(e->window);
   LOGD(c) << "CirculateRequest";
@@ -416,7 +349,7 @@ static void circulaterequest(XEvent* ev) {
   }
 }
 
-static void maprequest(XEvent* ev) {
+void EvMapRequest(XEvent* ev) {
   XMapRequestEvent* e = &ev->xmaprequest;
   Client* c = LScr::I->GetOrAddClient(e->window);
   LOGD(c) << "MapRequest";
@@ -441,7 +374,7 @@ static void maprequest(XEvent* ev) {
         XReparentWindow(dpy, c->window, c->parent, c->size.x, c->size.y);
       }
       XAddToSaveSet(dpy, c->window);
-      // FALLTHROUGH
+    // FALLTHROUGH
     case NormalState:
       LOGD(c) << "(map) NormalState " << WinID(c->window);
       XMapWindow(dpy, c->parent);
@@ -453,7 +386,7 @@ static void maprequest(XEvent* ev) {
   ewmh_set_client_list();
 }
 
-static void unmap(XEvent* ev) {
+void EvUnmapNotify(XEvent* ev) {
   Client* c = LScr::I->GetClient(ev->xunmap.window);
   LOGD(c) << "UnmapNotify";
   if (c == nullptr) {
@@ -486,12 +419,10 @@ struct XCfgValMask {
   unsigned long m;
 };
 
-static char upper(char c, bool up) {
-  return up ? toupper(c) : tolower(c);
-}
+char upper(char c, bool up) { return up ? toupper(c) : tolower(c); }
 
 std::ostream& operator<<(std::ostream& os, const XCfgValMask& m) {
-#define OP(flag, ch) os << upper(ch, m.m & flag)
+#define OP(flag, ch) os << upper(ch, m.m& flag)
   OP(CWX, 'x');
   OP(CWY, 'y');
   OP(CWWidth, 'w');
@@ -503,11 +434,11 @@ std::ostream& operator<<(std::ostream& os, const XCfgValMask& m) {
   return os;
 }
 
-static void moveResize(Window w, const Rect& r) {
+void moveResize(Window w, const Rect& r) {
   XMoveResizeWindow(dpy, w, r.xMin, r.yMin, r.width(), r.height());
 }
 
-static int absDist(int min1, int max1, int min2, int max2) {
+int absDist(int min1, int max1, int min2, int max2) {
   if (min1 > max2) {
     return min1 - max2;
   }
@@ -517,7 +448,7 @@ static int absDist(int min1, int max1, int min2, int max2) {
   return 0;
 }
 
-static Rect findBestScreenFor(const Rect& r, bool withStruts) {
+Rect findBestScreenFor(const Rect& r, bool withStruts) {
   const std::vector<Rect> vis = LScr::I->VisibleAreas(withStruts);
   // First try to find the one with the largest overlap.
   Rect res;
@@ -550,7 +481,7 @@ static Rect findBestScreenFor(const Rect& r, bool withStruts) {
   return res;
 }
 
-static Rect makeVisible(Rect r, bool withStruts) {
+Rect makeVisible(Rect r, bool withStruts) {
   const Rect scr = findBestScreenFor(r, withStruts);
   Point translation = {};
   if (r.width() >= scr.width()) {
@@ -572,7 +503,7 @@ static Rect makeVisible(Rect r, bool withStruts) {
   return Rect::Translate(r, translation);
 }
 
-static void configurereq(XEvent* ev) {
+void EvConfigureRequest(XEvent* ev) {
   XWindowChanges wc;
   XConfigureRequestEvent* e = &ev->xconfigurerequest;
   Client* c = LScr::I->GetClient(e->window);
@@ -641,7 +572,7 @@ static void configurereq(XEvent* ev) {
     wc.x = e->x;
     wc.y = e->y;
   }
-  
+
   wc.width = e->width;
   wc.height = e->height;
   wc.border_width = 0;
@@ -680,7 +611,7 @@ std::ostream& operator<<(std::ostream& os, const XConfigureEvent& e) {
   return os;
 }
 
-static void configurenotify(XEvent* ev) {
+void EvConfigureNotify(XEvent* ev) {
   if (current_dragger) {
     // This is probably us moving the window around, so ignore it.
     // TODO: Check if the client is the one being molested, otherwise we'll miss
@@ -700,7 +631,7 @@ static void configurenotify(XEvent* ev) {
   }
 }
 
-static void destroy(XEvent* ev) {
+void EvDestroyNotify(XEvent* ev) {
   Window w = ev->xdestroywindow.window;
   Client* c = LScr::I->GetClient(w);
   if (c == 0) {
@@ -712,7 +643,7 @@ static void destroy(XEvent* ev) {
   ignore_badwindow = 0;
 }
 
-static void clientmessage(XEvent* ev) {
+void EvClientMessage(XEvent* ev) {
   XClientMessageEvent* e = &ev->xclient;
   Client* c = LScr::I->GetClient(e->window);
   if (c == 0) {
@@ -761,7 +692,7 @@ static void clientmessage(XEvent* ev) {
     if (e->data.l[0] & (1 << 11)) {
       ev.xconfigurerequest.value_mask |= CWHeight;
     }
-    configurereq(&ev);
+    EvConfigureRequest(&ev);
     return;
   }
   if (e->message_type == ewmh_atom[_NET_WM_MOVERESIZE] && e->format == 32) {
@@ -834,7 +765,7 @@ static void clientmessage(XEvent* ev) {
   }
 }
 
-static void colormap(XEvent* ev) {
+void EvColormapNotify(XEvent* ev) {
   XColormapEvent* e = &ev->xcolormap;
   if (e->c_new) {
     Client* c = LScr::I->GetClient(e->window);
@@ -886,7 +817,7 @@ std::ostream& operator<<(std::ostream& os, const EWMHWindowState& s) {
   return os;
 }
 
-static void property(XEvent* ev) {
+void EvPropertyNotify(XEvent* ev) {
   XPropertyEvent* e = &ev->xproperty;
   Client* c = LScr::I->GetClient(e->window);
   if (c == 0) {
@@ -923,7 +854,7 @@ static void property(XEvent* ev) {
   }
 }
 
-static void reparent(XEvent* ev) {
+void EvReparentNotify(XEvent* ev) {
   XReparentEvent* e = &ev->xreparent;
   if (e->event != LScr::I->Root() || e->override_redirect ||
       e->parent == LScr::I->Root()) {
@@ -936,21 +867,82 @@ static void reparent(XEvent* ev) {
   }
 }
 
-static void focuschange(XEvent* ev) {
-  if (ev->type == FocusOut) {
-    return;
+std::string describeFocusMode(int mode) {
+  switch (mode) {
+#define CASE_RETURN(x) \
+  case x:              \
+    return #x
+    CASE_RETURN(NotifyNormal);
+    CASE_RETURN(NotifyGrab);
+    CASE_RETURN(NotifyUngrab);
+#undef CASE_RETURN
   }
-  Window focus_window;
-  int revert_to;
-  XGetInputFocus(dpy, &focus_window, &revert_to);
-  Client* c = LScr::I->GetClient(focus_window);
-  LOGD(c) << "Focus change";
+  return "Unknown";
+}
+
+std::string describeFocusDetail(int detail) {
+  switch (detail) {
+#define CASE_RETURN(x) \
+  case x:              \
+    return #x
+    CASE_RETURN(NotifyAncestor);
+    CASE_RETURN(NotifyVirtual);
+    CASE_RETURN(NotifyInferior);
+    CASE_RETURN(NotifyNonlinear);
+    CASE_RETURN(NotifyNonlinearVirtual);
+    CASE_RETURN(NotifyPointer);
+    CASE_RETURN(NotifyPointerRoot);
+    CASE_RETURN(NotifyDetailNone);
+#undef CASE_RETURN
+  }
+  return "Unknown";
+}
+
+std::ostream& operator<<(std::ostream& os, const XFocusChangeEvent& e) {
+  os << WinID(e.window) << " (serial: " << e.serial
+     << ") mode: " << describeFocusMode(e.mode)
+     << ", detail: " << describeFocusDetail(e.detail);
+  return os;
+}
+
+void EvFocusIn(XEvent* ev) {
+  // Calling XGetInputFocus seems wrong, as we're receiving the focused window
+  // via the XEvent already. In practice, XGetInputFocus returns the child
+  // window that actually has focus (in Java apps, the 'FocusProxy' window),
+  // while the XEvent reports the top-level window. I'm changing this to just
+  // use what's reported in the XEvent, but will keep the old code commented
+  // out in case this turns out to be a bad choice.
+  // OLD CODE:
+  //  Window focus_window;
+  //  int revert_to;
+  //  XGetInputFocus(dpy, &focus_window, &revert_to);
+  //  Client* c = LScr::I->GetClient(focus_window);
+  //  if (focus_window != ev->xfocus.window) {
+  //    LOGW() << "Focus window " << WinID(focus_window)
+  //           << " != event focus window " << WinID(ev->xfocus.window);
+  //  }
+  //  if (c) {
+  //    LOGD(c) << "  focusing client";
+  //    LScr::I->GetFocuser()->FocusClient(c);
+  //  }
+  // END OLD CODE.
+  // Interestingly, after simplifying this code, LWM would frequently go into
+  // a nutty state where it'd flicker focus between two windows after a mouse
+  // move. This seems to have been solved by inventing a new 'NotifyFocus'
+  // function which just passively keeps track of the focus list, without
+  // actually sending 'grab focus' requests to clients. This is a good change
+  // anyway, as it makes no sense to tell a client to grab focus because we've
+  // just been told they have focus.
+  Client* c = LScr::I->GetClient(ev->xfocus.window);
   if (c) {
-    LScr::I->GetFocuser()->FocusClient(c);
+    LOGD(c) << "  focusing client from event " << ev->xfocus;
+    LScr::I->GetFocuser()->NotifyFocus(c);
   }
 }
 
-static void enter(XEvent* ev) {
+void EvFocusOut(XEvent*) {}
+
+void EvEnterNotify(XEvent* ev) {
   if (current_dragger) {
     return;
   }
@@ -972,7 +964,7 @@ static void enter(XEvent* ev) {
   }
 }
 
-static void motionnotify(XEvent* ev) {
+void EvMotionNotify(XEvent* ev) {
   if (current_dragger) {
     if (!current_dragger->Move(ev)) {
       current_dragger = nullptr;
@@ -989,5 +981,46 @@ static void motionnotify(XEvent* ev) {
       XChangeWindowAttributes(dpy, c->parent, CWCursor, &attr);
       c->cursor = edge;
     }
+  }
+}
+
+extern void DispatchXEvent(XEvent* ev) {
+  switch (ev->type) {
+#define EV(x)  \
+  case x:      \
+    Ev##x(ev); \
+    break
+
+    EV(Expose);
+    EV(MotionNotify);
+    EV(ButtonPress);
+    EV(ButtonRelease);
+    EV(FocusIn);
+    EV(FocusOut);
+    EV(MapRequest);
+    EV(ConfigureRequest);
+    EV(UnmapNotify);
+    EV(DestroyNotify);
+    EV(ClientMessage);
+    EV(ColormapNotify);
+    EV(PropertyNotify);
+    EV(ReparentNotify);
+    EV(EnterNotify);
+    EV(CirculateRequest);
+    EV(ConfigureNotify);
+#undef EV
+
+    case LeaveNotify:
+    case CreateNotify:
+    case GravityNotify:
+    case MapNotify:
+    case MappingNotify:
+    case SelectionClear:
+    case SelectionNotify:
+    case SelectionRequest:
+    case NoExpose:
+      break;
+    default:
+      LOGI_IF(!shapeEvent(ev)) << "unknown event " << ev->type;
   }
 }

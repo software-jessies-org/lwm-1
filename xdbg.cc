@@ -75,13 +75,13 @@ static XConfigureEvent configEvent;
 
 #define MARGIN 10
 
-static void DrawString(int line, char* txt) {
+void DrawString(int line, char* txt) {
   XftDrawStringUtf8(g_font_draw, &g_font_color, g_font, MARGIN,
                     line * 1.2 * g_font->ascent,
                     reinterpret_cast<const FcChar8*>(txt), strlen(txt));
 }
 
-static void DoExpose(XEvent* ev) {
+void DoExpose(XEvent* ev) {
   // Only handle the last in a group of Expose events.
   if (ev && ev->xexpose.count != 0) {
     return;
@@ -107,7 +107,7 @@ static void DoExpose(XEvent* ev) {
   DrawString(line++, buf);
 }
 
-static void DoNullEvent() {
+void DoNullEvent() {
   Window wign;
   int ign;
   static bool wasShifted = 0;
@@ -120,8 +120,8 @@ static void DoNullEvent() {
       baseX = mouseX;
       baseY = mouseY;
     } else {
-      printf("Moved from %d, %d -> %d, %d (diff %d, %d)\n", baseX, baseY, mouseX,
-             mouseY, mouseX - baseX, mouseY - baseY);
+      printf("Moved from %d, %d -> %d, %d (diff %d, %d)\n", baseX, baseY,
+             mouseX, mouseY, mouseX - baseX, mouseY - baseY);
       baseX = -1;
       baseY = -1;
     }
@@ -135,7 +135,7 @@ static void DoNullEvent() {
   DoExpose(nullptr);
 }
 
-static void DoConfigureNotify(const XConfigureEvent& xc) {
+void DoConfigureNotify(const XConfigureEvent& xc) {
   configEvent = xc;
   DoExpose(nullptr);
 }
@@ -155,7 +155,7 @@ int ErrorHandler(Display* d, XErrorEvent* e) {
   return 0;
 }
 
-static void RestartSelf(int) { forceRestart = true; }
+void RestartSelf(int) { forceRestart = true; }
 
 int main(int argc, char* const argv[]) {
   struct sigaction sa = {};
@@ -255,7 +255,7 @@ int main(int argc, char* const argv[]) {
   execvp(argv[0], argv);
 }
 
-static void getEvent(XEvent* ev) {
+void getEvent(XEvent* ev) {
   // Is there a message waiting?
   if (QLength(dpy) > 0) {
     XNextEvent(dpy, ev);

@@ -23,9 +23,7 @@
 
 #include "lwm.h"
 
-void Resources::Init() {
-  I = new Resources();
-}
+void Resources::Init() { I = new Resources(); }
 
 Resources* Resources::I;
 
@@ -74,7 +72,7 @@ Resources::Resources() {
   // Valid values are "none", "title" (title bars of windows), "menu" (the
   // unhide menu) or "both" (both title bars and unhide menu).
   set(APP_ICON, db, "appIcon", "String", "both");
-  
+
   // The width of the border LWM adds to each window to allow resizing.
   set(BORDER_WIDTH, db, "border", "Border", 6);
   // How many of the top pixels of the title bar will be treated as a resize
@@ -106,7 +104,7 @@ unsigned long Resources::GetColour(SR sr) {
 // Returns a short comprising two copies of the lowest byte in c.
 // This converts an 8-bit r, g or b component into a 16-bit value as required
 // by XRenderColor.
-static unsigned short extend(unsigned long c) {
+unsigned short extend(unsigned long c) {
   unsigned short result = c & 0xff;
   return result | (result << 8);
 }
@@ -124,10 +122,8 @@ int Resources::GetInt(IR ir) {
   return ints_[ir];
 }
 
-static bool tryGet(XrmDatabase db,
-                   const std::string& name,
-                   const char* cls,
-                   std::string* tgt) {
+bool tryGet(XrmDatabase db, const std::string& name, const char* cls,
+            std::string* tgt) {
   if (!db) {
     return false;
   }
@@ -143,21 +139,15 @@ static bool tryGet(XrmDatabase db,
   return false;
 }
 
-void Resources::set(SR res,
-                    XrmDatabase db,
-                    const std::string& name,
-                    const char* cls,
-                    const std::string& dflt) {
+void Resources::set(SR res, XrmDatabase db, const std::string& name,
+                    const char* cls, const std::string& dflt) {
   if (!tryGet(db, name, cls, &(strings_[res]))) {
     strings_[res] = dflt;
   }
 }
 
-void Resources::set(IR res,
-                    XrmDatabase db,
-                    const std::string& name,
-                    const char* cls,
-                    int dflt) {
+void Resources::set(IR res, XrmDatabase db, const std::string& name,
+                    const char* cls, int dflt) {
   ints_[res] = dflt;
   std::string strVal;
   if (!tryGet(db, name, cls, &strVal)) {
@@ -172,9 +162,7 @@ void Resources::set(IR res,
 }
 
 // Border width is used a lot, so let's make it easily accessible.
-int borderWidth() {
-  return Resources::I->GetInt(Resources::BORDER_WIDTH);
-}
+int borderWidth() { return Resources::I->GetInt(Resources::BORDER_WIDTH); }
 
 int topBorderWidth() {
   return Resources::I->GetInt(Resources::TOP_BORDER_WIDTH);

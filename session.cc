@@ -35,19 +35,14 @@ static int session_argc;
 static char** session_argv;
 static char* client_id = NULL;
 
-static void ice_error(IceConn) {
+void ice_error(IceConn) {
   // We only bother catching ice i/o errors because metacity claims the
   // default handler calls exit. twm doesn't bother, so it might not
   // be necessary.
   fprintf(stderr, "%s: ICE I/O error\n", argv0);
 }
 
-static void session_save_yourself(SmcConn smc_conn,
-                                  SmPointer,
-                                  int,
-                                  Bool,
-                                  int,
-                                  Bool) {
+void session_save_yourself(SmcConn smc_conn, SmPointer, int, Bool, int, Bool) {
   SmProperty program;
   SmProperty user_id;
   SmProperty restart_style_hint;
@@ -155,13 +150,11 @@ void session_end() {
   SmcCloseConnection(smc_conn, 0, NULL);
 }
 
-static void session_die(SmcConn, SmPointer) {
-  Terminate(0);
-}
+void session_die(SmcConn, SmPointer) { Terminate(0); }
 
-static void session_save_complete(SmcConn, SmPointer) {}
+void session_save_complete(SmcConn, SmPointer) {}
 
-static void session_shutdown_cancelled(SmcConn, SmPointer) {}
+void session_shutdown_cancelled(SmcConn, SmPointer) {}
 
 void session_init(int argc, char* argv[]) {
   char* previd = NULL;
@@ -212,6 +205,4 @@ void session_init(int argc, char* argv[]) {
   ice_fd = IceConnectionNumber(ice_conn);
 }
 
-void session_process() {
-  IceProcessMessages(ice_conn, NULL, NULL);
-}
+void session_process() { IceProcessMessages(ice_conn, NULL, NULL); }

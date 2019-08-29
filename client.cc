@@ -31,7 +31,7 @@
 
 static int popup_width;  // The width of the size-feedback window.
 
-static void sendClientMessage(Window, Atom, long, long);
+void sendClientMessage(Window, Atom, long, long);
 
 // Returns the total height, in pixels, of the window title bar.
 int titleBarHeight() {
@@ -178,7 +178,7 @@ void Client::SetIcon(ImageIcon* icon) {
   }
 }
 
-static void focusChildrenOf(Window parent) {
+void focusChildrenOf(Window parent) {
   WindowTree wtree = WindowTree::Query(dpy, parent);
   for (Window win : wtree.children) {
     XWindowAttributes attr;
@@ -313,7 +313,7 @@ void Client_Remove(Client* c) {
 // we return it; otherwise we return 0.
 // This makes the code to apply edge resistance a simple matter of subtracting
 // or adding the returned value.
-static int getResistanceOffset(int diff) {
+int getResistanceOffset(int diff) {
   if (diff <= 0 || diff > EDGE_RESIST) {
     return 0;
   }
@@ -522,7 +522,7 @@ bool Client_MakeSane(Client* c, Edge edge, int x, int y, int w, int h) {
   return new_pos != old_pos;
 }
 
-static std::string makeSizeString(int x, int y) {
+std::string makeSizeString(int x, int y) {
   std::ostringstream buf;
   buf << x << " x " << y;
   return buf.str();
@@ -635,7 +635,7 @@ void Client::SetState(int state) {
   ewmh_set_state(this);
 }
 
-static void sendClientMessage(Window w, Atom a, long data0, long data1) {
+void sendClientMessage(Window w, Atom a, long data0, long data1) {
   XEvent ev;
   memset(&ev, 0, sizeof(ev));
   ev.xclient.type = ClientMessage;
@@ -782,6 +782,7 @@ void Focuser::EnterWindow(Window w, Time time) {
   //    the client of X.
   // In this situation, window Y should still keep focus.
   Client* c = LScr::I->GetClient(w);
+  LOGD(c) << "EnterWindow " << WinID(w) << " at " << time;
   const Window le = last_entered_;
   last_entered_ = w;
   if (!c || (c == LScr::I->GetClient(le))) {
@@ -802,13 +803,13 @@ void Focuser::UnfocusClient(Client* c) {
   if (focus_history_.empty()) {
     return;  // No one left to give focus to.
   }
-  reallyFocusClient(focus_history_.front(), CurrentTime);
+  reallyFocusClient(focus_history_.front(), CurrentTime, true);
 }
 
 void Focuser::FocusClient(Client* c, Time time) {
   // If this window is already focused, ignore.
   if (!c->HasFocus()) {
-    reallyFocusClient(c, time);
+    reallyFocusClient(c, time, true);
     // Old LWM seems to always have raised the window being focused, so let's
     // copy that. Maybe it should be a separate resource option though?
     if (Resources::I->ClickToFocus()) {
@@ -817,14 +818,26 @@ void Focuser::FocusClient(Client* c, Time time) {
   }
 }
 
-void Focuser::reallyFocusClient(Client* c, Time time) {
+void Focuser::NotifyFocus(Client* c, Time time) {
+  // If this window is already focused, ignore.
+  if (!c->HasFocus()) {
+    reallyFocusClient(c, time, false);
+    // Old LWM seems to always have raised the window being focused, so let's
+    // copy that. Maybe it should be a separate resource option though?
+    if (Resources::I->ClickToFocus()) {
+      Client_Raise(c);
+    }
+  }
+}
+
+void Focuser::reallyFocusClient(Client* c, Time time, bool give_focus) {
   Client* was_focused = GetFocusedClient();
   removeFromHistory(c);
   focus_history_.push_front(c);
 
   XDeleteProperty(dpy, LScr::I->Root(), ewmh_atom[_NET_ACTIVE_WINDOW]);
   // There was a check for 'c->IsHidden()' here. Needed?
-  if (c->accepts_focus) {
+  if (c->accepts_focus && give_focus) {
     XSetInputFocus(dpy, c->window, RevertToPointerRoot, CurrentTime);
     // Also send focus messages to child windows that can receive
     // focus events.
@@ -837,7 +850,7 @@ void Focuser::reallyFocusClient(Client* c, Time time) {
       sendClientMessage(c->window, wm_protocols, wm_take_focus, time);
     }
     cmapfocus(c);
-  } else {
+  } else if (give_focus) {
     // FIXME: is this sensible?
     XSetInputFocus(dpy, None, RevertToPointerRoot, CurrentTime);
   }

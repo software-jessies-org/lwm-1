@@ -35,9 +35,9 @@
 
 #include "lwm.h"
 
-static int getProperty(Window, Atom, Atom, long, unsigned char**);
-static int getWindowState(Window, int*);
-static void applyGravity(Client*);
+int getProperty(Window, Atom, Atom, long, unsigned char**);
+int getWindowState(Window, int*);
+void applyGravity(Client*);
 
 /*ARGSUSED*/
 void manage(Client* c) {
@@ -274,7 +274,7 @@ void manage(Client* c) {
   LOGD(c) << "<<< manage";
 }
 
-static void applyGravity(Client* c) {
+void applyGravity(Client* c) {
   if (!c->framed) {
     return;  // Only required for framed windows.
   }
@@ -317,7 +317,7 @@ void withdraw(Client* c) {
   ignore_badwindow = 0;
 }
 
-static void installColourmap(Colormap cmap) {
+void installColourmap(Colormap cmap) {
   if (cmap == None) {
     cmap = DefaultColormap(dpy, DefaultScreen(dpy));
   }
@@ -400,11 +400,7 @@ void Terminate(int signal) {
   }
 }
 
-static int getProperty(Window w,
-                       Atom a,
-                       Atom type,
-                       long len,
-                       unsigned char** p) {
+int getProperty(Window w, Atom a, Atom type, long len, unsigned char** p) {
   Atom real_type = 0;
   int format = 0;
   unsigned long n = 0;
@@ -504,7 +500,7 @@ void getNormalHints(Client* c) {
   LOGD(c) << "Post-processed hints: " << c->size;
 }
 
-static int getWindowState(Window w, int* state) {
+int getWindowState(Window w, int* state) {
   long* p = 0;
 
   if (getProperty(w, wm_state, wm_state, 2L, (unsigned char**)&p) <= 0) {

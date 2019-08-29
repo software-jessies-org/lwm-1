@@ -43,6 +43,8 @@ struct WindowTree {
 // Images are not scaled.
 class ImageIcon {
  public:
+  ~ImageIcon();
+
   // Create either creates an ImageIcon capable of drawing the icon on a 24bit
   // display, or returns null.
   static ImageIcon* Create(Pixmap img, Pixmap mask);
@@ -80,20 +82,15 @@ class ImageIcon {
   // looks ugly).
   static void ConfigureIconSizes();
 
+  void destroyResources();
+
  private:
-  ImageIcon(Pixmap active_img,
-            Pixmap inactive_img,
-            Pixmap menu_img,
-            unsigned int img_w,
-            unsigned int img_h,
-            unsigned int depth);
+  ImageIcon(Pixmap active_img, Pixmap inactive_img, Pixmap menu_img,
+            unsigned int img_w, unsigned int img_h, unsigned int depth);
 
   void paint(Window w, Pixmap img, int x, int y, int width, int height);
 
-  ImageIcon* clone() {
-    return new ImageIcon(active_img_, inactive_img_, menu_img_, img_w_, img_h_,
-                         depth_);
-  }
+  ImageIcon* clone(unsigned long hash);
 
   Pixmap active_img_;
   Pixmap inactive_img_;
@@ -101,6 +98,7 @@ class ImageIcon {
   unsigned int img_w_ = 0;
   unsigned int img_h_ = 0;
   unsigned int depth_ = 0;
+  unsigned long gc_hash_ = 0;
 };
 
 // XFreer calls XFree on the data pointer it's constructed with when its

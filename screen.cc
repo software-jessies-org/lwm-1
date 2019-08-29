@@ -275,14 +275,14 @@ struct moveData {
   bool sizeChanged;
 };
 
-static int quantise(int dimension, int increment) {
+int quantise(int dimension, int increment) {
   if (increment < 2) {
     return dimension;
   }
   return dimension - (dimension % increment);
 }
 
-static int xMaxFrom(const std::vector<Rect>& rs) {
+int xMaxFrom(const std::vector<Rect>& rs) {
   int res = 0;
   for (const Rect& r : rs) {
     res = std::max(res, r.xMax);
@@ -290,11 +290,11 @@ static int xMaxFrom(const std::vector<Rect>& rs) {
   return res;
 }
 
-static Rect mirrorX(const Rect& r, int xMax) {
+Rect mirrorX(const Rect& r, int xMax) {
   return Rect{xMax - r.xMax, r.yMin, xMax - r.xMin, r.yMax};
 }
 
-static std::vector<Rect> mirrorAllX(const std::vector<Rect>& rs, int xMax) {
+std::vector<Rect> mirrorAllX(const std::vector<Rect>& rs, int xMax) {
   std::vector<Rect> res;
   for (const Rect& r : rs) {
     res.push_back(mirrorX(r, xMax));
@@ -302,11 +302,9 @@ static std::vector<Rect> mirrorAllX(const std::vector<Rect>& rs, int xMax) {
   return res;
 }
 
-static Rect flipXY(const Rect& r) {
-  return Rect{r.yMin, r.xMin, r.yMax, r.xMax};
-}
+Rect flipXY(const Rect& r) { return Rect{r.yMin, r.xMin, r.yMax, r.xMax}; }
 
-static std::vector<Rect> flipAllXY(const std::vector<Rect>& rs) {
+std::vector<Rect> flipAllXY(const std::vector<Rect>& rs) {
   std::vector<Rect> res;
   for (const Rect& r : rs) {
     res.push_back(flipXY(r));
@@ -314,9 +312,8 @@ static std::vector<Rect> flipAllXY(const std::vector<Rect>& rs) {
   return res;
 }
 
-static Rect mapLeftEdge(Rect rect,
-                        const std::vector<Rect>& oldVis,
-                        const std::vector<Rect>& newVis) {
+Rect mapLeftEdge(Rect rect, const std::vector<Rect>& oldVis,
+                 const std::vector<Rect>& newVis) {
   Rect oldLE;
   int oldLEOverlap = 0;
   // Find the old monitor the window overlaps the most.
@@ -373,10 +370,8 @@ static Rect mapLeftEdge(Rect rect,
   return rect;
 }
 
-static bool mapEdges(Rect rect,
-                     const std::vector<Rect>& oldVis,
-                     const std::vector<Rect>& newVis,
-                     Rect* newRect) {
+bool mapEdges(Rect rect, const std::vector<Rect>& oldVis,
+              const std::vector<Rect>& newVis, Rect* newRect) {
   // If the window abuts the left edge of the screen, or extends beyond it,
   // keep it there, but ensure that its Y span is within the new vertical area
   // of the left edge, and that it's no wider than that screen.
@@ -398,7 +393,7 @@ static bool mapEdges(Rect rect,
   return false;
 }
 
-static Rect tallestScreenAtX(const std::vector<Rect>& vis, int x) {
+Rect tallestScreenAtX(const std::vector<Rect>& vis, int x) {
   int maxHeight = 0;
   Rect res = Rect{0, 0, 0, 0};
   Rect rightmost = Rect{0, 0, 0, 0};
@@ -417,7 +412,7 @@ static Rect tallestScreenAtX(const std::vector<Rect>& vis, int x) {
   return res.empty() ? rightmost : res;
 }
 
-static Rect sourceScreen(const std::vector<Rect>& vis, const Rect& r) {
+Rect sourceScreen(const std::vector<Rect>& vis, const Rect& r) {
   int area = 0;
   Rect res;
   for (const Rect& scr : vis) {
@@ -434,7 +429,7 @@ static Rect sourceScreen(const std::vector<Rect>& vis, const Rect& r) {
   return tallestScreenAtX(vis, r.xMin);
 }
 
-static Rect forceWithinRectX(Rect r, Rect target) {
+Rect forceWithinRectX(Rect r, Rect target) {
   Rect res = r;
   if (res.width() >= target.width()) {
     res.xMin = target.xMin;
@@ -450,19 +445,18 @@ static Rect forceWithinRectX(Rect r, Rect target) {
   return res;
 }
 
-static int scale(int pos, int size, int oldMax, int newMax) {
+int scale(int pos, int size, int oldMax, int newMax) {
   if (oldMax <= size || newMax <= size) {
     return pos;
   }
   return pos * (newMax - size) / (oldMax - size);
 }
 
-static int maybeScaleDown(int v, int oldMax, int newMax) {
+int maybeScaleDown(int v, int oldMax, int newMax) {
   return (newMax >= oldMax) ? v : (v * newMax / oldMax);
 }
 
-Rect MapToNewAreas(Rect rect,
-                   const std::vector<Rect>& oldVis,
+Rect MapToNewAreas(Rect rect, const std::vector<Rect>& oldVis,
                    const std::vector<Rect>& newVis) {
   Rect res;
   const int oldXMax = xMaxFrom(oldVis);
@@ -533,9 +527,9 @@ Rect MapToNewAreas(Rect rect,
     } else {
       // Window was entirely within the Y scope of the source. Scale it so it
       // occupies the same kind of Y position in the target.
-      res.yMin = target.yMin + (rect.yMin - source.yMin) *
-                                   (target.height() - rect.height()) /
-                                   (source.height() - rect.height());
+      res.yMin = target.yMin +
+                 (rect.yMin - source.yMin) * (target.height() - rect.height()) /
+                     (source.height() - rect.height());
     }
     res.yMax = res.yMin + rect.height();
   }
