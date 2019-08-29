@@ -206,6 +206,7 @@ class Client {
   }
 
   ~Client() {
+    LOGI() << "Deleting client for " << name_;
     if (ncmapwins) {
       XFree(cmapwins);
       free(wmcmaps);
@@ -390,6 +391,11 @@ class Focuser {
   // given client already has input focus.
   void FocusClient(Client* c, Time time = CurrentTime);
 
+  // Notifies the focuser that this client has grabbed input focus. This only
+  // rearranges the history of who had focus when, and doesn't force focus on
+  // anyone.
+  void NotifyFocus(Client* c, Time time = CurrentTime);
+
   Client* GetFocusedClient();
 
  private:
@@ -398,7 +404,7 @@ class Focuser {
   // Does the actual work of FocusClient, except without the safety-check for
   // 'do we currently have focus?'. This is needed to make the refocusing of
   // older-focused clients work when a window closes.
-  void reallyFocusClient(Client* c, Time time);
+  void reallyFocusClient(Client* c, Time time, bool give_focus);
 
   // last_entered_ is the last window the mouse pointer was seen entering. It
   // is *NOT* necessarily the window with input focus. In fact, if a new window
@@ -620,8 +626,7 @@ extern void Client_ResetAllCursors();
 extern int titleBarHeight();
 
 /* disp.cc */
-extern void dispatch(XEvent*);
-extern void reshaping_motionnotify(XEvent*);
+extern void DispatchXEvent(XEvent*);
 
 /* error.cc */
 extern int ignore_badwindow;

@@ -61,8 +61,8 @@ Atom motif_wm_hints;
 bool forceRestart;
 char* argv0;
 
-static void rrScreenChangeNotify(XEvent* ev);
-static void setScreenAreasFromXRandR();
+void rrScreenChangeNotify(XEvent* ev);
+void setScreenAreasFromXRandR();
 
 std::vector<std::string> Split(const std::string& in,
                                const std::string& split) {
@@ -192,13 +192,13 @@ extern int main(int argc, char* argv[]) {
   if (ice_fd > dpy_fd) {
     max_fd = ice_fd + 1;
   }
-  
+
   // Just before we start the loop, execute any commands we've been told to
   // run on start-up.
   if (debugCLI) {
     debugCLI->Init(debug_init_commands);
   }
-  
+
   while (!forceRestart) {
     fd_set readfds;
 
@@ -220,7 +220,7 @@ extern int main(int argc, char* argv[]) {
           if (ev.type == rr_event_base + RRScreenChangeNotify) {
             rrScreenChangeNotify(&ev);
           } else {
-            dispatch(&ev);
+            DispatchXEvent(&ev);
           }
         }
       }
@@ -237,7 +237,7 @@ extern int main(int argc, char* argv[]) {
   execvp(argv0, argv);
 }
 
-static void rrScreenChangeNotify(XEvent* ev) {
+void rrScreenChangeNotify(XEvent* ev) {
   XRRScreenChangeNotifyEvent* rrev = (XRRScreenChangeNotifyEvent*)ev;
   int nScrWidth = rrev->width;
   int nScrHeight = rrev->height;
@@ -264,7 +264,7 @@ static void rrScreenChangeNotify(XEvent* ev) {
   setScreenAreasFromXRandR();
 }
 
-static void setScreenAreasFromXRandR() {
+void setScreenAreasFromXRandR() {
   XRRScreenResources* res = XRRGetScreenResourcesCurrent(dpy, LScr::I->Root());
   if (!res) {
     LOGE() << "Failed to get XRRScreenResources";

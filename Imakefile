@@ -21,8 +21,9 @@ LOCAL_LIBRARIES = $(XLIB) $(XFREETYPELIB) $(SMLIB) $(XRANDRLIB) -lICE $(XFTLIB)
 DEFINES = -DSHAPE
 CXX=g++
 CC=g++
-CXXFLAGS=-std=c++14 -g -Wall -Werror -Wextra -Wpedantic -Wno-sign-compare -I/usr/include/freetype2
-LDFLAGS='-lstdc++14 -lXft'
+CCLINK=g++
+CXXFLAGS=-std=c++14 -g3 -O0 -Wall -Werror -Wextra -Wpedantic -Wno-sign-compare -I/usr/include/freetype2
+LDOPTIONS=-g3 -lXft -rdynamic
 
 HEADERS = lwm.h ewmh.h
 SRCS = log.cc lwm.cc manage.cc mouse.cc client.cc cursor.cc error.cc disp.cc shape.cc resource.cc session.cc screen.cc ewmh.cc geometry.cc xlib.cc debug.cc tests.cc

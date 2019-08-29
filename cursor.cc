@@ -21,17 +21,15 @@
 
 #include "lwm.h"
 
-static Cursor colouredCursor(Display* dpy,
-                             unsigned int shape,
-                             XColor* fg,
-                             XColor* bg) {
+Cursor colouredCursor(Display* dpy, unsigned int shape, XColor* fg,
+                      XColor* bg) {
   Cursor res = XCreateFontCursor(dpy, shape);
   XRecolorCursor(dpy, res, fg, bg);
   return res;
 }
 
-static const char kCursorFG[] = "Black"; //"Medium Turquoise";
-static const char kCursorBG[] = "White"; //"Navy Blue";
+static const char kCursorFG[] = "Black";  //"Medium Turquoise";
+static const char kCursorBG[] = "White";  //"Navy Blue";
 
 CursorMap::CursorMap(Display* dpy) {
   XColor cursorFG, cursorBG, exact;

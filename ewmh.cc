@@ -255,7 +255,7 @@ void ewmh_get_state(Client* c) {
   XFree(state);
 }
 
-static bool new_state(unsigned long action, bool current) {
+bool new_state(unsigned long action, bool current) {
   enum Action { remove, add, toggle };
   switch (action) {
     case remove:
@@ -387,7 +387,7 @@ void ewmh_set_strut() {
   data[3] = DisplayHeight(dpy, 0) - (strut.top + strut.bottom);
   XChangeProperty(dpy, LScr::I->Root(), ewmh_atom[_NET_WORKAREA], XA_CARDINAL,
                   32, PropModeReplace, (unsigned char*)data, 4);
-  
+
   // ensure no window fully occupy reserved areas
   for (auto it : LScr::I->Clients()) {
     Client* c = it.second;
@@ -440,7 +440,7 @@ void ewmh_get_strut(Client* c) {
 
 // fix stack forces each window on the screen to be in the right place in
 // the window stack as indicated in the EWMH spec version 1.2 (section 7.10).
-static void fix_stack() {
+void fix_stack() {
   // this is pretty dumb. we should query the tree and only move
   // those windows that require it. doing it regardless like this
   // causes the desktop to flicker
@@ -489,7 +489,7 @@ static void fix_stack() {
   }
 }
 
-static bool valid_for_client_list(Client* c) {
+bool valid_for_client_list(Client* c) {
   return !c->IsWithdrawn();
 }
 
