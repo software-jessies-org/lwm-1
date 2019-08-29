@@ -174,8 +174,9 @@ void LScr::Furnish(Client* c) {
       dpy_, root_, c->size.x, c->size.y - textHeight(), c->size.width,
       c->size.height + textHeight(), 1, black(), white());
   XSetWindowAttributes attr;
-  attr.event_mask = ExposureMask | EnterWindowMask | ButtonMask |
-                    SubstructureRedirectMask | SubstructureNotifyMask |
+  attr.event_mask = ExposureMask | EnterWindowMask | LeaveWindowMask |
+                    ButtonMask | SubstructureRedirectMask |
+                    SubstructureNotifyMask | PointerMotionHintMask |
                     PointerMotionMask;
   XChangeWindowAttributes(dpy_, c->parent, CWEventMask, &attr);
 
