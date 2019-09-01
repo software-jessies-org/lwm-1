@@ -16,10 +16,6 @@ covers a small gap between A and B, focus is given to C, despite the fact
 that the pointer last enters B. This only seems to happen for me on linux,
 not on FreeBSD.
 
-There's a 1 pixel area around the edge of the window which is always a move
-widget. I think it's the window border. It should be a resize widget though.
-This is a failure in how the bounding boxes for the edges is calculated.
-
 ImageMagick's "display" program doesn't work well *at all* with LWM - it has a
 tendency to open the main window far too large, and then make it disappear when
 anything is done to it. My current guess is that this has something to do with

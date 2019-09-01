@@ -84,23 +84,29 @@ std::ostream& operator<<(std::ostream& os, const WinID& w) {
   return os;
 }
 
+// Our use of -1 for the x/y min value on the left and top edges, and the +1
+// on the width/height for the right/bottom edges looks funny. The reason for
+// doing this is because our furniture window includes a 1 pixel border, which
+// exists outside our normal window coordinates. If we don't add these -/+1
+// hacks, we end up with the wrong behaviour when the pointer is within this
+// border, which looks funny.
 Rect Client::edgeBounds(Edge e) const {
   const int inset = titleBarHeight();
   const int wh = size.height + textHeight();
   Rect res{inset, inset, size.width - inset, wh - inset};
   if (isLeftEdge(e)) {
-    res.xMin = 0;
+    res.xMin = -1;
     res.xMax = inset;
   } else if (isRightEdge(e)) {
     res.xMin = size.width - inset;
-    res.xMax = size.width;
+    res.xMax = size.width + 1;
   }
   if (isTopEdge(e)) {
-    res.yMin = 0;
+    res.yMin = -1;
     res.yMax = inset;
   } else if (isBottomEdge(e)) {
     res.yMin = wh - inset;
-    res.yMax = wh;
+    res.yMax = wh + 1;
   }
   return res;
 }

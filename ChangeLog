@@ -9,6 +9,9 @@ Change Log for "lwm"
 	'move window' cursor should the pointer move from the client window
 	into the title bar.
 
+	Got rid of the long-standing bug where we'd allow the window to be moved
+	if the mouse pointer is on the furniture window's 1px border.
+
 
 2019-08-29	pn	Basel
 	Got rid of static functions to improve debugging.
