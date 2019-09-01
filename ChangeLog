@@ -1,6 +1,16 @@
 Change Log for "lwm"
 
 
+2019-08-29	pn	Basel
+	Got rid of static functions to improve debugging.
+
+	Added backtrace printing (for linux only so far) on X proto errors.
+
+	Added reference counting and proper clean-ups of image icons for deleted
+	windows. This fixes a pixmap leak, and also some bad over-cacheing
+	behaviour where sometimes apps get each other's icons.
+
+
 2019-05-25	pn	Basel
 	Fixed sloppy divide-by-zero bug in xrandr window moving code.
 

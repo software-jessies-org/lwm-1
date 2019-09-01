@@ -10,12 +10,6 @@ Right at the bottom of the file there's a cheat sheet of debugging tools.
 
 === FUNCTIONAL BREAKAGES ===
 
-If an icon goes away, we keep the cached (scaled down) version too long.
-I've seen this when restarting Terminator and Evergreen, where they each
-ended up with the other's icon (but only sometimes - I had one Terminator
-window with its own logo, and one with an Evergreen logo). I think this is
-caused by window id reuse.
-
 There's a race condition in focus-follows-mouse where if the user tries to
 move the mouse from window A to B, which passes across window C, which
 covers a small gap between A and B, focus is given to C, despite the fact
