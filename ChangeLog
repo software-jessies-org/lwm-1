@@ -1,6 +1,15 @@
 Change Log for "lwm"
 
 
+2019-09-01	pn	Basel
+	Removed the poisonous 'PointerMotionHintMask', which was causing us to
+	miss out on mouse motion events, and preventing the cursor from being
+	properly updated according to which bit of the window furniture it was
+	on. Also fixed a silly bug where we'd fail to switch to the
+	'move window' cursor should the pointer move from the client window
+	into the title bar.
+
+
 2019-08-29	pn	Basel
 	Got rid of static functions to improve debugging.
 

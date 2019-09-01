@@ -174,10 +174,13 @@ void LScr::Furnish(Client* c) {
       dpy_, root_, c->size.x, c->size.y - textHeight(), c->size.width,
       c->size.height + textHeight(), 1, black(), white());
   XSetWindowAttributes attr;
+  // DO NOT SET PointerMotionHintMask! Doing so allows X to send just one
+  // notification to the window until the key or button state changes. This
+  // prevents us from properly updating the cursor as we move the pointer around
+  // our window furniture.
   attr.event_mask = ExposureMask | EnterWindowMask | LeaveWindowMask |
                     ButtonMask | SubstructureRedirectMask |
-                    SubstructureNotifyMask | PointerMotionHintMask |
-                    PointerMotionMask;
+                    SubstructureNotifyMask | PointerMotionMask;
   XChangeWindowAttributes(dpy_, c->parent, CWEventMask, &attr);
 
   XResizeWindow(dpy_, c->window, c->size.width - 2 * borderWidth(),

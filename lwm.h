@@ -825,6 +825,7 @@ extern bool isLeftEdge(Edge e);
 extern bool isRightEdge(Edge e);
 extern bool isTopEdge(Edge e);
 extern bool isBottomEdge(Edge e);
+extern std::string EdgeName(Edge e);
 
 // tests.cc
 extern bool RunAllTests();

@@ -960,7 +960,13 @@ void EvEnterNotify(XEvent* ev) {
     XSetWindowAttributes attr;
     attr.cursor = LScr::I->Cursors()->Root();
     XChangeWindowAttributes(dpy, c->parent, CWCursor, &attr);
-    c->cursor = ENone;
+    // Record that the current cursor is whatever the child window says it is.
+    // This has to be different from any Edge we want to trigger when the mouse
+    // crosses window furniture, otherwise we may fail to trigger a cursor
+    // switch. For example, were we to set this to ENone, if the mouse were to
+    // cross from the client window into the title bar, we'd fail to switch to
+    // the 'move window' cursor.
+    c->cursor = EContents;
   }
 }
 
