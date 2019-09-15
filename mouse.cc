@@ -198,7 +198,11 @@ void Hider::OpenMenu(XButtonEvent* e) {
   // essentially iterates for us.
   for (std::list<Window>::iterator it = hidden_.begin(); it != hidden_.end();) {
     const Window w = *it;
-    if (LScr::I->GetClient(w)) {
+    const Client* c = LScr::I->GetClient(w);
+    // The following check for c->IsHidden is mainly there to avoid listing
+    // 'withdrawn' windows, but as we're constructing the list of windows which
+    // are iconified, this is the right check to perform here.
+    if (c && c->IsHidden()) {
       open_content_.push_back(Item(w, true));
       added.insert(w);
       ++it;
@@ -211,7 +215,18 @@ void Hider::OpenMenu(XButtonEvent* e) {
   for (const auto& it : LScr::I->Clients()) {
     const Client* c = it.second;
     const Window w = hiddenIDFor(c);
-    if (!c->framed || added.count(w)) {
+    // The following check for c->IsNormal implicitly cuts out any windows which
+    // are in withdrawn state.
+    // This fixes a bug where Rhythmbox's preferences dialog would never
+    // disappear from the list of windows, because it was withdrawn and kept,
+    // and not destroyed.
+    // To verify this bug is fixed, do the following:
+    // 1: Open Rhythmbox.
+    // 2: Open the Rhythmbox Preferences window.
+    // 3: Verify the preferences window appears in the right-click unhide menu.
+    // 4: Click on the X icon of the preferences window.
+    // 5: Verify the preferences window no longer appears in the unhide menu.
+    if (!c->framed || added.count(w) || !c->IsNormal()) {
       continue;
     }
     open_content_.push_back(Item(w, false));

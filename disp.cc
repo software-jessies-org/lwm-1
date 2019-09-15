@@ -97,8 +97,8 @@ class WindowDragger : public DragHandler {
 
   virtual void Start(XEvent*) {
     start_pos_ = getMousePosition();
-    LOGD(LScr::I->GetClient(window_)) << "Window drag from " << start_pos_.x
-                                      << ", " << start_pos_.y;
+    LOGD(LScr::I->GetClient(window_))
+        << "Window drag from " << start_pos_.x << ", " << start_pos_.y;
   }
 
   virtual bool Move(XEvent* ev) {
@@ -305,8 +305,9 @@ DragHandler* getDragHandlerForEvent(XEvent* ev) {
     // (generally middle), then force the mouse pointer to turn into the move
     // pointer, even if it's over an area of the window furniture which usually
     // has another pointer.
-    XChangeActivePointerGrab(dpy, ButtonMask | PointerMotionHintMask |
-                                      ButtonMotionMask | OwnerGrabButtonMask,
+    XChangeActivePointerGrab(dpy,
+                             ButtonMask | PointerMotionHintMask |
+                                 ButtonMotionMask | OwnerGrabButtonMask,
                              LScr::I->Cursors()->ForEdge(ENone), CurrentTime);
     return new WindowMover(c);
   }
@@ -328,7 +329,9 @@ void EvButtonPress(XEvent* ev) {
   startDragging(getDragHandlerForEvent(ev), ev);
 }
 
-void EvButtonRelease(XEvent* ev) { stopDragging(ev); }
+void EvButtonRelease(XEvent* ev) {
+  stopDragging(ev);
+}
 
 void EvCirculateRequest(XEvent* ev) {
   XCirculateRequestEvent* e = &ev->xcirculaterequest;
@@ -386,9 +389,16 @@ void EvMapRequest(XEvent* ev) {
   ewmh_set_client_list();
 }
 
+char const* truth(bool yes) {
+  return yes ? "true" : "false";
+}
+
 void EvUnmapNotify(XEvent* ev) {
-  Client* c = LScr::I->GetClient(ev->xunmap.window);
-  LOGD(c) << "UnmapNotify";
+  const XUnmapEvent& xe = ev->xunmap;
+  Client* c = LScr::I->GetClient(xe.window);
+  LOGD(c) << "UnmapNotify send_event=" << truth(xe.send_event)
+          << " event=" << WinID(xe.event) << "; window=" << WinID(xe.window)
+          << "; from_configure=" << truth(xe.from_configure);
   if (c == nullptr) {
     return;
   }
@@ -398,6 +408,7 @@ void EvUnmapNotify(XEvent* ev) {
   // might seem stupid, but it's the way it is. While a reparenting is pending
   // we ignore UnmapWindow requests.
   if (c->internal_state != IPendingReparenting) {
+    LOGD(c) << "Internal state is normal; withdrawing";
     withdraw(c);
   }
   c->internal_state = INormal;
@@ -419,10 +430,12 @@ struct XCfgValMask {
   unsigned long m;
 };
 
-char upper(char c, bool up) { return up ? toupper(c) : tolower(c); }
+char upper(char c, bool up) {
+  return up ? toupper(c) : tolower(c);
+}
 
 std::ostream& operator<<(std::ostream& os, const XCfgValMask& m) {
-#define OP(flag, ch) os << upper(ch, m.m& flag)
+#define OP(flag, ch) os << upper(ch, m.m & flag)
   OP(CWX, 'x');
   OP(CWY, 'y');
   OP(CWWidth, 'w');
