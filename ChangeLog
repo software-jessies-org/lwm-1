@@ -1,6 +1,13 @@
 Change Log for "lwm"
 
 
+2019-09-15	pn	Basel
+	Stopped 'withdrawn' windows from showing up in the unhide menu. This
+	solves a bug where the rhythmbox preferences dialog would remain in the
+	unhide menu even when closed, because the window was never destroyed,
+	merely withdrawn (and reused again when next opened).
+
+
 2019-09-01	pn	Basel
 	Removed the poisonous 'PointerMotionHintMask', which was causing us to
 	miss out on mouse motion events, and preventing the cursor from being
