@@ -171,7 +171,10 @@ extern int main(int argc, char* argv[]) {
   LScr::I = new LScr(dpy);
   LScr::I->Init();
   session_init(argc, argv);
-
+  
+  // Initialisation is finished; from now on, errors are not going to be fatal.
+  is_initialising = false;
+  
   // Do we need to support XRandR?
   int rr_event_base, rr_error_base;
   bool have_rr = XRRQueryExtension(dpy, &rr_event_base, &rr_error_base);
@@ -182,9 +185,6 @@ extern int main(int argc, char* argv[]) {
 
   // See if the server has the Shape Window extension.
   shape = serverSupportsShapes();
-
-  // Initialisation is finished; from now on, errors are not going to be fatal.
-  is_initialising = false;
 
   // The main event loop.
   int dpy_fd = ConnectionNumber(dpy);

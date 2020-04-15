@@ -202,7 +202,10 @@ void Hider::OpenMenu(XButtonEvent* e) {
     // The following check for c->IsHidden is mainly there to avoid listing
     // 'withdrawn' windows, but as we're constructing the list of windows which
     // are iconified, this is the right check to perform here.
-    if (c && c->IsHidden()) {
+    // Update(2020-04-15): Actually, checking for IsHidden here breaks all
+    // window hiding, and causes hidden windows not to be visible in the unhide
+    // menu.
+    if (c/* && c->IsHidden()*/) {
       open_content_.push_back(Item(w, true));
       added.insert(w);
       ++it;

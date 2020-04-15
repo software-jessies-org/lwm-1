@@ -113,7 +113,7 @@ After all, we already have a built-in debug CLI; why not add a test suite? :-)
 === MY FAVOURITE DEBUGGING ENVIRONMENT ===
 
 # Three terminals. In one, I do:
-vncserver -geometry 1600x1200 -name test
+vncserver -geometry 2000x1500 -name test
 vncviewer localhost:1
 # Then, after login, ctrl-z and bg to background the vncviewer.
 cd $HOME/dev/lwm
