@@ -918,38 +918,17 @@ std::ostream& operator<<(std::ostream& os, const XFocusChangeEvent& e) {
   return os;
 }
 
-void EvFocusIn(XEvent* ev) {
-  // Calling XGetInputFocus seems wrong, as we're receiving the focused window
-  // via the XEvent already. In practice, XGetInputFocus returns the child
-  // window that actually has focus (in Java apps, the 'FocusProxy' window),
-  // while the XEvent reports the top-level window. I'm changing this to just
-  // use what's reported in the XEvent, but will keep the old code commented
-  // out in case this turns out to be a bad choice.
-  // OLD CODE:
-  //  Window focus_window;
-  //  int revert_to;
-  //  XGetInputFocus(dpy, &focus_window, &revert_to);
-  //  Client* c = LScr::I->GetClient(focus_window);
-  //  if (focus_window != ev->xfocus.window) {
-  //    LOGW() << "Focus window " << WinID(focus_window)
-  //           << " != event focus window " << WinID(ev->xfocus.window);
-  //  }
-  //  if (c) {
-  //    LOGD(c) << "  focusing client";
-  //    LScr::I->GetFocuser()->FocusClient(c);
-  //  }
-  // END OLD CODE.
-  // Interestingly, after simplifying this code, LWM would frequently go into
-  // a nutty state where it'd flicker focus between two windows after a mouse
-  // move. This seems to have been solved by inventing a new 'NotifyFocus'
-  // function which just passively keeps track of the focus list, without
-  // actually sending 'grab focus' requests to clients. This is a good change
-  // anyway, as it makes no sense to tell a client to grab focus because we've
-  // just been told they have focus.
-  Client* c = LScr::I->GetClient(ev->xfocus.window);
+void EvFocusIn(XEvent*) {
+  // In practice, XGetInputFocus returns the child window that actually has
+  // focus (in Java apps, the 'FocusProxy' window), while the XEvent reports
+  // the top-level window.
+  Window focus_window;
+  int revert_to;
+  XGetInputFocus(dpy, &focus_window, &revert_to);
+  Client* c = LScr::I->GetClient(focus_window);
   if (c) {
-    LOGD(c) << "  focusing client from event " << ev->xfocus;
-    LScr::I->GetFocuser()->NotifyFocus(c);
+    LOGD(c) << "  focusing client; focus window = " << WinID(focus_window);
+    LScr::I->GetFocuser()->FocusClient(c);
   }
 }
 

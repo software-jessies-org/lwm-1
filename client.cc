@@ -184,12 +184,13 @@ void Client::SetIcon(ImageIcon* icon) {
   }
 }
 
-void focusChildrenOf(Window parent) {
+void focusChildrenOf(Client *c, Window parent) {
   WindowTree wtree = WindowTree::Query(dpy, parent);
   for (Window win : wtree.children) {
     XWindowAttributes attr;
     XGetWindowAttributes(dpy, win, &attr);
     if (attr.all_event_masks & FocusChangeMask) {
+      LOGD(c) << "  Focusing child " << WinID(win);
       XSetInputFocus(dpy, win, RevertToPointerRoot, CurrentTime);
     }
   }
@@ -821,18 +822,8 @@ void Focuser::FocusClient(Client* c, Time time) {
     if (Resources::I->ClickToFocus()) {
       Client_Raise(c);
     }
-  }
-}
-
-void Focuser::NotifyFocus(Client* c, Time time) {
-  // If this window is already focused, ignore.
-  if (!c->HasFocus()) {
-    reallyFocusClient(c, time, false);
-    // Old LWM seems to always have raised the window being focused, so let's
-    // copy that. Maybe it should be a separate resource option though?
-    if (Resources::I->ClickToFocus()) {
-      Client_Raise(c);
-    }
+  } else {
+    LOGD(c) << "Ignoring FocusClient request";
   }
 }
 
@@ -843,22 +834,33 @@ void Focuser::reallyFocusClient(Client* c, Time time, bool give_focus) {
 
   XDeleteProperty(dpy, LScr::I->Root(), ewmh_atom[_NET_ACTIVE_WINDOW]);
   // There was a check for 'c->IsHidden()' here. Needed?
-  if (c->accepts_focus && give_focus) {
-    XSetInputFocus(dpy, c->window, RevertToPointerRoot, CurrentTime);
-    // Also send focus messages to child windows that can receive
-    // focus events.
-    // This fixes a bug in focus-follows-mouse whereby Java apps,
-    // which have a child window called FocusProxy which must be
-    // given the focus event, would not get input focus when the
-    // mouse was moved into them.
-    focusChildrenOf(c->window);
-    if (c->proto & Ptakefocus) {
-      sendClientMessage(c->window, wm_protocols, wm_take_focus, time);
+  if (give_focus) {
+    if (c->accepts_focus) {
+      // If the top-level window accepts focus, we must only give focus to it,
+      // not to its children. Google Chrome (a web browser) won't work if we
+      // also give focus to its children, as it now has a child window which,
+      // if given focus, will just drop everything on the floor. The effect of
+      // this is to make Chrome windows impossible to type into (nor use
+      // hotkeys in) if they lose then regain focus. When a window is newly
+      // opened it will respond to keypresses, but not on focus regain.
+      LOGD(c) << "Focusing main window " << WinID(c->window);
+      XSetInputFocus(dpy, c->window, RevertToPointerRoot, CurrentTime);
+      if (c->proto & Ptakefocus) {
+        sendClientMessage(c->window, wm_protocols, wm_take_focus, time);
+      }
+      cmapfocus(c);
+    } else if (c->proto & Ptakefocus) {
+      // Main window doesn't accept focus, but there's an indication that its
+      // children may. This is the case for Java apps, which have two windows
+      // inside the main window, one called 'FocusProxy' and the other called
+      // 'Content window'. We want to give focus to the FocusProxy, but there
+      // doesn't seem an obvious way to determine which child is the right one,
+      // so let's just ping them all.
+      focusChildrenOf(c, c->window);
+    } else {
+      // FIXME: is this sensible?
+      XSetInputFocus(dpy, None, RevertToPointerRoot, CurrentTime);
     }
-    cmapfocus(c);
-  } else if (give_focus) {
-    // FIXME: is this sensible?
-    XSetInputFocus(dpy, None, RevertToPointerRoot, CurrentTime);
   }
   XChangeProperty(dpy, LScr::I->Root(), ewmh_atom[_NET_ACTIVE_WINDOW],
                   XA_WINDOW, 32, PropModeReplace, (unsigned char*)&c->window,

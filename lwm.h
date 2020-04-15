@@ -391,11 +391,6 @@ class Focuser {
   // given client already has input focus.
   void FocusClient(Client* c, Time time = CurrentTime);
 
-  // Notifies the focuser that this client has grabbed input focus. This only
-  // rearranges the history of who had focus when, and doesn't force focus on
-  // anyone.
-  void NotifyFocus(Client* c, Time time = CurrentTime);
-
   Client* GetFocusedClient();
 
  private:

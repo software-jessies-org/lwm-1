@@ -108,11 +108,8 @@ void manage(Client* c) {
 
   // Work out details for the Client structure from the hints.
   if (hints && (hints->flags & InputHint)) {
+    LOGD(c) << "Got InputHint: setting focus to " << hints->input;
     c->accepts_focus = hints->input;
-  }
-  if (c->proto & Ptakefocus) {
-    // WM_TAKE_FOCUS overrides normal hints
-    c->accepts_focus = true;
   }
 
   int state;
@@ -459,11 +456,7 @@ void getNormalHints(Client* c) {
     } else {
       c->size.flags |= PMinSize;
       c->size.min_width = 2 * (2 * borderWidth());
-      if (c->accepts_focus) {
-        c->size.min_height = 2 * (2 * borderWidth());
-      } else {
-        c->size.min_height = 2 * (2 * borderWidth());
-      }
+      c->size.min_height = 2 * (2 * borderWidth());
     }
 
     // Correct the maximum allowable size of this client to take

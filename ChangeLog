@@ -1,6 +1,12 @@
 Change Log for "lwm"
 
 
+2020-04-15	pn	Basel
+	Was bitten by a Google Chrome update, which caused Chrome windows to
+	drop all keyboard input for windows which weren't freshly opened.
+	Figured out a fix for it, which still works for Java.
+
+
 2019-09-15	pn	Basel
 	Stopped 'withdrawn' windows from showing up in the unhide menu. This
 	solves a bug where the rhythmbox preferences dialog would remain in the
