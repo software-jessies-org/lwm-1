@@ -36,7 +36,7 @@ unsigned long deadColour() {
   return colour.pixel;
 }
 
-void DebugCLI::cmdXRandr(string line) {
+void DebugCLI::CmdXRandr(string line) {
   if (line == "?") {
     cout << "With struts:    " << LScr::I->VisibleAreas(true) << "\n";
     cout << "Without struts: " << LScr::I->VisibleAreas(false) << "\n";
@@ -56,11 +56,11 @@ void DebugCLI::cmdXRandr(string line) {
     rects.push_back(fullScreenRect());
   }
   cout << "Setting visible areas to " << rects << "\n";
-  resetDeadZones(rects);
+  ResetDeadZones(rects);
   LScr::I->SetVisibleAreas(rects);
 }
 
-bool DebugCLI::disableDebugging(Window w) {
+bool DebugCLI::DisableDebugging(Window w) {
   map<Window, string>::iterator it = debug_windows_.find(w);
   if (it == debug_windows_.end()) {
     return false;
@@ -71,7 +71,7 @@ bool DebugCLI::disableDebugging(Window w) {
   return true;
 }
 
-void DebugCLI::cmdDbg(string line) {
+void DebugCLI::CmdDbg(string line) {
   if (line == "help") {
     cout << "Usage:\n";
     cout << "  dbg ?             list of debug-enabled things\n";
@@ -109,21 +109,21 @@ void DebugCLI::cmdDbg(string line) {
         ws.push_back(kv.first);
       }
       for (Window w : ws) {
-        disableDebugging(w);
+        DisableDebugging(w);
       }
       cout << "Removed all debug clients\n";
       return;
     }
     if (tok[0] == '0') {
       const Window w = Window(strtol(tok.c_str(), nullptr, 0));
-      if (disableDebugging(w)) {
+      if (DisableDebugging(w)) {
         return;
       }
     }
     // Remove by name.
     for (const auto& kv : debug_windows_) {
       if (kv.second == tok) {
-        disableDebugging(kv.first);
+        DisableDebugging(kv.first);
         return;
       }
     }
@@ -175,10 +175,10 @@ bool DebugCLI::DebugEnabled(const Client* c) {
   if (!debugCLI || !c) {
     return false;
   }
-  return debugCLI->debugEnabled(c);
+  return debugCLI->IsDebugEnabled(c);
 }
 
-bool DebugCLI::debugEnabled(const Client* c) {
+bool DebugCLI::IsDebugEnabled(const Client* c) {
   return debug_windows_.count(c->window) || debug_windows_.count(c->parent);
 }
 
@@ -187,10 +187,10 @@ string DebugCLI::NameFor(const Client* c) {
   if (!debugCLI || !c) {
     return "";
   }
-  return debugCLI->nameFor(c);
+  return debugCLI->LookupNameFor(c);
 }
 
-string DebugCLI::nameFor(const Client* c) {
+string DebugCLI::LookupNameFor(const Client* c) {
   map<Window, string>::iterator it = debug_windows_.find(c->window);
   if (it == debug_windows_.end()) {
     it = debug_windows_.find(c->parent);
@@ -221,13 +221,13 @@ void DebugCLI::NotifyClientRemove(Client* c) {
     return;
   }
   // Client has gone away, disable debugging for it.
-  debugCLI->disableDebugging(c->window);
+  debugCLI->DisableDebugging(c->window);
   if (c->framed) {
-    debugCLI->disableDebugging(c->parent);
+    debugCLI->DisableDebugging(c->parent);
   }
 }
 
-void DebugCLI::resetDeadZones(const vector<Rect>& visible) {
+void DebugCLI::ResetDeadZones(const vector<Rect>& visible) {
   vector<Rect> dead(1, fullScreenRect());
   for (const Rect& vis : visible) {
     vector<Rect> new_dead;
@@ -284,27 +284,27 @@ void DebugCLI::Read() {
   for (int i = 0; i < sizeof(buf) && buf[i] != '\n'; i++) {
     line.push_back(buf[i]);
   }
-  processLine(line);
+  ProcessLine(line);
   // Print the prompt again, so we look like we're listening.
   cout << "> " << flush;
 }
 
 void DebugCLI::Init(const std::vector<std::string>& init_commands) {
   for (const std::string& s : init_commands) {
-    processLine(s);
+    ProcessLine(s);
   }
   cout << "Debug CLI enabled. Will listen for commands on stdin.\n";
   cout << "Type 'help' for help\n> " << flush;
 }
 
-void DebugCLI::processLine(string line) {
+void DebugCLI::ProcessLine(string line) {
   const string& cmd = nextToken(line);
   if (cmd == "xrandr") {
-    cmdXRandr(line);
+    CmdXRandr(line);
   } else if (cmd == "ls") {
     cmdLS();
   } else if (cmd == "dbg") {
-    cmdDbg(line);
+    CmdDbg(line);
   } else if (cmd == "help") {
     cout << "Available commands:\n";
     cout << "  dbg     enable/disable per-client debug messages\n";

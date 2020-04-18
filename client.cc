@@ -90,7 +90,7 @@ std::ostream& operator<<(std::ostream& os, const WinID& w) {
 // exists outside our normal window coordinates. If we don't add these -/+1
 // hacks, we end up with the wrong behaviour when the pointer is within this
 // border, which looks funny.
-Rect Client::edgeBounds(Edge e) const {
+Rect Client::EdgeBounds(Edge e) const {
   const int inset = titleBarHeight();
   const int wh = size.height + textHeight();
   Rect res{inset, inset, size.width - inset, wh - inset};
@@ -171,7 +171,7 @@ Edge Client::EdgeAt(Window w, int x, int y) const {
                                         ERight,   ELeft,       EBottomLeft,
                                         EBottom,  EBottomRight};
   for (Edge e : movementEdges) {
-    if (edgeBounds(e).contains(x, y)) {
+    if (EdgeBounds(e).contains(x, y)) {
       return e;
     }
   }
@@ -810,7 +810,7 @@ void Focuser::EnterWindow(Window w, Time time) {
 
 void Focuser::UnfocusClient(Client* c) {
   const bool had_focus = c->HasFocus();
-  removeFromHistory(c);
+  RemoveFromHistory(c);
   if (!had_focus) {
     return;
   }
@@ -818,13 +818,13 @@ void Focuser::UnfocusClient(Client* c) {
   if (focus_history_.empty()) {
     return;  // No one left to give focus to.
   }
-  reallyFocusClient(focus_history_.front(), CurrentTime, true);
+  ReallyFocusClient(focus_history_.front(), CurrentTime, true);
 }
 
 void Focuser::FocusClient(Client* c, Time time) {
   // If this window is already focused, ignore.
   if (!c->HasFocus()) {
-    reallyFocusClient(c, time, true);
+    ReallyFocusClient(c, time, true);
     // Old LWM seems to always have raised the window being focused, so let's
     // copy that. Maybe it should be a separate resource option though?
     if (Resources::I->ClickToFocus()) {
@@ -835,9 +835,9 @@ void Focuser::FocusClient(Client* c, Time time) {
   }
 }
 
-void Focuser::reallyFocusClient(Client* c, Time time, bool give_focus) {
+void Focuser::ReallyFocusClient(Client* c, Time time, bool give_focus) {
   Client* was_focused = GetFocusedClient();
-  removeFromHistory(c);
+  RemoveFromHistory(c);
   focus_history_.push_front(c);
 
   XDeleteProperty(dpy, LScr::I->Root(), ewmh_atom[_NET_ACTIVE_WINDOW]);
@@ -879,7 +879,7 @@ void Focuser::reallyFocusClient(Client* c, Time time, bool give_focus) {
   c->FocusGained();
 }
 
-void Focuser::removeFromHistory(Client* c) {
+void Focuser::RemoveFromHistory(Client* c) {
   for (std::list<Client*>::iterator it = focus_history_.begin();
        it != focus_history_.end(); it++) {
     if (*it == c) {

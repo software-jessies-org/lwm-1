@@ -134,25 +134,3 @@ Rect Rect::Parse(std::string v) {
   }
   return res;
 }
-
-extern std::string EdgeName(Edge e) {
-#define DESC(ed) \
-  case ed:       \
-    return #ed
-  switch (e) {
-    DESC(ETopLeft);
-    DESC(ETop);
-    DESC(ETopRight);
-    DESC(ERight);
-    DESC(ENone);
-    DESC(ELeft);
-    DESC(EBottomLeft);
-    DESC(EBottom);
-    DESC(EBottomRight);
-    DESC(EClose);
-    DESC(EContents);
-    default:
-      return "EUnknown";
-  }
-#undef DESC
-}

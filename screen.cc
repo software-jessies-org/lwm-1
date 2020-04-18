@@ -74,11 +74,11 @@ void LScr::Init() {
 
   // Make sure all our communication to the server got through.
   XSync(dpy_, false);
-  scanWindowTree();
-  initEWMH();
+  ScanWindowTree();
+  InitEWMH();
 }
 
-void LScr::initEWMH() {
+void LScr::InitEWMH() {
   // Announce EWMH compatibility on the screen.
   ewmh_compat_ = XCreateSimpleWindow(dpy_, root_, -200, -200, 1, 1, 0, 0, 0);
   XChangeProperty(dpy_, ewmh_compat_, ewmh_atom[_NET_WM_NAME],
@@ -115,7 +115,7 @@ void LScr::initEWMH() {
   ewmh_set_client_list();
 }
 
-void LScr::scanWindowTree() {
+void LScr::ScanWindowTree() {
   WindowTree wt = WindowTree::Query(dpy_, root_);
   for (const Window w : wt.children) {
     addClient(w);
@@ -157,7 +157,7 @@ Client* LScr::addClient(Window w) {
   c->size.height = attr.height;
   c->border = attr.border_width;
   // map_state is likely already IsViewable if we're being called from
-  // scanWindowTree (ie on start-up), but will not be if the window is in the
+  // ScanWindowTree (ie on start-up), but will not be if the window is in the
   // process of being opened (ie we've been called from GetOrAddClient).
   // In the latter case, we don't call manage(c) here, but it'll be called
   // later, when maprequest() calls our Furnish() function.

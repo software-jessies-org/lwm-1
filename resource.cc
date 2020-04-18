@@ -40,48 +40,48 @@ Resources::Resources() {
     db = XrmGetStringDatabase(resource_manager);
   }
   // Font used in title bars, and indeed everywhere we have fonts.
-  set(TITLE_FONT, db, "titleFont", "Font", "roboto-16");
+  Set(TITLE_FONT, db, "titleFont", "Font", "roboto-16");
   // Command to execute when button 1 (left) is clicked on root window.
-  set(BUTTON1_COMMAND, db, "button1", "Command", "");
+  Set(BUTTON1_COMMAND, db, "button1", "Command", "");
   // Command to execute when button 2 (middle) is clicked on root window.
-  set(BUTTON2_COMMAND, db, "button2", "Command", "xterm");
+  Set(BUTTON2_COMMAND, db, "button2", "Command", "xterm");
   // Background colour for title bar of the active window.
-  set(TITLE_BG_COLOUR, db, "titleBGColour", "String", "#A0522D");
+  Set(TITLE_BG_COLOUR, db, "titleBGColour", "String", "#A0522D");
   // Border background colour of the active window.
-  set(BORDER_COLOUR, db, "borderColour", "String", "#B87058");
+  Set(BORDER_COLOUR, db, "borderColour", "String", "#B87058");
   // Border and title background colour of inactive windows.
-  set(INACTIVE_BORDER_COLOUR, db, "inactiveBorderColour", "String", "#785840");
+  Set(INACTIVE_BORDER_COLOUR, db, "inactiveBorderColour", "String", "#785840");
   // Colour of the window highlight box displayed when the popup (unhide)
   // menu is open and the pointer is hovering over an entry in that menu, and
   // which shows the display bounds of the corresponding window.
-  set(WINDOW_HIGHLIGHT_COLOUR, db, "windowHighlightColour", "String", "red");
+  Set(WINDOW_HIGHLIGHT_COLOUR, db, "windowHighlightColour", "String", "red");
   // Colour of the title bar text of the active window.
-  set(TITLE_COLOUR, db, "titleColour", "String", "white");
+  Set(TITLE_COLOUR, db, "titleColour", "String", "white");
   // Colour of the title bar text of inactive windows.
-  set(INACTIVE_TITLE_COLOUR, db, "inactiveTitleColour", "String", "#afafaf");
+  Set(INACTIVE_TITLE_COLOUR, db, "inactiveTitleColour", "String", "#afafaf");
   // Colour of the close icon (cross in top-left corner of the window frame).
-  set(CLOSE_ICON_COLOUR, db, "closeIconColour", "String", "white");
+  Set(CLOSE_ICON_COLOUR, db, "closeIconColour", "String", "white");
   // Colour of the close icon in inactive windows.
-  set(INACTIVE_CLOSE_ICON_COLOUR, db, "inactiveCloseIconColour", "String",
+  Set(INACTIVE_CLOSE_ICON_COLOUR, db, "inactiveCloseIconColour", "String",
       "#afafaf");
   // Colour of text in the popup window (unhide menu and resize popup).
-  set(POPUP_TEXT_COLOUR, db, "popupTextColour", "String", "black");
+  Set(POPUP_TEXT_COLOUR, db, "popupTextColour", "String", "black");
   // Background colour of the popup window (unhide menu and resize popup).
-  set(POPUP_BACKGROUND_COLOUR, db, "popupBackgroundColour", "String", "white");
+  Set(POPUP_BACKGROUND_COLOUR, db, "popupBackgroundColour", "String", "white");
   // Click to focus enabled if this is the string "click".
-  set(FOCUS_MODE, db, "focus", "String", "sloppy");
+  Set(FOCUS_MODE, db, "focus", "String", "sloppy");
   // APP_ICON describes where we show the application's icon, if there is one.
   // Valid values are "none", "title" (title bars of windows), "menu" (the
   // unhide menu) or "both" (both title bars and unhide menu).
-  set(APP_ICON, db, "appIcon", "String", "both");
+  Set(APP_ICON, db, "appIcon", "String", "both");
 
   // The width of the border LWM adds to each window to allow resizing.
-  set(BORDER_WIDTH, db, "border", "Border", 6);
+  Set(BORDER_WIDTH, db, "border", "Border", 6);
   // How many of the top pixels of the title bar will be treated as a resize
   // widget, as opposed to moving the window. If you set this to zero, the title
   // bar cannot be used to resize the window up and down (although the top-left
   // and top-right corners will work).
-  set(TOP_BORDER_WIDTH, db, "topBorder", "Border", 4);
+  Set(TOP_BORDER_WIDTH, db, "topBorder", "Border", 4);
 }
 
 const std::string& Resources::Get(SR sr) {
@@ -143,7 +143,7 @@ bool tryGet(XrmDatabase db,
   return false;
 }
 
-void Resources::set(SR res,
+void Resources::Set(SR res,
                     XrmDatabase db,
                     const std::string& name,
                     const char* cls,
@@ -153,7 +153,7 @@ void Resources::set(SR res,
   }
 }
 
-void Resources::set(IR res,
+void Resources::Set(IR res,
                     XrmDatabase db,
                     const std::string& name,
                     const char* cls,

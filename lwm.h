@@ -287,7 +287,7 @@ class Client {
   ImageIcon* Icon() { return icon_; }
 
  private:
-  Rect edgeBounds(Edge e) const;
+  Rect EdgeBounds(Edge e) const;
 
   std::string name_;  // Name used for title in frame.
   ImageIcon* icon_ = nullptr;
@@ -391,12 +391,12 @@ class Focuser {
   Client* GetFocusedClient();
 
  private:
-  void removeFromHistory(Client* c);
+  void RemoveFromHistory(Client* c);
 
   // Does the actual work of FocusClient, except without the safety-check for
   // 'do we currently have focus?'. This is needed to make the refocusing of
   // older-focused clients work when a window closes.
-  void reallyFocusClient(Client* c, Time time, bool give_focus);
+  void ReallyFocusClient(Client* c, Time time, bool give_focus);
 
   // last_entered_ is the last window the mouse pointer was seen entering. It
   // is *NOT* necessarily the window with input focus. In fact, if a new window
@@ -495,8 +495,8 @@ class LScr {
   static constexpr int kOnlyScreenIndex = 0;
 
  private:
-  void initEWMH();
-  void scanWindowTree();
+  void InitEWMH();
+  void ScanWindowTree();
   Client* addClient(Window w);
   unsigned long black() const { return BlackPixel(dpy_, kOnlyScreenIndex); }
   unsigned long white() const { return WhitePixel(dpy_, kOnlyScreenIndex); }
@@ -720,12 +720,12 @@ class Resources {
 
  private:
   Resources();
-  void set(SR res,
+  void Set(SR res,
            XrmDatabase db,
            const std::string& name,
            const char* cls,
            const std::string& dflt);
-  void set(IR res,
+  void Set(IR res,
            XrmDatabase db,
            const std::string& name,
            const char* cls,
@@ -754,13 +754,13 @@ class DebugCLI {
   static void NotifyClientRemove(Client* c);
 
  private:
-  void processLine(std::string line);
-  void cmdXRandr(std::string line);
-  void cmdDbg(std::string line);
-  void resetDeadZones(const std::vector<Rect>& visible);
-  bool debugEnabled(const Client* c);
-  bool disableDebugging(Window w);
-  std::string nameFor(const Client* c);
+  void ProcessLine(std::string line);
+  void CmdXRandr(std::string line);
+  void CmdDbg(std::string line);
+  void ResetDeadZones(const std::vector<Rect>& visible);
+  bool IsDebugEnabled(const Client* c);
+  bool DisableDebugging(Window w);
+  std::string LookupNameFor(const Client* c);
 
   bool debug_new_;
 
@@ -810,7 +810,6 @@ extern bool isLeftEdge(Edge e);
 extern bool isRightEdge(Edge e);
 extern bool isTopEdge(Edge e);
 extern bool isBottomEdge(Edge e);
-extern std::string EdgeName(Edge e);
 
 // tests.cc
 extern bool RunAllTests();
