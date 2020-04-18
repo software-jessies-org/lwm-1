@@ -48,7 +48,6 @@ Atom wm_change_state;
 Atom wm_protocols;
 Atom wm_delete;
 Atom wm_take_focus;
-Atom wm_colormaps;
 Atom compound_text;
 
 // Netscape uses this to give information about the URL it's displaying.
@@ -138,7 +137,6 @@ extern int main(int argc, char* argv[]) {
   wm_protocols = XInternAtom(dpy, "WM_PROTOCOLS", false);
   wm_delete = XInternAtom(dpy, "WM_DELETE_WINDOW", false);
   wm_take_focus = XInternAtom(dpy, "WM_TAKE_FOCUS", false);
-  wm_colormaps = XInternAtom(dpy, "WM_COLORMAP_WINDOWS", false);
   compound_text = XInternAtom(dpy, "COMPOUND_TEXT", false);
   _mozilla_url = XInternAtom(dpy, "_MOZILLA_URL", false);
   motif_wm_hints = XInternAtom(dpy, "_MOTIF_WM_HINTS", false);

@@ -192,25 +192,17 @@ class Client {
         proto(0),
         accepts_focus(true),
         cursor(ENone),
-        wtype(WTypeNone),
-        ncmapwins(0),
-        cmapwins(nullptr),
-        wmcmaps(nullptr) {
+        wtype(WTypeNone) {
 #define ZERO_STRUCT(x) memset(&x, 0, sizeof(x))
     ZERO_STRUCT(wstate);
     ZERO_STRUCT(strut);
     ZERO_STRUCT(size);
     ZERO_STRUCT(return_size);
-    ZERO_STRUCT(cmap);
 #undef ZERO_STRUCT
   }
 
   ~Client() {
     LOGI() << "Deleting client for " << name_;
-    if (ncmapwins) {
-      XFree(cmapwins);
-      free(wmcmaps);
-    }
     delete icon_;
   }
 
@@ -277,12 +269,6 @@ class Client {
   EWMHWindowType wtype;
   EWMHWindowState wstate;
   EWMHStrut strut;  // reserved areas
-
-  // Colourmap scum.
-  Colormap cmap;
-  int ncmapwins;
-  Window* cmapwins;
-  Colormap* wmcmaps;
 
   // SetIcon sets the window's title bar icon. If called with null, it will do
   // nothing (and leave any previously-set icon in place).
@@ -590,7 +576,6 @@ extern Atom wm_change_state;
 extern Atom wm_protocols;
 extern Atom wm_delete;
 extern Atom wm_take_focus;
-extern Atom wm_colormaps;
 extern Atom compound_text;
 extern bool shape;
 extern int shape_event;
@@ -614,7 +599,6 @@ extern void Client_Lower(Client*);
 extern void Client_Close(Client*);
 extern void Client_Remove(Client*);
 extern void Client_FreeAll();
-extern void Client_ColourMap(XEvent*);
 extern void Client_EnterFullScreen(Client* c);
 extern void Client_ExitFullScreen(Client* c);
 extern void Client_ResetAllCursors();
@@ -634,8 +618,6 @@ extern void getNormalHints(Client*);
 extern bool motifWouldDecorate(Client*);
 extern void manage(Client*);
 extern void withdraw(Client*);
-extern void cmapfocus(Client*);
-extern void getColourmaps(Client*);
 extern void getTransientFor(Client*);
 extern void Terminate(int);
 

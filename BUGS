@@ -84,7 +84,7 @@ xprop -id <id>
 Test LWM changes in a VNC session (I use tightvnc). Believe me, testing LWM in
 the same X session as you're using to edit its code is a seriously painful
 experience.
-vncserver -geometry 1600x1200 -name test
+vncserver -geometry 2000x1500 -name test
 vncviewer localhost:1
 
 In this directory there's a file called 'xdbg.cc', which can be compiled and
@@ -113,7 +113,7 @@ After all, we already have a built-in debug CLI; why not add a test suite? :-)
 === MY FAVOURITE DEBUGGING ENVIRONMENT ===
 
 # Three terminals. In one, I do:
-vncserver -geometry 2000x1500 -name test
+vncserver -geometry 2000x1500 -depth 24 -name test
 vncviewer localhost:1
 # Then, after login, ctrl-z and bg to background the vncviewer.
 cd $HOME/dev/lwm

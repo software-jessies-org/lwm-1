@@ -73,7 +73,6 @@ class MenuDragger : public DragHandler {
   MenuDragger() = default;
 
   virtual void Start(XEvent* ev) {
-    cmapfocus(0);
     LScr::I->GetHider()->OpenMenu(&ev->xbutton);
   }
 
@@ -778,21 +777,6 @@ void EvClientMessage(XEvent* ev) {
   }
 }
 
-void EvColormapNotify(XEvent* ev) {
-  XColormapEvent* e = &ev->xcolormap;
-  if (e->c_new) {
-    Client* c = LScr::I->GetClient(e->window);
-    if (c) {
-      c->cmap = e->colormap;
-      if (c->HasFocus()) {
-        cmapfocus(c);
-      }
-    } else {
-      Client_ColourMap(ev);
-    }
-  }
-}
-
 struct diff {
   EWMHWindowState o;
   EWMHWindowState n;
@@ -846,12 +830,6 @@ void EvPropertyNotify(XEvent* ev) {
   } else if (e->atom == XA_WM_NORMAL_HINTS) {
     LOGD(c) << "Property change: XA_WM_NORMAL_HINTS";
     getNormalHints(c);
-  } else if (e->atom == wm_colormaps) {
-    LOGD(c) << "Property change: wm_colormaps";
-    getColourmaps(c);
-    if (c->HasFocus()) {
-      cmapfocus(c);
-    }
   } else if (e->atom == ewmh_atom[_NET_WM_STRUT]) {
     LOGD(c) << "Property change: _NET_WM_STRUT";
     ewmh_get_strut(c);
@@ -1000,7 +978,6 @@ extern void DispatchXEvent(XEvent* ev) {
     EV(UnmapNotify);
     EV(DestroyNotify);
     EV(ClientMessage);
-    EV(ColormapNotify);
     EV(PropertyNotify);
     EV(ReparentNotify);
     EV(EnterNotify);

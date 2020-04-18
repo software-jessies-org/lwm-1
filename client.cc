@@ -690,21 +690,6 @@ extern void Client_FreeAll() {
   }
 }
 
-extern void Client_ColourMap(XEvent* e) {
-  for (auto it : LScr::I->Clients()) {
-    Client* c = it.second;
-    for (int i = 0; i < c->ncmapwins; i++) {
-      if (c->cmapwins[i] == e->xcolormap.window) {
-        c->wmcmaps[i] = e->xcolormap.colormap;
-        if (c->HasFocus()) {
-          cmapfocus(c);
-        }
-        return;
-      }
-    }
-  }
-}
-
 extern void Client_EnterFullScreen(Client* c) {
   XWindowChanges fs;
 
@@ -848,7 +833,6 @@ void Focuser::reallyFocusClient(Client* c, Time time, bool give_focus) {
       if (c->proto & Ptakefocus) {
         sendClientMessage(c->window, wm_protocols, wm_take_focus, time);
       }
-      cmapfocus(c);
     } else if (c->proto & Ptakefocus) {
       // Main window doesn't accept focus, but there's an indication that its
       // children may. This is the case for Java apps, which have two windows

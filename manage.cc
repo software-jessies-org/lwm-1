@@ -76,17 +76,6 @@ void manage(Client* c) {
   getWindowName(c);
   getNormalHints(c);
 
-  // Get the colourmaps associated with this window. Get the window
-  // attribute colourmap first, then look to see if the
-  // WM_COLORMAP_WINDOWS property has been used to specify
-  // windows needing colourmaps that differ from the top-level
-  // colourmap. (See ICCCM section 4.1.8.)
-  XWindowAttributes current_attr;
-  XGetWindowAttributes(dpy, c->window, &current_attr);
-  c->cmap = current_attr.colormap;
-
-  getColourmaps(c);
-
   // Scan the list of atoms on WM_PROTOCOLS to see which of the
   // protocols that we understand the client is prepared to
   // participate in. (See ICCCM section 4.1.2.7.)
@@ -228,6 +217,8 @@ void manage(Client* c) {
   //
   // As pointed out by Adrian Colley, we can't change the window
   // border width at all for InputOnly windows.
+  XWindowAttributes current_attr;
+  XGetWindowAttributes(dpy, c->window, &current_attr);
   if (current_attr.c_class != InputOnly) {
     XSetWindowBorderWidth(dpy, c->window, 0);
   }
@@ -265,7 +256,6 @@ void manage(Client* c) {
   }
 
   if (!c->HasFocus()) {
-    cmapfocus(Client::FocusedClient());
     c->FocusLost();
   }
   LOGD(c) << "<<< manage";
@@ -314,67 +304,6 @@ void withdraw(Client* c) {
   ignore_badwindow = 0;
 }
 
-void installColourmap(Colormap cmap) {
-  if (cmap == None) {
-    cmap = DefaultColormap(dpy, DefaultScreen(dpy));
-  }
-  XInstallColormap(dpy, cmap);
-}
-
-void cmapfocus(Client* c) {
-  Client* cc;
-  if (c == 0) {
-    installColourmap(None);
-  } else if (c->ncmapwins != 0) {
-    int found = 0;
-    for (int i = c->ncmapwins - 1; i >= 0; i--) {
-      installColourmap(c->wmcmaps[i]);
-      if (c->cmapwins[i] == c->window) {
-        found++;
-      }
-    }
-    if (!found) {
-      installColourmap(c->cmap);
-    }
-  } else if (c->trans != None && (cc = LScr::I->GetClient(c->trans)) != 0 &&
-             cc->ncmapwins != 0) {
-    cmapfocus(cc);
-  } else {
-    installColourmap(c->cmap);
-  }
-}
-
-void getColourmaps(Client* c) {
-  if (c == 0) {
-    return;
-  }
-  Window* cw = nullptr;
-  int n = getProperty(c->window, wm_colormaps, XA_WINDOW, 100L,
-                      (unsigned char**)&cw);
-  if (c->ncmapwins != 0) {
-    XFree(c->cmapwins);
-    free(c->wmcmaps);
-  }
-  if (n <= 0) {
-    c->ncmapwins = 0;
-    return;
-  }
-  c->ncmapwins = n;
-  c->cmapwins = cw;
-
-  c->wmcmaps = (Colormap*)malloc(n * sizeof(Colormap));
-  for (int i = 0; i < n; i++) {
-    if (cw[i] == c->window) {
-      c->wmcmaps[i] = c->cmap;
-    } else {
-      XSelectInput(dpy, cw[i], ColormapChangeMask);
-      XWindowAttributes attr;
-      XGetWindowAttributes(dpy, cw[i], &attr);
-      c->wmcmaps[i] = attr.colormap;
-    }
-  }
-}
-
 /*ARGSUSED*/
 void Terminate(int signal) {
   // Set all clients free.
@@ -382,10 +311,7 @@ void Terminate(int signal) {
 
   // Give up the input focus and the colourmap.
   XSetInputFocus(dpy, PointerRoot, RevertToPointerRoot, CurrentTime);
-  installColourmap(None);
-
   XCloseDisplay(dpy);
-
   session_end();
 
   if (signal == SIGHUP) {

@@ -1,6 +1,10 @@
 Change Log for "lwm"
 
 
+2020-04-18	pn	Basel
+	Deleted support for colormaps. 24bpp has been standard for decades.
+
+
 2020-04-15	pn	Basel
 	Was bitten by a Google Chrome update, which caused Chrome windows to
 	drop all keyboard input for windows which weren't freshly opened.

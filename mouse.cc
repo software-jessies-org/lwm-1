@@ -366,7 +366,4 @@ void Hider::MouseRelease(XEvent* ev) {
     return;  // Window must have disappeared, and we've lost the client.
   }
   Unhide(c);
-  // Colourmap scum? Is the following really needed? I'd imagine this is the
-  // wrong place for this to be done, anyway.
-  cmapfocus(Client::FocusedClient());
 }
