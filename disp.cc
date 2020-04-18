@@ -573,7 +573,7 @@ void EvConfigureRequest(XEvent* ev) {
       LOGD(c) << "XConfigureWindow of " << WinID(e->parent)
               << "; mask=" << XCfgValMask(e->value_mask) << ": " << wc;
       XConfigureWindow(dpy, e->parent, e->value_mask, &wc);
-      sendConfigureNotify(c);
+      c->SendConfigureNotify();
     }
   }
   if (c && (c->internal_state == INormal) && c->framed) {
@@ -838,9 +838,9 @@ void EvPropertyNotify(XEvent* ev) {
     ewmh_get_state(c);
     LOGD(c) << "Property change: _NET_WM_STATE:" << diff{old, c->wstate};
     if (c->wstate.fullscreen && !old.fullscreen) {
-      Client_EnterFullScreen(c);
+      c->EnterFullScreen();
     } else if (!c->wstate.fullscreen && old.fullscreen) {
-      Client_ExitFullScreen(c);
+      c->ExitFullScreen();
     }
   }
 }

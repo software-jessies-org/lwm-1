@@ -300,29 +300,6 @@ void setScreenAreasFromXRandR() {
   LScr::I->SetVisibleAreas(visible);
 }
 
-void sendConfigureNotify(Client* c) {
-  XConfigureEvent ce;
-  ce.type = ConfigureNotify;
-  ce.event = c->window;
-  ce.window = c->window;
-  if (c->framed) {
-    ce.x = c->size.x + borderWidth();
-    ce.y = c->size.y + borderWidth();
-    ce.width = c->size.width - 2 * borderWidth();
-    ce.height = c->size.height - 2 * borderWidth();
-    ce.border_width = c->border;
-  } else {
-    ce.x = c->size.x;
-    ce.y = c->size.y;
-    ce.width = c->size.width;
-    ce.height = c->size.height;
-    ce.border_width = c->border;
-  }
-  ce.above = None;
-  ce.override_redirect = 0;
-  XSendEvent(dpy, c->window, false, StructureNotifyMask, (XEvent*)&ce);
-}
-
 /*ARGSUSED*/
 extern void shell(int button) {
   std::string command;

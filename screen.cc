@@ -636,7 +636,7 @@ void LScr::SetVisibleAreas(std::vector<Rect> visible_areas) {
     XMoveResizeWindow(dpy, c->parent, c->size.x, c->size.y - textHeight(),
                       c->size.width, c->size.height + textHeight());
     if (move.sendConfigNotify) {
-      sendConfigureNotify(c);
+      c->SendConfigureNotify();
     }
     if (move.sizeChanged) {
       XMoveResizeWindow(dpy, c->window, borderWidth(),

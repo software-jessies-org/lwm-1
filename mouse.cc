@@ -139,7 +139,7 @@ void Hider::Unhide(Client* c) {
     XMoveResizeWindow(dpy, c->parent, c->size.x, c->size.y - textHeight(),
                       c->size.width, c->size.height + textHeight());
     XMoveWindow(dpy, c->window, borderWidth(), borderWidth() + textHeight());
-    sendConfigureNotify(c);
+    c->SendConfigureNotify();
   }
 }
 

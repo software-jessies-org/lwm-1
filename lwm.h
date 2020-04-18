@@ -217,6 +217,11 @@ class Client {
   void Hide();
   void Unhide();
 
+  void EnterFullScreen();
+  void ExitFullScreen();
+
+  void SendConfigureNotify();
+
   Window window;  // Client's window.
   Window parent;  // Window manager frame.
   Window trans;   // Window that client is a transient for.
@@ -225,9 +230,15 @@ class Client {
 
   int border;  // Client's original border width.
 
-  XSizeHints size;         // Client's current geometry information.
-  XSizeHints return_size;  // Client's old geometry information.
+  XSizeHints size;  // Client's current geometry information.
 
+ private:
+  // return_size stores the original size of the client window when it enters
+  // full screen state, so it can be correctly brought out of full screen state
+  // again.
+  XSizeHints return_size;
+
+ public:
   int State() const { return state_; }
   void SetState(int state);
   bool IsHidden() const { return state_ == IconicState; }
@@ -582,7 +593,6 @@ extern int shape_event;
 extern char* argv0;
 extern bool forceRestart;
 extern void shell(int);
-extern void sendConfigureNotify(Client*);
 
 /* client.cc */
 extern bool Client_MakeSane(Client*, Edge, int, int, int, int);
@@ -599,8 +609,6 @@ extern void Client_Lower(Client*);
 extern void Client_Close(Client*);
 extern void Client_Remove(Client*);
 extern void Client_FreeAll();
-extern void Client_EnterFullScreen(Client* c);
-extern void Client_ExitFullScreen(Client* c);
 extern void Client_ResetAllCursors();
 extern int titleBarHeight();
 

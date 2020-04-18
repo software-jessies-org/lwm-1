@@ -252,7 +252,7 @@ void manage(Client* c) {
   }
 
   if (c->wstate.fullscreen) {
-    Client_EnterFullScreen(c);
+    c->EnterFullScreen();
   }
 
   if (!c->HasFocus()) {

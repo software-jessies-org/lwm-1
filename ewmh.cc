@@ -286,10 +286,10 @@ void ewmh_change_state(Client* c, unsigned long action, unsigned long atom) {
 
     c->wstate.fullscreen = new_state(action, c->wstate.fullscreen);
     if (!was_fullscreen && c->wstate.fullscreen) {
-      Client_EnterFullScreen(c);
+      c->EnterFullScreen();
     }
     if (was_fullscreen && !c->wstate.fullscreen) {
-      Client_ExitFullScreen(c);
+      c->ExitFullScreen();
     }
   }
   if (*a == ewmh_atom[_NET_WM_STATE_ABOVE]) {
@@ -404,7 +404,7 @@ void ewmh_set_strut() {
     } else {
       XMoveWindow(dpy, c->parent, c->size.x, c->size.y);
     }
-    sendConfigureNotify(c);
+    c->SendConfigureNotify();
   }
 }
 

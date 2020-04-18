@@ -348,7 +348,7 @@ bool Client_MakeSaneAndMove(Client* c, Edge edge, int x, int y, int w, int h) {
     // only job is to actually move/resize windows. So let's just do that.
     XMoveResizeWindow(dpy, c->window, border, border + th,
                       c->size.width - 2 * border, c->size.height - 2 * border);
-    sendConfigureNotify(c);
+    c->SendConfigureNotify();
   } else if (moved) {
     if (c->framed) {
       XMoveWindow(dpy, c->parent, c->size.x, c->size.y - textHeight());
@@ -358,7 +358,7 @@ bool Client_MakeSaneAndMove(Client* c, Edge edge, int x, int y, int w, int h) {
     // Do I need to send a configure notify? According to this:
     // https://tronche.com/gui/x/xlib/events/window-state-change/configure.html
     // ...it looks like the job of the X server itself.
-    sendConfigureNotify(c);
+    c->SendConfigureNotify();
   }
   return moved || resized;
 }
@@ -690,66 +690,89 @@ extern void Client_FreeAll() {
   }
 }
 
-extern void Client_EnterFullScreen(Client* c) {
+void Client::EnterFullScreen() {
   XWindowChanges fs;
 
-  memcpy(&c->return_size, &c->size, sizeof(XSizeHints));
+  memcpy(&return_size, &size, sizeof(XSizeHints));
   // For now, just find the 'main screen' and use that.
   // Ideally, we'd actually try to find the largest contiguous rectangle, as
   // someone might be using two identical-sized monitors next to each other
   // to get a bigger view of what they're killing, but for now we'll save that
   // for another day.
   const Rect scr = LScr::I->GetPrimaryVisibleArea(false);  // Without struts.
-  if (c->framed) {
+  if (framed) {
     const int bw = borderWidth();
-    c->size.x = fs.x = scr.xMin - bw;
-    c->size.y = fs.y = scr.yMin - bw;
-    c->size.width = fs.width = scr.width() + 2 * bw;
-    c->size.height = fs.height = scr.height() + 2 * bw;
-    XConfigureWindow(dpy, c->parent, CWX | CWY | CWWidth | CWHeight, &fs);
+    size.x = fs.x = scr.xMin - bw;
+    size.y = fs.y = scr.yMin - bw;
+    size.width = fs.width = scr.width() + 2 * bw;
+    size.height = fs.height = scr.height() + 2 * bw;
+    XConfigureWindow(dpy, parent, CWX | CWY | CWWidth | CWHeight, &fs);
 
     fs.x = 0;
     fs.y = 0;
     fs.width = scr.width();
     fs.height = scr.height();
-    XConfigureWindow(dpy, c->window, CWX | CWY | CWWidth | CWHeight, &fs);
-    XRaiseWindow(dpy, c->parent);
+    XConfigureWindow(dpy, window, CWX | CWY | CWWidth | CWHeight, &fs);
+    XRaiseWindow(dpy, parent);
   } else {
-    c->size.x = fs.x = scr.xMin;
-    c->size.y = fs.y = scr.yMin;
-    c->size.width = fs.width = scr.width();
-    c->size.height = fs.height = scr.height();
-    XConfigureWindow(dpy, c->window, CWX | CWY | CWWidth | CWHeight, &fs);
-    XRaiseWindow(dpy, c->window);
+    size.x = fs.x = scr.xMin;
+    size.y = fs.y = scr.yMin;
+    size.width = fs.width = scr.width();
+    size.height = fs.height = scr.height();
+    XConfigureWindow(dpy, window, CWX | CWY | CWWidth | CWHeight, &fs);
+    XRaiseWindow(dpy, window);
   }
-  sendConfigureNotify(c);
+  SendConfigureNotify();
 }
 
-extern void Client_ExitFullScreen(Client* c) {
+void Client::ExitFullScreen() {
   XWindowChanges fs;
 
-  memcpy(&c->size, &c->return_size, sizeof(XSizeHints));
-  if (c->framed) {
-    fs.x = c->size.x;
-    fs.y = c->size.y - textHeight();
-    fs.width = c->size.width;
-    fs.height = c->size.height + textHeight();
-    XConfigureWindow(dpy, c->parent, CWX | CWY | CWWidth | CWHeight, &fs);
+  memcpy(&size, &return_size, sizeof(XSizeHints));
+  if (framed) {
+    fs.x = size.x;
+    fs.y = size.y - textHeight();
+    fs.width = size.width;
+    fs.height = size.height + textHeight();
+    XConfigureWindow(dpy, parent, CWX | CWY | CWWidth | CWHeight, &fs);
 
     const int bw = borderWidth();
     fs.x = bw;
     fs.y = bw + textHeight();
-    fs.width = c->size.width - 2 * bw;
-    fs.height = c->size.height - 2 * bw;
-    XConfigureWindow(dpy, c->window, CWX | CWY | CWWidth | CWHeight, &fs);
+    fs.width = size.width - 2 * bw;
+    fs.height = size.height - 2 * bw;
+    XConfigureWindow(dpy, window, CWX | CWY | CWWidth | CWHeight, &fs);
   } else {
-    fs.x = c->size.x;
-    fs.y = c->size.y;
-    fs.width = c->size.width;
-    fs.height = c->size.height;
-    XConfigureWindow(dpy, c->window, CWX | CWY | CWWidth | CWHeight, &fs);
+    fs.x = size.x;
+    fs.y = size.y;
+    fs.width = size.width;
+    fs.height = size.height;
+    XConfigureWindow(dpy, window, CWX | CWY | CWWidth | CWHeight, &fs);
   }
-  sendConfigureNotify(c);
+  SendConfigureNotify();
+}
+
+void Client::SendConfigureNotify() {
+  XConfigureEvent ce;
+  ce.type = ConfigureNotify;
+  ce.event = window;
+  ce.window = window;
+  if (framed) {
+    ce.x = size.x + borderWidth();
+    ce.y = size.y + borderWidth();
+    ce.width = size.width - 2 * borderWidth();
+    ce.height = size.height - 2 * borderWidth();
+    ce.border_width = border;
+  } else {
+    ce.x = size.x;
+    ce.y = size.y;
+    ce.width = size.width;
+    ce.height = size.height;
+    ce.border_width = border;
+  }
+  ce.above = None;
+  ce.override_redirect = 0;
+  XSendEvent(dpy, window, false, StructureNotifyMask, (XEvent*)&ce);
 }
 
 void Client::SetName(const char* c, int len) {
