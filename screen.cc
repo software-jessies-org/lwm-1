@@ -118,7 +118,7 @@ void LScr::InitEWMH() {
 void LScr::ScanWindowTree() {
   WindowTree wt = WindowTree::Query(dpy_, root_);
   for (const Window w : wt.children) {
-    addClient(w);
+    AddClient(w);
   }
   // Tell all the clients they don't have input focus. This has two effects:
   // 1: the client will respond by drawing its border (always)
@@ -139,12 +139,12 @@ Client* LScr::GetOrAddClient(Window w) {
   if (c) {
     return c;
   }
-  c = addClient(w);
+  c = AddClient(w);
   DebugCLI::NotifyClientAdd(c);
   return c;
 }
 
-Client* LScr::addClient(Window w) {
+Client* LScr::AddClient(Window w) {
   XWindowAttributes attr;
   XGetWindowAttributes(dpy_, w, &attr);
   if (attr.override_redirect) {

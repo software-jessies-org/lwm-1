@@ -497,7 +497,7 @@ class LScr {
  private:
   void InitEWMH();
   void ScanWindowTree();
-  Client* addClient(Window w);
+  Client* AddClient(Window w);
   unsigned long black() const { return BlackPixel(dpy_, kOnlyScreenIndex); }
   unsigned long white() const { return WhitePixel(dpy_, kOnlyScreenIndex); }
 
