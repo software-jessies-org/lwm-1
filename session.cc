@@ -150,7 +150,9 @@ void session_end() {
   SmcCloseConnection(smc_conn, 0, NULL);
 }
 
-void session_die(SmcConn, SmPointer) { Terminate(0); }
+void session_die(SmcConn, SmPointer) {
+  Terminate(0);
+}
 
 void session_save_complete(SmcConn, SmPointer) {}
 
@@ -205,4 +207,6 @@ void session_init(int argc, char* argv[]) {
   ice_fd = IceConnectionNumber(ice_conn);
 }
 
-void session_process() { IceProcessMessages(ice_conn, NULL, NULL); }
+void session_process() {
+  IceProcessMessages(ice_conn, NULL, NULL);
+}

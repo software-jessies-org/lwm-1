@@ -155,7 +155,9 @@ int ErrorHandler(Display* d, XErrorEvent* e) {
   return 0;
 }
 
-void RestartSelf(int) { forceRestart = true; }
+void RestartSelf(int) {
+  forceRestart = true;
+}
 
 int main(int argc, char* const argv[]) {
   struct sigaction sa = {};

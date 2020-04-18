@@ -21,7 +21,9 @@
 
 #include "lwm.h"
 
-Cursor colouredCursor(Display* dpy, unsigned int shape, XColor* fg,
+Cursor colouredCursor(Display* dpy,
+                      unsigned int shape,
+                      XColor* fg,
                       XColor* bg) {
   Cursor res = XCreateFontCursor(dpy, shape);
   XRecolorCursor(dpy, res, fg, bg);

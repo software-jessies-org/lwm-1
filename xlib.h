@@ -85,8 +85,12 @@ class ImageIcon {
   void destroyResources();
 
  private:
-  ImageIcon(Pixmap active_img, Pixmap inactive_img, Pixmap menu_img,
-            unsigned int img_w, unsigned int img_h, unsigned int depth);
+  ImageIcon(Pixmap active_img,
+            Pixmap inactive_img,
+            Pixmap menu_img,
+            unsigned int img_w,
+            unsigned int img_h,
+            unsigned int depth);
 
   void paint(Window w, Pixmap img, int x, int y, int width, int height);
 

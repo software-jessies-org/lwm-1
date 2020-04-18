@@ -23,7 +23,9 @@
 
 #include "lwm.h"
 
-void Resources::Init() { I = new Resources(); }
+void Resources::Init() {
+  I = new Resources();
+}
 
 Resources* Resources::I;
 
@@ -122,7 +124,9 @@ int Resources::GetInt(IR ir) {
   return ints_[ir];
 }
 
-bool tryGet(XrmDatabase db, const std::string& name, const char* cls,
+bool tryGet(XrmDatabase db,
+            const std::string& name,
+            const char* cls,
             std::string* tgt) {
   if (!db) {
     return false;
@@ -139,15 +143,21 @@ bool tryGet(XrmDatabase db, const std::string& name, const char* cls,
   return false;
 }
 
-void Resources::set(SR res, XrmDatabase db, const std::string& name,
-                    const char* cls, const std::string& dflt) {
+void Resources::set(SR res,
+                    XrmDatabase db,
+                    const std::string& name,
+                    const char* cls,
+                    const std::string& dflt) {
   if (!tryGet(db, name, cls, &(strings_[res]))) {
     strings_[res] = dflt;
   }
 }
 
-void Resources::set(IR res, XrmDatabase db, const std::string& name,
-                    const char* cls, int dflt) {
+void Resources::set(IR res,
+                    XrmDatabase db,
+                    const std::string& name,
+                    const char* cls,
+                    int dflt) {
   ints_[res] = dflt;
   std::string strVal;
   if (!tryGet(db, name, cls, &strVal)) {
@@ -162,7 +172,9 @@ void Resources::set(IR res, XrmDatabase db, const std::string& name,
 }
 
 // Border width is used a lot, so let's make it easily accessible.
-int borderWidth() { return Resources::I->GetInt(Resources::BORDER_WIDTH); }
+int borderWidth() {
+  return Resources::I->GetInt(Resources::BORDER_WIDTH);
+}
 
 int topBorderWidth() {
   return Resources::I->GetInt(Resources::TOP_BORDER_WIDTH);

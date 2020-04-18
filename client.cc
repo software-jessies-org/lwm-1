@@ -184,7 +184,7 @@ void Client::SetIcon(ImageIcon* icon) {
   }
 }
 
-void focusChildrenOf(Client *c, Window parent) {
+void focusChildrenOf(Client* c, Window parent) {
   WindowTree wtree = WindowTree::Query(dpy, parent);
   for (Window win : wtree.children) {
     XWindowAttributes attr;

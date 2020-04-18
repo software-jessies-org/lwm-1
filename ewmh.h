@@ -94,4 +94,4 @@ enum EWMHAtom {
   EWMH_ATOM_LAST
 };
 
-#endif // LWM_EWMH_H_included
+#endif  // LWM_EWMH_H_included

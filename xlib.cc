@@ -107,8 +107,12 @@ unsigned long hashPixmaps(Pixmap img, Pixmap mask) {
   return (unsigned long)img;
 }
 
-ImageIcon::ImageIcon(Pixmap active_img, Pixmap inactive_img, Pixmap menu_img,
-                     unsigned int img_w, unsigned int img_h, unsigned int depth)
+ImageIcon::ImageIcon(Pixmap active_img,
+                     Pixmap inactive_img,
+                     Pixmap menu_img,
+                     unsigned int img_w,
+                     unsigned int img_h,
+                     unsigned int depth)
     : active_img_(active_img),
       inactive_img_(inactive_img),
       menu_img_(menu_img),
@@ -216,7 +220,9 @@ class Background {
   unsigned long bottom_;
 };
 
-void xImageDataToImage(XImage* dest, XImage* orig, XImage* mask,
+void xImageDataToImage(XImage* dest,
+                       XImage* orig,
+                       XImage* mask,
                        const Background& background) {
   for (int y = 0; y < orig->height; y++) {
     for (int x = 0; x < orig->width; x++) {
@@ -226,7 +232,10 @@ void xImageDataToImage(XImage* dest, XImage* orig, XImage* mask,
   }
 }
 
-void pixelDataToImage(XImage* img, unsigned long* data, int width, int height,
+void pixelDataToImage(XImage* img,
+                      unsigned long* data,
+                      int width,
+                      int height,
                       unsigned long background) {
   const unsigned long bgr = background & 0xff0000;
   const unsigned long bgg = background & 0xff00;
@@ -396,7 +405,11 @@ ImageIcon* ImageIcon::CreateFromPixels(unsigned long* data, unsigned long len) {
   return result->clone(pm_hash);
 }
 
-void ImageIcon::paint(Window w, Pixmap pm, int x, int y, int width,
+void ImageIcon::paint(Window w,
+                      Pixmap pm,
+                      int x,
+                      int y,
+                      int width,
                       int height) {
   if (!pm) {
     return;

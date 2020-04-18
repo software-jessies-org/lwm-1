@@ -89,7 +89,7 @@ extern int main(int argc, char* argv[]) {
       debugCLI = new DebugCLI;
       if (argv[i][9] == '=') {
         // Argument is a sequence of commands, separated by ;.
-        debug_init_commands = Split(std::string(argv[i]+10), ";");
+        debug_init_commands = Split(std::string(argv[i] + 10), ";");
       }
     } else if (!strcmp(argv[i], "-test")) {
       LOGI() << "Run in self-test mode; will run all tests, then exit";
@@ -171,10 +171,10 @@ extern int main(int argc, char* argv[]) {
   LScr::I = new LScr(dpy);
   LScr::I->Init();
   session_init(argc, argv);
-  
+
   // Initialisation is finished; from now on, errors are not going to be fatal.
   is_initialising = false;
-  
+
   // Do we need to support XRandR?
   int rr_event_base, rr_error_base;
   bool have_rr = XRRQueryExtension(dpy, &rr_event_base, &rr_error_base);

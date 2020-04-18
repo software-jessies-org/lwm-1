@@ -28,7 +28,7 @@
 #endif
 
 /*ARGSUSED*/
-extern void setShape(Client *c) {
+extern void setShape(Client* c) {
 #ifdef SHAPE
   if (!shape) {
     return;
@@ -36,7 +36,7 @@ extern void setShape(Client *c) {
   XShapeSelectInput(dpy, c->window, ShapeNotifyMask);
   int order;
   int n;
-  XRectangle *rect =
+  XRectangle* rect =
       XShapeGetRectangles(dpy, c->window, ShapeBounding, &n, &order);
   if (n > 1) {
     int border = borderWidth();
@@ -50,11 +50,11 @@ extern void setShape(Client *c) {
 }
 
 /*ARGSUSED*/
-extern int shapeEvent(XEvent *ev) {
+extern int shapeEvent(XEvent* ev) {
 #ifdef SHAPE
   if (shape && ev->type == shape_event) {
-    XShapeEvent *e = (XShapeEvent *)ev;
-    Client *c = LScr::I->GetClient(e->window);
+    XShapeEvent* e = (XShapeEvent*)ev;
+    Client* c = LScr::I->GetClient(e->window);
     if (c != 0) {
       setShape(c);
     }

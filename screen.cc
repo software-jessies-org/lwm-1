@@ -306,7 +306,9 @@ std::vector<Rect> mirrorAllX(const std::vector<Rect>& rs, int xMax) {
   return res;
 }
 
-Rect flipXY(const Rect& r) { return Rect{r.yMin, r.xMin, r.yMax, r.xMax}; }
+Rect flipXY(const Rect& r) {
+  return Rect{r.yMin, r.xMin, r.yMax, r.xMax};
+}
 
 std::vector<Rect> flipAllXY(const std::vector<Rect>& rs) {
   std::vector<Rect> res;
@@ -316,7 +318,8 @@ std::vector<Rect> flipAllXY(const std::vector<Rect>& rs) {
   return res;
 }
 
-Rect mapLeftEdge(Rect rect, const std::vector<Rect>& oldVis,
+Rect mapLeftEdge(Rect rect,
+                 const std::vector<Rect>& oldVis,
                  const std::vector<Rect>& newVis) {
   Rect oldLE;
   int oldLEOverlap = 0;
@@ -374,8 +377,10 @@ Rect mapLeftEdge(Rect rect, const std::vector<Rect>& oldVis,
   return rect;
 }
 
-bool mapEdges(Rect rect, const std::vector<Rect>& oldVis,
-              const std::vector<Rect>& newVis, Rect* newRect) {
+bool mapEdges(Rect rect,
+              const std::vector<Rect>& oldVis,
+              const std::vector<Rect>& newVis,
+              Rect* newRect) {
   // If the window abuts the left edge of the screen, or extends beyond it,
   // keep it there, but ensure that its Y span is within the new vertical area
   // of the left edge, and that it's no wider than that screen.
@@ -460,7 +465,8 @@ int maybeScaleDown(int v, int oldMax, int newMax) {
   return (newMax >= oldMax) ? v : (v * newMax / oldMax);
 }
 
-Rect MapToNewAreas(Rect rect, const std::vector<Rect>& oldVis,
+Rect MapToNewAreas(Rect rect,
+                   const std::vector<Rect>& oldVis,
                    const std::vector<Rect>& newVis) {
   Rect res;
   const int oldXMax = xMaxFrom(oldVis);
@@ -531,9 +537,9 @@ Rect MapToNewAreas(Rect rect, const std::vector<Rect>& oldVis,
     } else {
       // Window was entirely within the Y scope of the source. Scale it so it
       // occupies the same kind of Y position in the target.
-      res.yMin = target.yMin +
-                 (rect.yMin - source.yMin) * (target.height() - rect.height()) /
-                     (source.height() - rect.height());
+      res.yMin = target.yMin + (rect.yMin - source.yMin) *
+                                   (target.height() - rect.height()) /
+                                   (source.height() - rect.height());
     }
     res.yMax = res.yMin + rect.height();
   }
