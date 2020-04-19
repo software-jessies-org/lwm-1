@@ -151,6 +151,8 @@ Client* LScr::AddClient(Window w) {
     return nullptr;
   }
   Client* c = new Client(w, root_);
+  //LOGI() << "New client " << attr.width << "x" << attr.height << "+" << attr.x
+  //       << "+" << attr.y << ", g = " << attr.win_gravity;
   c->size.x = attr.x;
   c->size.y = attr.y;
   c->size.width = attr.width;
