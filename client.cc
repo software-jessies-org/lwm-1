@@ -31,8 +31,6 @@
 
 static int popup_width;  // The width of the size-feedback window.
 
-void sendClientMessage(Window, Atom, long, long);
-
 // Returns the total height, in pixels, of the window title bar.
 int titleBarHeight() {
   return textHeight() + borderWidth();
@@ -187,7 +185,7 @@ void Client::SetIcon(xlib::ImageIcon* icon) {
 void focusChildrenOf(Client* c, Window parent) {
   xlib::WindowTree wtree = xlib::WindowTree::Query(dpy, parent);
   for (Window win : wtree.children) {
-    XWindowAttributes attr;
+    XWindowAttributes attr{};
     XGetWindowAttributes(dpy, win, &attr);
     if (attr.all_event_masks & FocusChangeMask) {
       LOGD(c) << "  Focusing child " << WinID(win);
@@ -619,6 +617,18 @@ void Client_Raise(Client* c) {
   ewmh_set_client_list();
 }
 
+void sendClientMessage(Window w, Atom a, long data0, long data1) {
+  XEvent ev{};
+  ev.xclient.type = ClientMessage;
+  ev.xclient.window = w;
+  ev.xclient.message_type = a;
+  ev.xclient.format = 32;
+  ev.xclient.data.l[0] = data0;
+  ev.xclient.data.l[1] = data1;
+  const long mask = (w == LScr::I->Root()) ? SubstructureRedirectMask : 0L;
+  XSendEvent(dpy, w, false, mask, &ev);
+}
+
 void Client_Close(Client* c) {
   if (c == 0) {
     return;
@@ -643,26 +653,13 @@ void Client::SetState(int state) {
   ewmh_set_state(this);
 }
 
-void sendClientMessage(Window w, Atom a, long data0, long data1) {
-  XEvent ev;
-  memset(&ev, 0, sizeof(ev));
-  ev.xclient.type = ClientMessage;
-  ev.xclient.window = w;
-  ev.xclient.message_type = a;
-  ev.xclient.format = 32;
-  ev.xclient.data.l[0] = data0;
-  ev.xclient.data.l[1] = data1;
-  const long mask = (w == LScr::I->Root()) ? SubstructureRedirectMask : 0L;
-  XSendEvent(dpy, w, false, mask, &ev);
-}
-
 extern void Client_ResetAllCursors() {
   for (auto it : LScr::I->Clients()) {
     Client* c = it.second;
     if (!c->framed) {
       continue;
     }
-    XSetWindowAttributes attr;
+    XSetWindowAttributes attr{};
     attr.cursor = LScr::I->Cursors()->Root();
     XChangeWindowAttributes(dpy, c->parent, CWCursor, &attr);
     c->cursor = ENone;
@@ -685,14 +682,14 @@ extern void Client_FreeAll() {
     }
 
     // Give it back its initial border width.
-    XWindowChanges wc;
+    XWindowChanges wc{};
     wc.border_width = c->border;
     xlib::XConfigureWindow(c->window, CWBorderWidth, &wc);
   }
 }
 
 void Client::EnterFullScreen() {
-  XWindowChanges fs;
+  XWindowChanges fs{};
 
   memcpy(&return_size, &size, sizeof(XSizeHints));
   // For now, just find the 'main screen' and use that.
@@ -727,7 +724,7 @@ void Client::EnterFullScreen() {
 }
 
 void Client::ExitFullScreen() {
-  XWindowChanges fs;
+  XWindowChanges fs{};
 
   memcpy(&size, &return_size, sizeof(XSizeHints));
   if (framed) {
@@ -754,7 +751,7 @@ void Client::ExitFullScreen() {
 }
 
 void Client::SendConfigureNotify() {
-  XConfigureEvent ce;
+  XConfigureEvent ce{};
   ce.type = ConfigureNotify;
   ce.event = window;
   ce.window = window;

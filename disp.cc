@@ -463,7 +463,7 @@ int absDist(int min1, int max1, int min2, int max2) {
 Rect findBestScreenFor(const Rect& r, bool withStruts) {
   const std::vector<Rect> vis = LScr::I->VisibleAreas(withStruts);
   // First try to find the one with the largest overlap.
-  Rect res;
+  Rect res{};
   int ra = 0;
   for (Rect v : vis) {
     const int area = Rect::Intersect(r, v).area();
@@ -495,7 +495,7 @@ Rect findBestScreenFor(const Rect& r, bool withStruts) {
 
 Rect makeVisible(Rect r, bool withStruts) {
   const Rect scr = findBestScreenFor(r, withStruts);
-  Point translation = {};
+  Point translation{};
   if (r.width() >= scr.width()) {
     r.xMin = scr.xMin;
     r.xMax = scr.xMax;
@@ -516,12 +516,15 @@ Rect makeVisible(Rect r, bool withStruts) {
 }
 
 void EvConfigureRequest(XEvent* ev) {
-  XWindowChanges wc;
+  XWindowChanges wc{};
   XConfigureRequestEvent* e = &ev->xconfigurerequest;
   Client* c = LScr::I->GetClient(e->window);
+  if (c == nullptr) {
+    return;
+  }
   LOGD(c) << "ConfigureRequest: " << *e;
 
-  if (c && c->window == e->window) {
+  if (c->window == e->window) {
     // ICCCM section 4.1.5 says that the x and y coordinates here
     // will have been "adjusted for the border width".
     // NOTE: this may not be the only place to bear this in mind.
@@ -576,7 +579,7 @@ void EvConfigureRequest(XEvent* ev) {
       c->SendConfigureNotify();
     }
   }
-  if (c && (c->internal_state == INormal) && c->framed) {
+  if ((c->internal_state == INormal) && c->framed) {
     // Offsets from outer frame window to inner window.
     wc.x = borderWidth();
     wc.y = titleBarHeight();
@@ -596,7 +599,7 @@ void EvConfigureRequest(XEvent* ev) {
           << "; mask=" << XCfgValMask(e->value_mask) << ": " << wc;
   // xlib::XConfigureWindow(e->window, e->value_mask, &wc);
 
-  if (c && (c->window == e->window)) {
+  if (c->window == e->window) {
     if (c->framed) {
       LOGD(c) << "framed - moving/resizing to " << c->size << "; state is "
               << (c->IsHidden()
@@ -924,7 +927,10 @@ void EvEnterNotify(XEvent* ev) {
   // silly icons, such as the 'resize corner' icon, while hovering over the
   // middle of the application window.
   Client* c = LScr::I->GetClient(ev->xcrossing.window);
-  if (c && ev->xcrossing.window != c->parent) {
+  if (c == nullptr) {
+    return;
+  }
+  if (ev->xcrossing.window != c->parent) {
     // TODO: add a SetCursor method to Client, so we don't have to keep
     // repeating this code everywhere.
     XSetWindowAttributes attr;
@@ -949,7 +955,10 @@ void EvMotionNotify(XEvent* ev) {
   }
   XMotionEvent* e = &ev->xmotion;
   Client* c = LScr::I->GetClient(e->window);
-  if (c && (e->window == c->parent) && (e->subwindow != c->window)) {
+  if (c == nullptr) {
+    return;
+  }
+  if ((e->window == c->parent) && (e->subwindow != c->window)) {
     Edge edge = c->EdgeAt(e->window, e->x, e->y);
     if (edge != EContents && c->cursor != edge) {
       XSetWindowAttributes attr;
