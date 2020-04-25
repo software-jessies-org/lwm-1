@@ -70,7 +70,7 @@ void LScr::Init() {
   XChangeWindowAttributes(dpy_, root_, CWCursor | CWEventMask, &attr);
 
   // Tell all the applications what icon sizes we prefer.
-  ImageIcon::ConfigureIconSizes();
+  xlib::ImageIcon::ConfigureIconSizes();
 
   // Make sure all our communication to the server got through.
   XSync(dpy_, false);
@@ -116,7 +116,7 @@ void LScr::InitEWMH() {
 }
 
 void LScr::ScanWindowTree() {
-  WindowTree wt = WindowTree::Query(dpy_, root_);
+  xlib::WindowTree wt = xlib::WindowTree::Query(dpy_, root_);
   for (const Window w : wt.children) {
     AddClient(w);
   }
@@ -151,7 +151,8 @@ Client* LScr::AddClient(Window w) {
     return nullptr;
   }
   Client* c = new Client(w, root_);
-  //LOGI() << "New client " << attr.width << "x" << attr.height << "+" << attr.x
+  // LOGI() << "New client " << attr.width << "x" << attr.height << "+" <<
+  // attr.x
   //       << "+" << attr.y << ", g = " << attr.win_gravity;
   c->size.x = attr.x;
   c->size.y = attr.y;
@@ -203,7 +204,7 @@ Client* LScr::GetClient(Window w) const {
     if (it != clients_.end()) {
       return it->second;
     }
-    w = WindowTree::ParentOf(w);
+    w = xlib::WindowTree::ParentOf(w);
   }
   return nullptr;
 }
@@ -635,16 +636,16 @@ void LScr::SetVisibleAreas(std::vector<Rect> visible_areas) {
   for (moveData& move : moves) {
     Client* c = move.c;
     Client_MakeSane(c, ENone, move.x, move.y, 0, 0);
-    XMoveResizeWindow(dpy, c->parent, c->size.x, c->size.y - textHeight(),
-                      c->size.width, c->size.height + textHeight());
+    xlib::XMoveResizeWindow(c->parent, c->size.x, c->size.y - textHeight(),
+                            c->size.width, c->size.height + textHeight());
     if (move.sendConfigNotify) {
       c->SendConfigureNotify();
     }
     if (move.sizeChanged) {
-      XMoveResizeWindow(dpy, c->window, borderWidth(),
-                        borderWidth() + textHeight(),
-                        c->size.width - 2 * borderWidth(),
-                        c->size.height - 2 * borderWidth());
+      xlib::XMoveResizeWindow(c->window, borderWidth(),
+                              borderWidth() + textHeight(),
+                              c->size.width - 2 * borderWidth(),
+                              c->size.height - 2 * borderWidth());
     }
   }
 }

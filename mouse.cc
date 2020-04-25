@@ -43,8 +43,8 @@ Window hiddenIDFor(const Client* c) {
 }
 
 void mapAndRaise(Window w, int xmin, int ymin, int width, int height) {
-  XMoveResizeWindow(dpy, w, xmin, ymin, width, height);
-  XMapRaised(dpy, w);
+  xlib::XMoveResizeWindow(w, xmin, ymin, width, height);
+  xlib::XMapRaised(w);
 }
 
 void Hider::showHighlightBox(int itemIndex) {
@@ -85,18 +85,18 @@ void Hider::hideHighlightBox() {
     // No highlight windows created; that means we have nothing to hide.
     return;
   }
-  XUnmapWindow(dpy, highlightL);
-  XUnmapWindow(dpy, highlightR);
-  XUnmapWindow(dpy, highlightT);
-  XUnmapWindow(dpy, highlightB);
+  xlib::XUnmapWindow(highlightL);
+  xlib::XUnmapWindow(highlightR);
+  xlib::XUnmapWindow(highlightT);
+  xlib::XUnmapWindow(highlightB);
 }
 
 void Hider::Hide(Client* c) {
   hidden_.push_front(hiddenIDFor(c));
 
   // Actually hide the window.
-  XUnmapWindow(dpy, c->parent);
-  XUnmapWindow(dpy, c->window);
+  xlib::XUnmapWindow(c->parent);
+  xlib::XUnmapWindow(c->window);
 
   c->hidden = true;
   // Remove input focus, and drop from focus history.
@@ -116,8 +116,8 @@ void Hider::Unhide(Client* c) {
   }
   // Always raise and give focus if we're trying to unhide, even if it wasn't
   // hidden.
-  XMapWindow(dpy, c->parent);
-  XMapWindow(dpy, c->window);
+  xlib::XMapWindow(c->parent);
+  xlib::XMapWindow(c->window);
   Client_Raise(c);
   c->SetState(NormalState);
   // Windows are given input focus when they're unhidden.
@@ -136,9 +136,9 @@ void Hider::Unhide(Client* c) {
   //    the following conditional code, the re-opened window appears
   //    approximately 'textHeight()' pixels lower than it previously was.
   if (c->framed) {
-    XMoveResizeWindow(dpy, c->parent, c->size.x, c->size.y - textHeight(),
-                      c->size.width, c->size.height + textHeight());
-    XMoveWindow(dpy, c->window, borderWidth(), borderWidth() + textHeight());
+    xlib::XMoveResizeWindow(c->parent, c->size.x, c->size.y - textHeight(),
+                            c->size.width, c->size.height + textHeight());
+    xlib::XMoveWindow(c->window, borderWidth(), borderWidth() + textHeight());
     c->SendConfigureNotify();
   }
 }
@@ -357,7 +357,7 @@ void Hider::MouseMotion(XEvent* ev) {
 void Hider::MouseRelease(XEvent* ev) {
   hideHighlightBox();
   const int n = itemAt(ev->xbutton.x_root, ev->xbutton.y_root);
-  XUnmapWindow(dpy, LScr::I->Menu());
+  xlib::XUnmapWindow(LScr::I->Menu());
   if (n < 0) {
     return;  // User just released the mouse without having selected anything.
   }

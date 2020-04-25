@@ -178,14 +178,14 @@ Edge Client::EdgeAt(Window w, int x, int y) const {
   return ENone;
 }
 
-void Client::SetIcon(ImageIcon* icon) {
+void Client::SetIcon(xlib::ImageIcon* icon) {
   if (icon) {
     icon_ = icon;
   }
 }
 
 void focusChildrenOf(Client* c, Window parent) {
-  WindowTree wtree = WindowTree::Query(dpy, parent);
+  xlib::WindowTree wtree = xlib::WindowTree::Query(dpy, parent);
   for (Window win : wtree.children) {
     XWindowAttributes attr;
     XGetWindowAttributes(dpy, win, &attr);
@@ -338,22 +338,23 @@ bool Client_MakeSaneAndMove(Client* c, Edge edge, int x, int y, int w, int h) {
   if (resized) {
     // May need to deal with framed windows here.
     const int th = textHeight();
-    XMoveResizeWindow(dpy, c->parent, c->size.x, c->size.y - th, c->size.width,
-                      c->size.height + th);
+    xlib::XMoveResizeWindow(c->parent, c->size.x, c->size.y - th, c->size.width,
+                            c->size.height + th);
     const int border = borderWidth();
     // We used to use some odd logic to optionally send a configureNotify.
     // However, from my reading of this page:
     // https://tronche.com/gui/x/xlib/events/window-state-change/configure.html
     // ...it seems the X server is responsible for sending such things; our
     // only job is to actually move/resize windows. So let's just do that.
-    XMoveResizeWindow(dpy, c->window, border, border + th,
-                      c->size.width - 2 * border, c->size.height - 2 * border);
+    xlib::XMoveResizeWindow(c->window, border, border + th,
+                            c->size.width - 2 * border,
+                            c->size.height - 2 * border);
     c->SendConfigureNotify();
   } else if (moved) {
     if (c->framed) {
-      XMoveWindow(dpy, c->parent, c->size.x, c->size.y - textHeight());
+      xlib::XMoveWindow(c->parent, c->size.x, c->size.y - textHeight());
     } else {
-      XMoveWindow(dpy, c->parent, c->size.x, c->size.y);
+      xlib::XMoveWindow(c->parent, c->size.x, c->size.y);
     }
     // Do I need to send a configure notify? According to this:
     // https://tronche.com/gui/x/xlib/events/window-state-change/configure.html
@@ -543,9 +544,9 @@ void Client_SizeFeedback() {
 
   // Put the popup in the right place to report on the window's size.
   const MousePos mp = getMousePosition();
-  XMoveResizeWindow(dpy, LScr::I->Popup(), mp.x + 8, mp.y + 8, popup_width,
-                    textHeight() + 1);
-  XMapRaised(dpy, LScr::I->Popup());
+  xlib::XMoveResizeWindow(LScr::I->Popup(), mp.x + 8, mp.y + 8, popup_width,
+                          textHeight() + 1);
+  xlib::XMapRaised(LScr::I->Popup());
 
   // Ensure that the popup contents get redrawn. Eventually, the function
   // size_expose will get called to do the actual redraw.
@@ -589,9 +590,9 @@ void Client_Lower(Client* c) {
   if (c == 0) {
     return;
   }
-  XLowerWindow(dpy, c->window);
+  xlib::XLowerWindow(c->window);
   if (c->framed) {
-    XLowerWindow(dpy, c->parent);
+    xlib::XLowerWindow(c->parent);
   }
   ewmh_set_client_list();
 }
@@ -601,9 +602,9 @@ void Client_Raise(Client* c) {
     return;
   }
   if (c->framed) {
-    XRaiseWindow(dpy, c->parent);
+    xlib::XRaiseWindow(c->parent);
   }
-  XRaiseWindow(dpy, c->window);
+  xlib::XRaiseWindow(c->window);
 
   for (auto it : LScr::I->Clients()) {
     Client* tr = it.second;
@@ -611,9 +612,9 @@ void Client_Raise(Client* c) {
       continue;
     }
     if (tr->framed) {
-      XRaiseWindow(dpy, tr->parent);
+      xlib::XRaiseWindow(tr->parent);
     }
-    XRaiseWindow(dpy, tr->window);
+    xlib::XRaiseWindow(tr->window);
   }
   ewmh_set_client_list();
 }
@@ -675,18 +676,18 @@ extern void Client_FreeAll() {
     // Reparent the client window to the root, to elide our furniture window.
     LOGD(c) << "Client_FreeAll: reparenting window at " << c->size.x << "x"
             << c->size.y;
-    XReparentWindow(dpy, c->window, LScr::I->Root(), c->size.x, c->size.y);
+    xlib::XReparentWindow(c->window, LScr::I->Root(), c->size.x, c->size.y);
     if (c->hidden) {
       // The window was iconised, so map it back into view so it isn't lost
       // forever, but lower it so it doesn't jump all over the foreground.
-      XMapWindow(dpy, c->window);
-      XLowerWindow(dpy, c->window);
+      xlib::XMapWindow(c->window);
+      xlib::XLowerWindow(c->window);
     }
 
     // Give it back its initial border width.
     XWindowChanges wc;
     wc.border_width = c->border;
-    XConfigureWindow(dpy, c->window, CWBorderWidth, &wc);
+    xlib::XConfigureWindow(c->window, CWBorderWidth, &wc);
   }
 }
 
@@ -706,21 +707,21 @@ void Client::EnterFullScreen() {
     size.y = fs.y = scr.yMin - bw;
     size.width = fs.width = scr.width() + 2 * bw;
     size.height = fs.height = scr.height() + 2 * bw;
-    XConfigureWindow(dpy, parent, CWX | CWY | CWWidth | CWHeight, &fs);
+    xlib::XConfigureWindow(parent, CWX | CWY | CWWidth | CWHeight, &fs);
 
     fs.x = 0;
     fs.y = 0;
     fs.width = scr.width();
     fs.height = scr.height();
-    XConfigureWindow(dpy, window, CWX | CWY | CWWidth | CWHeight, &fs);
-    XRaiseWindow(dpy, parent);
+    xlib::XConfigureWindow(window, CWX | CWY | CWWidth | CWHeight, &fs);
+    xlib::XRaiseWindow(parent);
   } else {
     size.x = fs.x = scr.xMin;
     size.y = fs.y = scr.yMin;
     size.width = fs.width = scr.width();
     size.height = fs.height = scr.height();
-    XConfigureWindow(dpy, window, CWX | CWY | CWWidth | CWHeight, &fs);
-    XRaiseWindow(dpy, window);
+    xlib::XConfigureWindow(window, CWX | CWY | CWWidth | CWHeight, &fs);
+    xlib::XRaiseWindow(window);
   }
   SendConfigureNotify();
 }
@@ -734,20 +735,20 @@ void Client::ExitFullScreen() {
     fs.y = size.y - textHeight();
     fs.width = size.width;
     fs.height = size.height + textHeight();
-    XConfigureWindow(dpy, parent, CWX | CWY | CWWidth | CWHeight, &fs);
+    xlib::XConfigureWindow(parent, CWX | CWY | CWWidth | CWHeight, &fs);
 
     const int bw = borderWidth();
     fs.x = bw;
     fs.y = bw + textHeight();
     fs.width = size.width - 2 * bw;
     fs.height = size.height - 2 * bw;
-    XConfigureWindow(dpy, window, CWX | CWY | CWWidth | CWHeight, &fs);
+    xlib::XConfigureWindow(window, CWX | CWY | CWWidth | CWHeight, &fs);
   } else {
     fs.x = size.x;
     fs.y = size.y;
     fs.width = size.width;
     fs.height = size.height;
-    XConfigureWindow(dpy, window, CWX | CWY | CWWidth | CWHeight, &fs);
+    xlib::XConfigureWindow(window, CWX | CWY | CWWidth | CWHeight, &fs);
   }
   SendConfigureNotify();
 }

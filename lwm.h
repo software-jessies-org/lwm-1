@@ -283,14 +283,14 @@ class Client {
 
   // SetIcon sets the window's title bar icon. If called with null, it will do
   // nothing (and leave any previously-set icon in place).
-  void SetIcon(ImageIcon* icon);
-  ImageIcon* Icon() { return icon_; }
+  void SetIcon(xlib::ImageIcon* icon);
+  xlib::ImageIcon* Icon() { return icon_; }
 
  private:
   Rect EdgeBounds(Edge e) const;
 
   std::string name_;  // Name used for title in frame.
-  ImageIcon* icon_ = nullptr;
+  xlib::ImageIcon* icon_ = nullptr;
 
   Client(const Client&) = delete;
   Client& operator=(const Client&) = delete;
@@ -792,7 +792,7 @@ extern Atom ewmh_atom[];
 extern void ewmh_init();
 extern EWMHWindowType ewmh_get_window_type(Window w);
 extern bool ewmh_get_window_name(Client* c);
-extern ImageIcon* ewmh_get_window_icon(Client* c);
+extern xlib::ImageIcon* ewmh_get_window_icon(Client* c);
 extern bool ewmh_hasframe(Client* c);
 extern void ewmh_set_state(Client* c);
 extern void ewmh_get_state(Client* c);

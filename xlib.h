@@ -19,6 +19,26 @@
 #include <X11/cursorfont.h>
 #include <X11/extensions/Xrandr.h>
 
+namespace xlib {
+
+extern int XMoveResizeWindow(Window w,
+                             int x,
+                             int y,
+                             unsigned width,
+                             unsigned height);
+
+extern int XMoveWindow(Window w, int x, int y);
+
+extern int XReparentWindow(Window w, Window new_parent, int x, int y);
+
+extern int XMapWindow(Window w);
+extern int XMapRaised(Window w);
+extern int XUnmapWindow(Window w);
+extern int XRaiseWindow(Window w);
+extern int XLowerWindow(Window w);
+
+extern int XConfigureWindow(Window w, unsigned int val_mask, XWindowChanges* v);
+
 struct WindowTree {
   Window self;
   Window parent;
@@ -121,5 +141,7 @@ class XFreer {
  private:
   void* data_;
 };
+
+}  // namespace xlib
 
 #endif  // LWM_XLIB_H_included

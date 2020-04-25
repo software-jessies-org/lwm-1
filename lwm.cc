@@ -268,7 +268,7 @@ void setScreenAreasFromXRandR() {
     LOGE() << "Failed to get XRRScreenResources";
     return;
   }
-  XFreer res_freer((void*)res);
+  xlib::XFreer res_freer((void*)res);
   if (!res->ncrtc) {
     LOGE() << "Empty list of CRTs";
     return;

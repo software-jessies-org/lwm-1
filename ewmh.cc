@@ -182,7 +182,7 @@ bool ewmh_get_window_name(Client* c) {
   return true;
 }
 
-ImageIcon* ewmh_get_window_icon(Client* c) {
+xlib::ImageIcon* ewmh_get_window_icon(Client* c) {
   Atom rt;
   unsigned long* data = NULL;
   int fmt = 0;
@@ -195,12 +195,12 @@ ImageIcon* ewmh_get_window_icon(Client* c) {
   if (i != Success || data == nullptr) {
     return nullptr;
   }
-  XFreer data_freer(data);
+  xlib::XFreer data_freer(data);
   if (extra > 0) {
     fprintf(stderr, "Icon size too large: %d bytes extra\n", int(extra));
     return nullptr;
   }
-  return ImageIcon::CreateFromPixels(data, n);
+  return xlib::ImageIcon::CreateFromPixels(data, n);
 }
 
 bool ewmh_hasframe(Client* c) {
@@ -400,9 +400,9 @@ void ewmh_set_strut() {
     Client_MakeSane(c, ENone, x, y, 0, 0);
     LOGD(c) << "MakeSane done; y=" << c->size.y << "; framed=" << c->framed;
     if (c->framed) {
-      XMoveWindow(dpy, c->parent, c->size.x, c->size.y - textHeight());
+      xlib::XMoveWindow(c->parent, c->size.x, c->size.y - textHeight());
     } else {
-      XMoveWindow(dpy, c->parent, c->size.x, c->size.y);
+      xlib::XMoveWindow(c->parent, c->size.x, c->size.y);
     }
     c->SendConfigureNotify();
   }
@@ -530,7 +530,7 @@ void ewmh_set_client_list() {
 
     stacked_client_list = (Window*)malloc(sizeof(Window) * no_clients);
 
-    WindowTree wt = WindowTree::Query(dpy, LScr::I->Root());
+    xlib::WindowTree wt = xlib::WindowTree::Query(dpy, LScr::I->Root());
     int ci = 0;
     for (Window win : wt.children) {
       Client* c = LScr::I->GetClient(win);

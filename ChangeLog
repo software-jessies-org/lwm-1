@@ -1,6 +1,14 @@
 Change Log for "lwm"
 
 
+2020-04-25	pn	Basel
+	Gave xlib.(cc|h) a namespace, and added there a bunch of shim functions
+	which call same-named Xlib functions. Changed code around LWM to call
+	through these new shim layers. The idea is to make it easier to track
+	events sent to clients, and thus make it simpler to debug problems such
+	as the disappearing ImageMagick windows.
+
+
 2020-04-18	pn	Basel
 	Deleted support for colormaps. 24bpp has been standard for decades.
 

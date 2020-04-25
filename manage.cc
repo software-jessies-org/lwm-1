@@ -68,7 +68,7 @@ void manage(Client* c) {
   XWMHints* hints = XGetWMHints(dpy, c->window);
   if (Resources::I->ProcessAppIcons()) {
     if (hints) {
-      c->SetIcon(ImageIcon::Create(hints->icon_pixmap, hints->icon_mask));
+      c->SetIcon(xlib::ImageIcon::Create(hints->icon_pixmap, hints->icon_mask));
     }
     c->SetIcon(ewmh_get_window_icon(c));
   }
@@ -232,10 +232,10 @@ void manage(Client* c) {
                           CWEventMask | CWWinGravity | CWDontPropagate, &attr);
 
   if (c->framed) {
-    XReparentWindow(dpy, c->window, c->parent, borderWidth(),
-                    borderWidth() + textHeight());
+    xlib::XReparentWindow(c->window, c->parent, borderWidth(),
+                          borderWidth() + textHeight());
   } else {
-    XReparentWindow(dpy, c->window, c->parent, c->size.x, c->size.y);
+    xlib::XReparentWindow(c->window, c->parent, c->size.x, c->size.y);
   }
 
   setShape(c);
@@ -246,8 +246,8 @@ void manage(Client* c) {
   } else {
     // Map the new window in the relevant state.
     c->hidden = false;
-    XMapWindow(dpy, c->parent);
-    XMapWindow(dpy, c->window);
+    xlib::XMapWindow(c->parent);
+    xlib::XMapWindow(c->window);
     c->SetState(NormalState);
   }
 
@@ -289,8 +289,8 @@ void getTransientFor(Client* c) {
 
 void withdraw(Client* c) {
   if (c->parent != LScr::I->Root()) {
-    XUnmapWindow(dpy, c->parent);
-    XReparentWindow(dpy, c->parent, LScr::I->Root(), c->size.x, c->size.y);
+    xlib::XUnmapWindow(c->parent);
+    xlib::XReparentWindow(c->parent, LScr::I->Root(), c->size.x, c->size.y);
   }
 
   XRemoveFromSaveSet(dpy, c->window);

@@ -1,5 +1,70 @@
 #include "lwm.h"
 
+namespace xlib {
+
+int XMoveResizeWindow(Window w, int x, int y, unsigned width, unsigned height) {
+  // https://tronche.com/gui/x/xlib/window/XMoveResizeWindow.html
+  int res = ::XMoveResizeWindow(dpy, w, x, y, width, height);
+  // Possible errors: BadValue, BadWindow.
+  return res;
+}
+
+int XMoveWindow(Window w, int x, int y) {
+  // https://tronche.com/gui/x/xlib/window/XMoveWindow.html
+  int res = ::XMoveWindow(dpy, w, x, y);
+  // Possible errors: BadWindow.
+  return res;
+}
+
+int XReparentWindow(Window w, Window new_parent, int x, int y) {
+  // https://tronche.com/gui/x/xlib/window-and-session-manager/XReparentWindow.html
+  int res = ::XReparentWindow(dpy, w, new_parent, x, y);
+  // Possible errors: BadMatch, BadWindow.
+  return res;
+}
+
+int XMapWindow(Window w) {
+  // https://tronche.com/gui/x/xlib/window/XMapWindow.html
+  int res = ::XMapWindow(dpy, w);
+  // Possible errors: BadWindow.
+  return res;
+}
+
+int XMapRaised(Window w) {
+  // https://tronche.com/gui/x/xlib/window/XMapRaised.html
+  int res = ::XMapRaised(dpy, w);
+  // Possible errors: BadWindow.
+  return res;
+}
+
+int XUnmapWindow(Window w) {
+  // https://tronche.com/gui/x/xlib/window/XUnmapWindow.html
+  int res = ::XUnmapWindow(dpy, w);
+  // Possible errors: BadWindow.
+  return res;
+}
+
+int XRaiseWindow(Window w) {
+  // https://tronche.com/gui/x/xlib/window/XRaiseWindow.html
+  int res = ::XRaiseWindow(dpy, w);
+  // Possible errors: BadWindow.
+  return res;
+}
+
+int XLowerWindow(Window w) {
+  // https://tronche.com/gui/x/xlib/window/XLowerWindow.html
+  int res = ::XLowerWindow(dpy, w);
+  // Possible errors: BadWindow.
+  return res;
+}
+
+int XConfigureWindow(Window w, unsigned int val_mask, XWindowChanges* v) {
+  // https://tronche.com/gui/x/xlib/window/XConfigureWindow.html
+  int res = ::XConfigureWindow(dpy, w, val_mask, v);
+  // Possible errors: BadMatch, BadValue, BadWindow.
+  return res;
+}
+
 WindowTree WindowTree::Query(Display* dpy, Window w) {
   WindowTree res = {};
   Window* ch = nullptr;
@@ -436,3 +501,5 @@ void ImageIcon::paint(Window w,
   XCopyArea(dpy, pm, w, gc, src_x, src_y, width, height, x, y);
   XFreeGC(dpy, gc);
 }
+
+}  // namespace xlib

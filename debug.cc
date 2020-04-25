@@ -267,7 +267,7 @@ void DebugCLI::ResetDeadZones(const vector<Rect>& visible) {
     const Window w =
         XCreateSimpleWindow(dpy, LScr::I->Root(), r.xMin, r.yMin, r.width(),
                             r.height(), 0, dead_colour, dead_colour);
-    XMapRaised(dpy, w);
+    xlib::XMapRaised(w);
     dead_zones_.push_back(w);
   }
   cout << "Inaccessible areas are: " << dead << "\n";

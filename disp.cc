@@ -127,7 +127,7 @@ class WindowDragger : public DragHandler {
         << (mp.x - start_pos_.x) << ", " << (mp.y - start_pos_.y) << ")";
     // Unmapping the popup only has an effect if it's open (so if this is a
     // resize instead of a move), but it doesn't hurt to always close it.
-    XUnmapWindow(dpy, LScr::I->Popup());
+    xlib::XUnmapWindow(LScr::I->Popup());
   }
 
  private:
@@ -311,7 +311,7 @@ DragHandler* getDragHandlerForEvent(XEvent* ev) {
     return new WindowMover(c);
   }
   if (e->button == RESHAPE_BUTTON) {
-    XMapWindow(dpy, c->parent);
+    xlib::XMapWindow(c->parent);
     Client_Raise(c);
     if (edge == ENone) {
       return new WindowMover(c);
@@ -338,9 +338,9 @@ void EvCirculateRequest(XEvent* ev) {
   LOGD(c) << "CirculateRequest";
   if (c == 0) {
     if (e->place == PlaceOnTop) {
-      XRaiseWindow(e->display, e->window);
+      xlib::XRaiseWindow(e->window);
     } else {
-      XLowerWindow(e->display, e->window);
+      xlib::XLowerWindow(e->window);
     }
   } else {
     if (e->place == PlaceOnTop) {
@@ -369,18 +369,18 @@ void EvMapRequest(XEvent* ev) {
       }
       if (c->framed) {
         LOGD(c) << "(map) reparenting framed window " << WinID(c->parent);
-        XReparentWindow(dpy, c->window, c->parent, borderWidth(),
-                        borderWidth() + textHeight());
+        xlib::XReparentWindow(c->window, c->parent, borderWidth(),
+                              borderWidth() + textHeight());
       } else {
         LOGD(c) << "(map) reparenting unframed window " << WinID(c->parent);
-        XReparentWindow(dpy, c->window, c->parent, c->size.x, c->size.y);
+        xlib::XReparentWindow(c->window, c->parent, c->size.x, c->size.y);
       }
       XAddToSaveSet(dpy, c->window);
     // FALLTHROUGH
     case NormalState:
       LOGD(c) << "(map) NormalState " << WinID(c->window);
-      XMapWindow(dpy, c->parent);
-      XMapWindow(dpy, c->window);
+      xlib::XMapWindow(c->parent);
+      xlib::XMapWindow(c->window);
       Client_Raise(c);
       c->SetState(NormalState);
       break;
@@ -447,7 +447,7 @@ std::ostream& operator<<(std::ostream& os, const XCfgValMask& m) {
 }
 
 void moveResize(Window w, const Rect& r) {
-  XMoveResizeWindow(dpy, w, r.xMin, r.yMin, r.width(), r.height());
+  xlib::XMoveResizeWindow(w, r.xMin, r.yMin, r.width(), r.height());
 }
 
 int absDist(int min1, int max1, int min2, int max2) {
@@ -572,7 +572,7 @@ void EvConfigureRequest(XEvent* ev) {
 
       LOGD(c) << "XConfigureWindow of " << WinID(e->parent)
               << "; mask=" << XCfgValMask(e->value_mask) << ": " << wc;
-      XConfigureWindow(dpy, e->parent, e->value_mask, &wc);
+      xlib::XConfigureWindow(e->parent, e->value_mask, &wc);
       c->SendConfigureNotify();
     }
   }
@@ -594,7 +594,7 @@ void EvConfigureRequest(XEvent* ev) {
 
   LOGD(c) << "XConfigureWindow of " << WinID(e->window)
           << "; mask=" << XCfgValMask(e->value_mask) << ": " << wc;
-  XConfigureWindow(dpy, e->window, e->value_mask, &wc);
+  // xlib::XConfigureWindow(e->window, e->value_mask, &wc);
 
   if (c && (c->window == e->window)) {
     if (c->framed) {
@@ -715,7 +715,7 @@ void EvClientMessage(XEvent* ev) {
     if (c->IsHidden()) {
       c->Unhide();
     }
-    XMapWindow(dpy, c->parent);
+    xlib::XMapWindow(c->parent);
     Client_Raise(c);
     // FIXME: we're ignoring x_root, y_root and button!
     switch (direction) {

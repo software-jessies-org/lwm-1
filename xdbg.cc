@@ -228,7 +228,7 @@ int main(int argc, char* const argv[]) {
   gc = XCreateGC(dpy, window, GCForeground | GCBackground, &gv);
 
   // Bring up the window.
-  XMapRaised(dpy, window);
+  xlib::XMoveResizeWindow(window);
 
   // Make sure all our communication to the server got through.
   XSync(dpy, False);
