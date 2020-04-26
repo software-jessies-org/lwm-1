@@ -24,6 +24,7 @@
 #include "lwm.h"
 
 static bool ignore_badwindow;
+static bool ignore_badmatch;
 
 ScopedIgnoreBadWindow::ScopedIgnoreBadWindow() : old_(ignore_badwindow) {
   ignore_badwindow = true;
@@ -31,6 +32,14 @@ ScopedIgnoreBadWindow::ScopedIgnoreBadWindow() : old_(ignore_badwindow) {
 
 ScopedIgnoreBadWindow::~ScopedIgnoreBadWindow() {
   ignore_badwindow = old_;
+}
+
+ScopedIgnoreBadMatch::ScopedIgnoreBadMatch() : old_(ignore_badmatch) {
+  ignore_badmatch = true;
+}
+
+ScopedIgnoreBadMatch::~ScopedIgnoreBadMatch() {
+  ignore_badmatch = old_;
 }
 
 void panic(const char* s) {
@@ -52,6 +61,9 @@ int errorHandler(Display* d, XErrorEvent* e) {
 
   if (ignore_badwindow &&
       (e->error_code == BadWindow || e->error_code == BadColor)) {
+    return 0;
+  }
+  if (ignore_badmatch && (e->error_code == BadMatch)) {
     return 0;
   }
 

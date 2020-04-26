@@ -566,6 +566,15 @@ class ScopedIgnoreBadWindow {
   bool old_;
 };
 
+class ScopedIgnoreBadMatch {
+ public:
+  ScopedIgnoreBadMatch();
+  ~ScopedIgnoreBadMatch();
+
+ private:
+  bool old_;
+};
+
 extern int errorHandler(Display*, XErrorEvent*);
 extern void panic(const char*);
 

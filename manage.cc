@@ -313,6 +313,10 @@ void Terminate(int signal) {
 
   // Give up the input focus and the colourmap.
   XSetInputFocus(dpy, PointerRoot, RevertToPointerRoot, CurrentTime);
+  // XCloseDisplay (or rather, XSync as called by XCloseDisplay) dumps a load
+  // of BadMatch errors into the error handler. That's unhelpful spam, so
+  // inform the error handler that it should ignore them.
+  ScopedIgnoreBadMatch ignorer;
   XCloseDisplay(dpy);
   session_end();
 
