@@ -899,13 +899,22 @@ std::ostream& operator<<(std::ostream& os, const XFocusChangeEvent& e) {
   return os;
 }
 
-void EvFocusIn(XEvent*) {
+void EvFocusIn(XEvent* ev) {
   // In practice, XGetInputFocus returns the child window that actually has
   // focus (in Java apps, the 'FocusProxy' window), while the XEvent reports
   // the top-level window.
   Window focus_window;
   int revert_to;
   XGetInputFocus(dpy, &focus_window, &revert_to);
+  // There seems to be a bug in the Xserver, whereupon for the first focus-in
+  // event we receive, XGetInputFocus returns focus_window==1, which doesn't
+  // correspond to any actual window. In this case, fall back to the window
+  // which was specified in the event itself.
+  // Without this hack, the first time we change focus after running LWM, we
+  // get a spurious error due to trying to look up the parents of window 1.
+  if (focus_window == 1) {
+    focus_window = ev->xfocus.window;
+  }
   Client* c = LScr::I->GetClient(focus_window);
   if (c) {
     LOGD(c) << "  focusing client; focus window = " << WinID(focus_window);
