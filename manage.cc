@@ -283,8 +283,11 @@ void applyGravity(Client* c) {
 
 void getTransientFor(Client* c) {
   Window trans = None;
-  XGetTransientForHint(dpy, c->window, &trans);
-  c->trans = trans;
+  // XGetTransientForHint returns a Status, which is zero on failure.
+  // That can happen if we got a properly notify even for a just-deleted window.
+  if (XGetTransientForHint(dpy, c->window, &trans)) {
+    c->trans = trans;
+  }
 }
 
 void withdraw(Client* c) {
@@ -299,9 +302,8 @@ void withdraw(Client* c) {
   // Flush and ignore any errors. X11 sends us an UnmapNotify before it
   // sends us a DestroyNotify. That means we can get here without knowing
   // whether the relevant window still exists.
-  ignore_badwindow = 1;
+  ScopedIgnoreBadWindow ignorer;
   XSync(dpy, false);
-  ignore_badwindow = 0;
 }
 
 /*ARGSUSED*/
@@ -366,7 +368,8 @@ void getNormalHints(Client* c) {
 
   // Do the get.
   long msize;
-  if (XGetWMNormalHints(dpy, c->window, &c->size, &msize) == 0) {
+  // XGetWMNormalHints returns a Status, so 0 means error.
+  if (XGetWMNormalHints(dpy, c->window, &c->size, &msize)) {
     LOGD(c) << "Got normal hints: " << c->size;
     c->size.flags = 0;
   } else {

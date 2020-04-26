@@ -648,14 +648,18 @@ void EvConfigureNotify(XEvent* ev) {
 
 void EvDestroyNotify(XEvent* ev) {
   Window w = ev->xdestroywindow.window;
-  Client* c = LScr::I->GetClient(w);
+  // Request the client, but without scanning this window's parents for it.
+  // The window is gone, so any attempt to scan the window tree will result in
+  // errors.
+  Client* c = LScr::I->GetClient(w, false);
   if (c == 0) {
+    LOGI() << "No client to remove.";
     return;
   }
 
-  ignore_badwindow = 1;
+  ScopedIgnoreBadWindow ignorer;
+  LOGI() << "Removing client";
   Client_Remove(c);
-  ignore_badwindow = 0;
 }
 
 void EvClientMessage(XEvent* ev) {

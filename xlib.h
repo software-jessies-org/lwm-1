@@ -48,6 +48,8 @@ extern Window CreateNamedWindow(const std::string& name,
                                 unsigned long border_colour,
                                 unsigned long background_colour);
 
+extern bool IsLWMWindow(Window w);
+
 struct WindowTree {
   Window self;
   Window parent;

@@ -413,7 +413,7 @@ void ewmh_set_strut() {
 // about hidden windows. It seems silly to reserve space for an invisible
 // window, but the spec allows it. Ho Hum...		jfc
 void ewmh_get_strut(Client* c) {
-  if (c == NULL) {
+  if (c == nullptr) {
     return;
   }
   Atom rt = 0;

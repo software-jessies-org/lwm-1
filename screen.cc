@@ -120,7 +120,9 @@ void LScr::InitEWMH() {
 void LScr::ScanWindowTree() {
   xlib::WindowTree wt = xlib::WindowTree::Query(dpy_, root_);
   for (const Window w : wt.children) {
-    AddClient(w);
+    if (!xlib::IsLWMWindow(w)) {
+      AddClient(w);
+    }
   }
   // Tell all the clients they don't have input focus. This has two effects:
   // 1: the client will respond by drawing its border (always)
@@ -134,8 +136,8 @@ void LScr::ScanWindowTree() {
 }
 
 Client* LScr::GetOrAddClient(Window w) {
-  if (w == Popup() || w == Menu()) {
-    return nullptr;  // No client for our own popup windows.
+  if (xlib::IsLWMWindow(w)) {
+    return nullptr;  // No client for our own windows.
   }
   Client* c = GetClient(w);
   if (c) {
@@ -195,7 +197,7 @@ void LScr::Furnish(Client* c) {
   parents_[c->parent] = c;
 }
 
-Client* LScr::GetClient(Window w) const {
+Client* LScr::GetClient(Window w, bool scan_parents) const {
   if (w == 0 || w == Root()) {
     return nullptr;
   }
@@ -207,6 +209,14 @@ Client* LScr::GetClient(Window w) const {
     const auto it = clients_.find(w);
     if (it != clients_.end()) {
       return it->second;
+    }
+    // scan_parents must be disabled when we're responding to a DestroyNotify
+    // event. We'll get a notification of the 'c->window' window as well, but
+    // we should just silently ignore the destruction of all its subwindows.
+    // If we fail to do this, the ParentOf is going to fail, because the window
+    // doesn't exist any more.
+    if (!scan_parents) {
+      return nullptr;
     }
     w = xlib::WindowTree::ParentOf(w);
   }

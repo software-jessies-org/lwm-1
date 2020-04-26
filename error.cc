@@ -23,7 +23,15 @@
 
 #include "lwm.h"
 
-int ignore_badwindow;
+static bool ignore_badwindow;
+
+ScopedIgnoreBadWindow::ScopedIgnoreBadWindow() : old_(ignore_badwindow) {
+  ignore_badwindow = true;
+}
+
+ScopedIgnoreBadWindow::~ScopedIgnoreBadWindow() {
+  ignore_badwindow = old_;
+}
 
 void panic(const char* s) {
   fprintf(stderr, "%s: %s\n", argv0, s);

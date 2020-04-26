@@ -403,7 +403,11 @@ class LScr {
   // GetClient returns the Client which owns the given window (including if w
   // is a sub-window of the main client window). Returns nullptr if there is
   // no client allocated for this window.
-  Client* GetClient(Window w) const;
+  // The scan_parents=true argument is usually desirable, as we want to know
+  // the client corresponding to sub-windows too. However, we really don't want
+  // to do a search for the client during a DestroyNotify, as all the windows
+  // are gone.
+  Client* GetClient(Window w, bool scan_parents = true) const;
 
   // GetOrAddClient either returns the existing client, or creates a new one
   // and generates relevant window furniture. This may return nullptr if the
@@ -548,7 +552,20 @@ extern int titleBarHeight();
 extern void DispatchXEvent(XEvent*);
 
 /* error.cc */
-extern int ignore_badwindow;
+// Create one of these in a scope to temporary switch off reporting of
+// 'BadWindow' errors. This is needed in some cases because some events can
+// happen on windows which have already been deleted.
+// This will save and restore the previous ignore state, so it's safe to nest
+// these.
+class ScopedIgnoreBadWindow {
+ public:
+  ScopedIgnoreBadWindow();
+  ~ScopedIgnoreBadWindow();
+
+ private:
+  bool old_;
+};
+
 extern int errorHandler(Display*, XErrorEvent*);
 extern void panic(const char*);
 

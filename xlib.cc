@@ -1,5 +1,7 @@
 #include "lwm.h"
 
+#include <set>
+
 namespace xlib {
 
 int XMoveResizeWindow(Window w, int x, int y, unsigned width, unsigned height) {
@@ -65,6 +67,8 @@ int XConfigureWindow(Window w, unsigned int val_mask, XWindowChanges* v) {
   return res;
 }
 
+std::set<Window> lwm_owned_windows;
+
 Window CreateNamedWindow(const std::string& name,
                          const Rect& rect,
                          unsigned int border_width,
@@ -74,6 +78,7 @@ Window CreateNamedWindow(const std::string& name,
   const Window w = XCreateSimpleWindow(
       dpy, LScr::I->Root(), rect.xMin, rect.yMin, rect.width(), rect.height(),
       border_width, border_colour, background_colour);
+  lwm_owned_windows.insert(w);
 
   // There are two functions that could set the title of a window. We use the
   // more modern one, XSetWMName. The older one, XStoreName, returns BadRequest
@@ -89,6 +94,10 @@ Window CreateNamedWindow(const std::string& name,
   // https://tronche.com/gui/x/xlib/ICC/client-to-window-manager/XSetWMName.html
   XSetWMName(dpy, w, &name_prop);
   return w;
+}
+
+bool IsLWMWindow(Window w) {
+  return lwm_owned_windows.count(w);
 }
 
 WindowTree WindowTree::Query(Display* dpy, Window w) {
