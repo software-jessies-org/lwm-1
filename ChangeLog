@@ -1,6 +1,14 @@
 Change Log for "lwm"
 
 
+2020-04-26	pn	Basel
+	Moved geometry declarations from lwm.h to geometry.h.
+
+	Added CreateNamedWindow function in xlib.(cc|h), which does the normal
+	create window call but also assigns it a name. This means we can now
+	see what each LWM window is for in 'xwininfo -root -tree'.
+
+
 2020-04-25	pn	Basel
 	Gave xlib.(cc|h) a namespace, and added there a bunch of shim functions
 	which call same-named Xlib functions. Changed code around LWM to call

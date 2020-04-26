@@ -6,7 +6,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "lwm.h"
+#include "geometry.h"
 
 bool isLeftEdge(Edge e) {
   return e == ETopLeft || e == ELeft || e == EBottomLeft;

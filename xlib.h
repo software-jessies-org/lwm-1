@@ -19,6 +19,8 @@
 #include <X11/cursorfont.h>
 #include <X11/extensions/Xrandr.h>
 
+#include "geometry.h"
+
 namespace xlib {
 
 extern int XMoveResizeWindow(Window w,
@@ -38,6 +40,13 @@ extern int XRaiseWindow(Window w);
 extern int XLowerWindow(Window w);
 
 extern int XConfigureWindow(Window w, unsigned int val_mask, XWindowChanges* v);
+
+// Creates a window with the given properties, whose parent is the root window.
+extern Window CreateNamedWindow(const std::string& name,
+                                const Rect& rect,
+                                unsigned int border_width,
+                                unsigned long border_colour,
+                                unsigned long background_colour);
 
 struct WindowTree {
   Window self;

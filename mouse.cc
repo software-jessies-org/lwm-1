@@ -55,14 +55,13 @@ void Hider::showHighlightBox(int itemIndex) {
   }
   if (!highlightL) {
     // No highlight windows created yet; create them now.
-    Display* dpy = LScr::I->Dpy();
-    const Window root = LScr::I->Root();
     const unsigned long col =
         Resources::I->GetColour(Resources::WINDOW_HIGHLIGHT_COLOUR);
-    highlightL = XCreateSimpleWindow(dpy, root, 0, 0, 1, 1, 1, col, col);
-    highlightR = XCreateSimpleWindow(dpy, root, 0, 0, 1, 1, 1, col, col);
-    highlightT = XCreateSimpleWindow(dpy, root, 0, 0, 1, 1, 1, col, col);
-    highlightB = XCreateSimpleWindow(dpy, root, 0, 0, 1, 1, 1, col, col);
+    Rect r{0, 0, 1, 1};
+    highlightL = xlib::CreateNamedWindow("LWM highlight L", r, 1, col, col);
+    highlightR = xlib::CreateNamedWindow("LWM highlight R", r, 1, col, col);
+    highlightT = xlib::CreateNamedWindow("LWM highlight T", r, 1, col, col);
+    highlightB = xlib::CreateNamedWindow("LWM highlight B", r, 1, col, col);
   }
   Client* c = LScr::I->GetClient(open_content_[itemIndex].w);
   if (!c) {

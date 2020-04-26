@@ -57,9 +57,10 @@ void LScr::Init() {
   const unsigned int fg = Resources::I->GetColour(Resources::POPUP_TEXT_COLOUR);
   const unsigned int bg =
       Resources::I->GetColour(Resources::POPUP_BACKGROUND_COLOUR);
-  popup_ = XCreateSimpleWindow(dpy_, root_, 0, 0, 1, 1, 1, fg, bg);
+  Rect r{0, 0, 1, 1};
+  popup_ = xlib::CreateNamedWindow("LWM size popup", r, 1, fg, bg);
   XChangeWindowAttributes(dpy_, popup_, CWEventMask, &attr);
-  menu_ = XCreateSimpleWindow(dpy_, root_, 0, 0, 1, 1, 1, fg, bg);
+  menu_ = xlib::CreateNamedWindow("LWM unhide menu", r, 1, fg, bg);
   XChangeWindowAttributes(dpy_, menu_, CWEventMask, &attr);
 
   // Announce our interest in the root_ window.
@@ -80,7 +81,8 @@ void LScr::Init() {
 
 void LScr::InitEWMH() {
   // Announce EWMH compatibility on the screen.
-  ewmh_compat_ = XCreateSimpleWindow(dpy_, root_, -200, -200, 1, 1, 0, 0, 0);
+  Rect r{-200, -200, 1, 1};
+  ewmh_compat_ = xlib::CreateNamedWindow("LWM EWMH", r, 0, 0, 0);
   XChangeProperty(dpy_, ewmh_compat_, ewmh_atom[_NET_WM_NAME],
                   utf8_string_atom_, XA_CURSOR, PropModeReplace,
                   (const unsigned char*)"lwm", 3);
@@ -173,9 +175,11 @@ Client* LScr::AddClient(Window w) {
 }
 
 void LScr::Furnish(Client* c) {
-  c->parent = XCreateSimpleWindow(
-      dpy_, root_, c->size.x, c->size.y - textHeight(), c->size.width,
-      c->size.height + textHeight(), 1, black(), white());
+  Rect r = Rect::FromXYWH(c->size.x, c->size.y - textHeight(), c->size.width,
+                          c->size.height + textHeight());
+  std::ostringstream name;
+  name << "LWM frame for " << WinID(c->window);
+  c->parent = xlib::CreateNamedWindow(name.str(), r, 1, black(), white());
   XSetWindowAttributes attr;
   // DO NOT SET PointerMotionHintMask! Doing so allows X to send just one
   // notification to the window until the key or button state changes. This

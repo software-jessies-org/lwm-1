@@ -25,7 +25,7 @@ CCLINK=g++
 CXXFLAGS=-std=c++14 -g3 -O0 -Wall -Werror -Wextra -Wpedantic -Wno-sign-compare -I/usr/include/freetype2
 LDOPTIONS=-g3 -lXft -rdynamic
 
-HEADERS = lwm.h ewmh.h xlib.h log.h
+HEADERS = lwm.h ewmh.h xlib.h log.h geometry.h
 SRCS = log.cc lwm.cc manage.cc mouse.cc client.cc cursor.cc error.cc disp.cc shape.cc resource.cc session.cc screen.cc ewmh.cc geometry.cc xlib.cc debug.cc tests.cc
 OBJS = ${SRCS:.cc=.o}
 

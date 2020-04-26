@@ -65,6 +65,32 @@ int XConfigureWindow(Window w, unsigned int val_mask, XWindowChanges* v) {
   return res;
 }
 
+Window CreateNamedWindow(const std::string& name,
+                         const Rect& rect,
+                         unsigned int border_width,
+                         unsigned long border_colour,
+                         unsigned long background_colour) {
+  // https://tronche.com/gui/x/xlib/window/XCreateWindow.html
+  const Window w = XCreateSimpleWindow(
+      dpy, LScr::I->Root(), rect.xMin, rect.yMin, rect.width(), rect.height(),
+      border_width, border_colour, background_colour);
+
+  // There are two functions that could set the title of a window. We use the
+  // more modern one, XSetWMName. The older one, XStoreName, returns BadRequest
+  // errors, despite the fact that it works just fine.
+  XTextProperty name_prop{};
+  // const_cast needed because the xlib function takes a non-const pointer.
+  char* c_name = const_cast<char*>(name.c_str());
+  // XStringListToTextProperty returns 0 on failure.
+  if (!XStringListToTextProperty(&c_name, 1, &name_prop)) {
+    LOGE() << "TextProperty generation for " << name << " failed";
+    return w;
+  }
+  // https://tronche.com/gui/x/xlib/ICC/client-to-window-manager/XSetWMName.html
+  XSetWMName(dpy, w, &name_prop);
+  return w;
+}
+
 WindowTree WindowTree::Query(Display* dpy, Window w) {
   WindowTree res = {};
   Window* ch = nullptr;

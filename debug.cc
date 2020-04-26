@@ -264,9 +264,8 @@ void DebugCLI::ResetDeadZones(const vector<Rect>& visible) {
 
   const unsigned long dead_colour = deadColour();
   for (const Rect& r : dead) {
-    const Window w =
-        XCreateSimpleWindow(dpy, LScr::I->Root(), r.xMin, r.yMin, r.width(),
-                            r.height(), 0, dead_colour, dead_colour);
+    const Window w = xlib::CreateNamedWindow("LWM dead zone", r, 0, dead_colour,
+                                             dead_colour);
     xlib::XMapRaised(w);
     dead_zones_.push_back(w);
   }
