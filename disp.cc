@@ -597,7 +597,7 @@ void EvConfigureRequest(XEvent* ev) {
 
   LOGD(c) << "XConfigureWindow of " << WinID(e->window)
           << "; mask=" << XCfgValMask(e->value_mask) << ": " << wc;
-  // xlib::XConfigureWindow(e->window, e->value_mask, &wc);
+  xlib::XConfigureWindow(e->window, e->value_mask, &wc);
 
   if (c->window == e->window) {
     if (c->framed) {
@@ -653,12 +653,10 @@ void EvDestroyNotify(XEvent* ev) {
   // errors.
   Client* c = LScr::I->GetClient(w, false);
   if (c == 0) {
-    LOGI() << "No client to remove.";
     return;
   }
 
   ScopedIgnoreBadWindow ignorer;
-  LOGI() << "Removing client";
   Client_Remove(c);
 }
 
@@ -827,6 +825,10 @@ void EvPropertyNotify(XEvent* ev) {
   if (c == 0) {
     return;
   }
+  // This function can be called for a window that has already been destroyed.
+  // That's fine; we'll expect functions we call to handle errors properly, but
+  // we'll stomp on the printing of error logs.
+  ScopedIgnoreBadWindow ignorer;
 
   if (e->atom == _mozilla_url || e->atom == XA_WM_NAME) {
     LOGD(c) << "Property change: XA_WM_NAME";
