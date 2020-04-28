@@ -419,33 +419,6 @@ std::ostream& operator<<(std::ostream& os, const XConfigureRequestEvent& e) {
   return os;
 }
 
-std::ostream& operator<<(std::ostream& os, const XWindowChanges& c) {
-  os << Rect::FromXYWH(c.x, c.y, c.width, c.height) << ", b=" << c.border_width;
-  return os;
-}
-
-struct XCfgValMask {
-  explicit XCfgValMask(unsigned m) : m(m) {}
-  unsigned long m;
-};
-
-char upper(char c, bool up) {
-  return up ? toupper(c) : tolower(c);
-}
-
-std::ostream& operator<<(std::ostream& os, const XCfgValMask& m) {
-#define OP(flag, ch) os << upper(ch, m.m & flag)
-  OP(CWX, 'x');
-  OP(CWY, 'y');
-  OP(CWWidth, 'w');
-  OP(CWHeight, 'h');
-  OP(CWBorderWidth, 'b');
-  OP(CWSibling, 'i');
-  OP(CWStackMode, 't');
-#undef OP
-  return os;
-}
-
 void moveResize(Window w, const Rect& r) {
   xlib::XMoveResizeWindow(w, r.xMin, r.yMin, r.width(), r.height());
 }
@@ -572,9 +545,6 @@ void EvConfigureRequest(XEvent* ev) {
       wc.border_width = 1;
       wc.sibling = e->above;
       wc.stack_mode = e->detail;
-
-      LOGD(c) << "XConfigureWindow of " << WinID(e->parent)
-              << "; mask=" << XCfgValMask(e->value_mask) << ": " << wc;
       xlib::XConfigureWindow(e->parent, e->value_mask, &wc);
       c->SendConfigureNotify();
     }
@@ -594,9 +564,6 @@ void EvConfigureRequest(XEvent* ev) {
   wc.sibling = e->above;
   wc.stack_mode = e->detail;
   e->value_mask |= CWBorderWidth;
-
-  LOGD(c) << "XConfigureWindow of " << WinID(e->window)
-          << "; mask=" << XCfgValMask(e->value_mask) << ": " << wc;
   xlib::XConfigureWindow(e->window, e->value_mask, &wc);
 
   if (c->window == e->window) {
@@ -709,6 +676,7 @@ void EvClientMessage(XEvent* ev) {
     if (e->data.l[0] & (1 << 11)) {
       ev.xconfigurerequest.value_mask |= CWHeight;
     }
+    LOGI() << "Bit of a hack for " << WinID(e->window);
     EvConfigureRequest(&ev);
     return;
   }

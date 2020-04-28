@@ -704,7 +704,9 @@ class DebugCLI {
   void Init(const std::vector<std::string>& init_commands);
 
   static bool DebugEnabled(const Client* c);
+  static bool DebugEnabled(Window w);
   static std::string NameFor(const Client* c);
+  static std::string NameFor(Window w);
 
   // Called by LScr on client appearance/disappearance. Has no effect if
   // debugging is disabled.
@@ -716,9 +718,9 @@ class DebugCLI {
   void CmdXRandr(std::string line);
   void CmdDbg(std::string line);
   void ResetDeadZones(const std::vector<Rect>& visible);
-  bool IsDebugEnabled(const Client* c);
+  bool IsDebugEnabled(Window w);
   bool DisableDebugging(Window w);
-  std::string LookupNameFor(const Client* c);
+  std::string LookupNameFor(Window w);
 
   bool debug_new_;
 

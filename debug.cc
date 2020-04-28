@@ -172,29 +172,40 @@ DebugCLI::DebugCLI() {
 
 // static
 bool DebugCLI::DebugEnabled(const Client* c) {
-  if (!debugCLI || !c) {
-    return false;
-  }
-  return debugCLI->IsDebugEnabled(c);
+  return c && (DebugEnabled(c->window) || DebugEnabled(c->parent));
 }
 
-bool DebugCLI::IsDebugEnabled(const Client* c) {
-  return debug_windows_.count(c->window) || debug_windows_.count(c->parent);
+// static
+bool DebugCLI::DebugEnabled(Window w) {
+  return debugCLI && debugCLI->IsDebugEnabled(w);
+}
+
+bool DebugCLI::IsDebugEnabled(Window w) {
+  return debug_windows_.count(w);
 }
 
 // static
 string DebugCLI::NameFor(const Client* c) {
-  if (!debugCLI || !c) {
+  if (!c) {
     return "";
   }
-  return debugCLI->LookupNameFor(c);
+  std::string res = NameFor(c->window);
+  if (res.empty()) {
+    res = NameFor(c->parent);
+  }
+  return res;
 }
 
-string DebugCLI::LookupNameFor(const Client* c) {
-  map<Window, string>::iterator it = debug_windows_.find(c->window);
-  if (it == debug_windows_.end()) {
-    it = debug_windows_.find(c->parent);
+// static
+string DebugCLI::NameFor(Window w) {
+  if (!debugCLI) {
+    return "";
   }
+  return debugCLI->LookupNameFor(w);
+}
+
+string DebugCLI::LookupNameFor(Window w) {
+  map<Window, string>::iterator it = debug_windows_.find(w);
   if (it == debug_windows_.end()) {
     return "";
   }
@@ -212,6 +223,7 @@ void DebugCLI::NotifyClientAdd(Client* c) {
   char buf[64];
   snprintf(buf, sizeof(buf), "auto%d", name_counter++);
   debugCLI->debug_windows_[c->window] = buf;
+  debugCLI->debug_windows_[c->parent] = buf;
   LOGD(c) << "Debugging auto-enabled for client";
 }
 

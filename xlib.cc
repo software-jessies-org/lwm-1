@@ -6,6 +6,8 @@ namespace xlib {
 
 int XMoveResizeWindow(Window w, int x, int y, unsigned width, unsigned height) {
   // https://tronche.com/gui/x/xlib/window/XMoveResizeWindow.html
+  LOGD(w) << "XMoveResizeWindow(" << WinID(w) << ") -> " << x << "," << y << " "
+          << width << "x" << height;
   int res = ::XMoveResizeWindow(dpy, w, x, y, width, height);
   // Possible errors: BadValue, BadWindow.
   return res;
@@ -13,6 +15,7 @@ int XMoveResizeWindow(Window w, int x, int y, unsigned width, unsigned height) {
 
 int XMoveWindow(Window w, int x, int y) {
   // https://tronche.com/gui/x/xlib/window/XMoveWindow.html
+  LOGD(w) << "XMoveWindow(" << WinID(w) << ") -> " << x << "," << y;
   int res = ::XMoveWindow(dpy, w, x, y);
   // Possible errors: BadWindow.
   return res;
@@ -20,6 +23,8 @@ int XMoveWindow(Window w, int x, int y) {
 
 int XReparentWindow(Window w, Window new_parent, int x, int y) {
   // https://tronche.com/gui/x/xlib/window-and-session-manager/XReparentWindow.html
+  LOGD(w) << "XReparentWindow(" << WinID(w)
+          << ") -> new parent = " << WinID(new_parent);
   int res = ::XReparentWindow(dpy, w, new_parent, x, y);
   // Possible errors: BadMatch, BadWindow.
   return res;
@@ -27,6 +32,7 @@ int XReparentWindow(Window w, Window new_parent, int x, int y) {
 
 int XMapWindow(Window w) {
   // https://tronche.com/gui/x/xlib/window/XMapWindow.html
+  LOGD(w) << "XMapWindow(" << WinID(w) << ")";
   int res = ::XMapWindow(dpy, w);
   // Possible errors: BadWindow.
   return res;
@@ -34,6 +40,7 @@ int XMapWindow(Window w) {
 
 int XMapRaised(Window w) {
   // https://tronche.com/gui/x/xlib/window/XMapRaised.html
+  LOGD(w) << "XMapRaised(" << WinID(w) << ")";
   int res = ::XMapRaised(dpy, w);
   // Possible errors: BadWindow.
   return res;
@@ -41,6 +48,7 @@ int XMapRaised(Window w) {
 
 int XUnmapWindow(Window w) {
   // https://tronche.com/gui/x/xlib/window/XUnmapWindow.html
+  LOGD(w) << "XUnmapWindow(" << WinID(w) << ")";
   int res = ::XUnmapWindow(dpy, w);
   // Possible errors: BadWindow.
   return res;
@@ -48,6 +56,7 @@ int XUnmapWindow(Window w) {
 
 int XRaiseWindow(Window w) {
   // https://tronche.com/gui/x/xlib/window/XRaiseWindow.html
+  LOGD(w) << "XRaiseWindow(" << WinID(w) << ")";
   int res = ::XRaiseWindow(dpy, w);
   // Possible errors: BadWindow.
   return res;
@@ -55,13 +64,36 @@ int XRaiseWindow(Window w) {
 
 int XLowerWindow(Window w) {
   // https://tronche.com/gui/x/xlib/window/XLowerWindow.html
+  LOGD(w) << "XLowerWindow(" << WinID(w) << ")";
   int res = ::XLowerWindow(dpy, w);
   // Possible errors: BadWindow.
   return res;
 }
 
+struct MaskedChanges {
+  unsigned int mask;
+  XWindowChanges* v;
+};
+
+std::ostream& operator<<(std::ostream& os, const MaskedChanges& mc) {
+#define OUT(flag, var) \
+  if (mc.mask & flag)  \
+  os << " " #var "->" << mc.v->var
+  OUT(CWX, x);
+  OUT(CWY, y);
+  OUT(CWWidth, width);
+  OUT(CWHeight, height);
+  OUT(CWBorderWidth, border_width);
+  OUT(CWSibling, sibling);
+  OUT(CWStackMode, stack_mode);
+#undef OUT
+  return os;
+}
+
 int XConfigureWindow(Window w, unsigned int val_mask, XWindowChanges* v) {
   // https://tronche.com/gui/x/xlib/window/XConfigureWindow.html
+  LOGD(w) << "XConfigureWindow(" << WinID(w) << ")"
+          << MaskedChanges{val_mask, v};
   int res = ::XConfigureWindow(dpy, w, val_mask, v);
   // Possible errors: BadMatch, BadValue, BadWindow.
   return res;
