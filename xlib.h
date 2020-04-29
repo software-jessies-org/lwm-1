@@ -30,6 +30,7 @@ extern int XMoveResizeWindow(Window w,
                              unsigned height);
 
 extern int XMoveWindow(Window w, int x, int y);
+extern int XResizeWindow(Window w, unsigned width, unsigned height);
 
 extern int XReparentWindow(Window w, Window new_parent, int x, int y);
 
@@ -40,6 +41,9 @@ extern int XRaiseWindow(Window w);
 extern int XLowerWindow(Window w);
 
 extern int XConfigureWindow(Window w, unsigned int val_mask, XWindowChanges* v);
+extern int XChangeWindowAttributes(Window w,
+                                   unsigned int val_mask,
+                                   XSetWindowAttributes* v);
 
 // Creates a window with the given properties, whose parent is the root window.
 extern Window CreateNamedWindow(const std::string& name,

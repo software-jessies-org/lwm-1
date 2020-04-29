@@ -661,7 +661,7 @@ extern void Client_ResetAllCursors() {
     }
     XSetWindowAttributes attr{};
     attr.cursor = LScr::I->Cursors()->Root();
-    XChangeWindowAttributes(dpy, c->parent, CWCursor, &attr);
+    xlib::XChangeWindowAttributes(c->parent, CWCursor, &attr);
     c->cursor = ENone;
   }
 }

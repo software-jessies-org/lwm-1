@@ -414,7 +414,7 @@ void EvUnmapNotify(XEvent* ev) {
 }
 
 std::ostream& operator<<(std::ostream& os, const XConfigureRequestEvent& e) {
-  os << (e.send_event ? "S" : "s") << e.serial << WinID(e.window) << " "
+  os << (e.send_event ? "S" : "s") << e.serial << " " << WinID(e.window) << " "
      << Rect::FromXYWH(e.x, e.y, e.width, e.height) << ", b=" << e.border_width;
   return os;
 }
@@ -593,25 +593,7 @@ std::ostream& operator<<(std::ostream& os, const XConfigureEvent& e) {
   return os;
 }
 
-void EvConfigureNotify(XEvent* ev) {
-  if (current_dragger) {
-    // This is probably us moving the window around, so ignore it.
-    // TODO: Check if the client is the one being molested, otherwise we'll miss
-    // invalid openings if we're dragging.
-    return;
-  }
-  const XConfigureEvent& xc = ev->xconfigure;
-  Client* c = LScr::I->GetClient(xc.window);
-  LOGD(c) << "ConfigureNotify: " << xc;
-  if (!c || !c->framed || c->IsHidden()) {
-    return;
-  }
-  if (c->parent != xc.window) {
-    // Only force our own window to be on-screen, not any random
-    // sub-window contained within it.
-    return;
-  }
-}
+void EvConfigureNotify(XEvent*) {}
 
 void EvDestroyNotify(XEvent* ev) {
   Window w = ev->xdestroywindow.window;
@@ -918,7 +900,7 @@ void EvEnterNotify(XEvent* ev) {
     // repeating this code everywhere.
     XSetWindowAttributes attr;
     attr.cursor = LScr::I->Cursors()->Root();
-    XChangeWindowAttributes(dpy, c->parent, CWCursor, &attr);
+    xlib::XChangeWindowAttributes(c->parent, CWCursor, &attr);
     // Record that the current cursor is whatever the child window says it is.
     // This has to be different from any Edge we want to trigger when the mouse
     // crosses window furniture, otherwise we may fail to trigger a cursor
@@ -946,7 +928,7 @@ void EvMotionNotify(XEvent* ev) {
     if (edge != EContents && c->cursor != edge) {
       XSetWindowAttributes attr;
       attr.cursor = LScr::I->Cursors()->ForEdge(edge);
-      XChangeWindowAttributes(dpy, c->parent, CWCursor, &attr);
+      xlib::XChangeWindowAttributes(c->parent, CWCursor, &attr);
       c->cursor = edge;
     }
   }

@@ -322,7 +322,7 @@ void DebugCLI::ProcessLine(string line) {
     cout << "  help    print this help message\n";
     cout << "  ls      list active clients\n";
     cout << "  xrandr  simulate xrandr desktop screen config changes\n";
-  } else {
+  } else if (cmd != "") {  // Silently ignore the user hammering Return
     cout << "Didn't understand command '" << cmd << "'\n";
   }
 }

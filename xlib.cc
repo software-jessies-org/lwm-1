@@ -21,6 +21,14 @@ int XMoveWindow(Window w, int x, int y) {
   return res;
 }
 
+int XResizeWindow(Window w, unsigned width, unsigned height) {
+  // https://tronche.com/gui/x/xlib/window/XResizeWindow.html
+  LOGD(w) << "XResizeWindow(" << WinID(w) << ") -> " << width << "x" << height;
+  int res = ::XResizeWindow(dpy, w, width, height);
+  // Possible errors: BadValue, BadWindow.
+  return res;
+}
+
 int XReparentWindow(Window w, Window new_parent, int x, int y) {
   // https://tronche.com/gui/x/xlib/window-and-session-manager/XReparentWindow.html
   LOGD(w) << "XReparentWindow(" << WinID(w)
@@ -95,6 +103,45 @@ int XConfigureWindow(Window w, unsigned int val_mask, XWindowChanges* v) {
   LOGD(w) << "XConfigureWindow(" << WinID(w) << ")"
           << MaskedChanges{val_mask, v};
   int res = ::XConfigureWindow(dpy, w, val_mask, v);
+  // Possible errors: BadMatch, BadValue, BadWindow.
+  return res;
+}
+
+struct MaskedAttributes {
+  unsigned int mask;
+  XSetWindowAttributes* v;
+};
+
+std::ostream& operator<<(std::ostream& os, const MaskedAttributes& mc) {
+#define OUT(flag, var) \
+  if (mc.mask & flag)  \
+  os << " " #var "->" << mc.v->var
+  OUT(CWBackPixmap, background_pixmap);
+  OUT(CWBackPixel, background_pixel);
+  OUT(CWBorderPixmap, border_pixmap);
+  OUT(CWBorderPixel, border_pixel);
+  OUT(CWBitGravity, bit_gravity);
+  OUT(CWWinGravity, win_gravity);
+  OUT(CWBackingStore, backing_store);
+  OUT(CWBackingPlanes, backing_planes);
+  OUT(CWBackingPixel, backing_pixel);
+  OUT(CWOverrideRedirect, override_redirect);
+  OUT(CWSaveUnder, save_under);
+  OUT(CWEventMask, event_mask);
+  OUT(CWDontPropagate, do_not_propagate_mask);
+  OUT(CWColormap, colormap);
+  OUT(CWCursor, cursor);
+#undef OUT
+  return os;
+}
+
+int XChangeWindowAttributes(Window w,
+                            unsigned int val_mask,
+                            XSetWindowAttributes* v) {
+  // https://tronche.com/gui/x/xlib/window/XChangeWindowAttributes.html
+  LOGD(w) << "XChangeWindowAttributes(" << WinID(w) << ")"
+          << MaskedAttributes{val_mask, v};
+  int res = ::XChangeWindowAttributes(dpy, w, val_mask, v);
   // Possible errors: BadMatch, BadValue, BadWindow.
   return res;
 }

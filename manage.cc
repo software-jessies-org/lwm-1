@@ -228,8 +228,8 @@ void manage(Client* c) {
                     FocusChangeMask;
   attr.win_gravity = StaticGravity;
   attr.do_not_propagate_mask = ButtonMask;
-  XChangeWindowAttributes(dpy, c->window,
-                          CWEventMask | CWWinGravity | CWDontPropagate, &attr);
+  xlib::XChangeWindowAttributes(
+      c->window, CWEventMask | CWWinGravity | CWDontPropagate, &attr);
 
   if (c->framed) {
     xlib::XReparentWindow(c->window, c->parent, borderWidth(),

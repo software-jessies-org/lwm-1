@@ -192,8 +192,8 @@ void LScr::Furnish(Client* c) {
                     SubstructureNotifyMask | PointerMotionMask;
   XChangeWindowAttributes(dpy_, c->parent, CWEventMask, &attr);
 
-  XResizeWindow(dpy_, c->window, c->size.width - 2 * borderWidth(),
-                c->size.height - 2 * borderWidth());
+  xlib::XResizeWindow(c->window, c->size.width - 2 * borderWidth(),
+                      c->size.height - 2 * borderWidth());
   parents_[c->parent] = c;
 }
 
