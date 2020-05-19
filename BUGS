@@ -113,11 +113,11 @@ After all, we already have a built-in debug CLI; why not add a test suite? :-)
 === MY FAVOURITE DEBUGGING ENVIRONMENT ===
 
 # Three terminals. In one, I do:
-vncserver -geometry 2000x1500 -depth 24 -name test
-vncviewer localhost:1
-# Then, after login, ctrl-z and bg to background the vncviewer.
+Xephyr :2 -screen 2000x1400 &
+xsetroot -solid Grey
+
 cd $HOME/dev/lwm
-DISPLAY=:1 ./lwm -debugcli="xrandr 800x1200+0+0 800x500+800+0;dbg auto" 2>$HOME/stderr
+DISPLAY=:2 ./lwm -debugcli="xrandr 800x1200+0+0 800x500+800+0;dbg auto" 2>$HOME/stderr
 
 # Second terminal:
 tail -f $HOME/stderr

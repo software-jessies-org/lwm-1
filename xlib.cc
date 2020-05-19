@@ -4,6 +4,10 @@
 
 namespace xlib {
 
+extern int XMoveResizeWindow(Window w, const Rect& r) {
+  return XMoveResizeWindow(w, r.xMin, r.yMin, r.width(), r.height());
+}
+
 int XMoveResizeWindow(Window w, int x, int y, unsigned width, unsigned height) {
   // https://tronche.com/gui/x/xlib/window/XMoveResizeWindow.html
   LOGD(w) << "XMoveResizeWindow(" << WinID(w) << ") -> " << x << "," << y << " "
@@ -13,12 +17,20 @@ int XMoveResizeWindow(Window w, int x, int y, unsigned width, unsigned height) {
   return res;
 }
 
+int XMoveWindow(Window w, const Point& origin) {
+  return XMoveWindow(w, origin.x, origin.y);
+}
+
 int XMoveWindow(Window w, int x, int y) {
   // https://tronche.com/gui/x/xlib/window/XMoveWindow.html
   LOGD(w) << "XMoveWindow(" << WinID(w) << ") -> " << x << "," << y;
   int res = ::XMoveWindow(dpy, w, x, y);
   // Possible errors: BadWindow.
   return res;
+}
+
+int XResizeWindow(Window w, const Area& area) {
+  return XResizeWindow(w, area.width, area.height);
 }
 
 int XResizeWindow(Window w, unsigned width, unsigned height) {
@@ -32,7 +44,8 @@ int XResizeWindow(Window w, unsigned width, unsigned height) {
 int XReparentWindow(Window w, Window new_parent, int x, int y) {
   // https://tronche.com/gui/x/xlib/window-and-session-manager/XReparentWindow.html
   LOGD(w) << "XReparentWindow(" << WinID(w)
-          << ") -> new parent = " << WinID(new_parent);
+          << ") -> new parent = " << WinID(new_parent) << " @ " << x << ","
+          << y;
   int res = ::XReparentWindow(dpy, w, new_parent, x, y);
   // Possible errors: BadMatch, BadWindow.
   return res;
@@ -143,6 +156,44 @@ int XChangeWindowAttributes(Window w,
           << MaskedAttributes{val_mask, v};
   int res = ::XChangeWindowAttributes(dpy, w, val_mask, v);
   // Possible errors: BadMatch, BadValue, BadWindow.
+  return res;
+}
+
+void SendClientMessage(Window w, Atom a, long data0, long data1) {
+  LOGD(w) << "SendClientMessage, atom " << a << ": " << data0 << ", " << data1;
+  XEvent ev{};
+  ev.xclient.type = ClientMessage;
+  ev.xclient.window = w;
+  ev.xclient.message_type = a;
+  ev.xclient.format = 32;
+  ev.xclient.data.l[0] = data0;
+  ev.xclient.data.l[1] = data1;
+  const long mask = (w == LScr::I->Root()) ? SubstructureRedirectMask : 0L;
+  ::XSendEvent(dpy, w, false, mask, &ev);
+}
+
+extern XWindowAttributes XGetWindowAttributes(Window w) {
+  XWindowAttributes res{};
+  ::XGetWindowAttributes(dpy, w, &res);
+  LOGD(w) << "XGetWindowAttributes: " << Rect::From(res);
+  return res;
+}
+
+WindowGeometry XGetGeometry(Window w) {
+  WindowGeometry res{};
+  Window parent;
+  int x, y;
+  unsigned int width, height, border_width, bpp;
+  // XGetGeometry returns a Status, which is 0 on failure.
+  if (!::XGetGeometry(dpy, w, &parent, &x, &y, &width, &height, &border_width,
+                      &bpp)) {
+    return res;  // ok = false on creation.
+  }
+  res.ok = true;
+  res.parent = parent;
+  res.rect = Rect::FromXYWH(x, y, width, height);
+  res.border_width = border_width;
+  res.bpp = bpp;
   return res;
 }
 
@@ -445,34 +496,32 @@ ImageIcon* ImageIcon::Create(Pixmap img, Pixmap mask) {
     return result->clone(pm_hash);
   }
 
-  Window ign1;
-  int xr, yr;
-  unsigned int src_width, src_height, borderWidth, depth;
-  // Get hold of the width and height of the image.
-  XGetGeometry(dpy, img, &ign1, &xr, &yr, &src_width, &src_height, &borderWidth,
-               &depth);
-  if (depth != 24) {
-    // Not going to bother trying to paint stuff that's not colourful enough.
+  const WindowGeometry geom = XGetGeometry(img);
+  // Not going to bother trying to paint stuff that's not colourful enough.
+  if (!geom.ok || geom.bpp != 24) {
     return nullptr;
   }
   // The image is too large for our needs. Figure out how big to make the
   // width and height dimensions.
   const int targetSize = targetImageIconSize();
-  const int width = (src_width < targetSize) ? src_width : targetSize;
-  const int height = (src_height < targetSize) ? src_height : targetSize;
+  const int width =
+      (geom.rect.width() < targetSize) ? geom.rect.width() : targetSize;
+  const int height =
+      (geom.rect.height() < targetSize) ? geom.rect.height() : targetSize;
 
-  XImage* orig_img =
-      XGetImage(dpy, img, 0, 0, src_width, src_height, 0xffffff, ZPixmap);
+  XImage* orig_img = XGetImage(dpy, img, 0, 0, geom.rect.width(),
+                               geom.rect.height(), 0xffffff, ZPixmap);
   XImage* mask_img = nullptr;
   if (mask) {
-    mask_img = XGetImage(dpy, mask, 0, 0, src_width, src_height, 1, ZPixmap);
+    mask_img = XGetImage(dpy, mask, 0, 0, geom.rect.width(), geom.rect.height(),
+                         1, ZPixmap);
   }
 
   // src_img will be filled in with the data from orig_img, but with the mask
   // (and background) applied.
   XImage* src_img =
       XCreateImage(dpy, DefaultVisual(dpy, LScr::kOnlyScreenIndex), 24, ZPixmap,
-                   0, nullptr, src_width, src_height, 32, 0);
+                   0, nullptr, geom.rect.width(), geom.rect.height(), 32, 0);
   XImage* dest_img =
       XCreateImage(dpy, DefaultVisual(dpy, LScr::kOnlyScreenIndex), 24, ZPixmap,
                    0, nullptr, width, height, 32, 0);
@@ -492,7 +541,7 @@ ImageIcon* ImageIcon::Create(Pixmap img, Pixmap mask) {
   xImageDataToImage(
       src_img, orig_img, mask_img,
       Background(LScr::I->ActiveBorder(),
-                 topBorderWidth() * src_height / targetSize,
+                 topBorderWidth() * geom.rect.height() / targetSize,
                  Resources::I->GetColour(Resources::TITLE_BG_COLOUR)));
   copyWithScaling(src_img, dest_img);
   const Pixmap active_pm = pixmapFromXImage(dest_img);

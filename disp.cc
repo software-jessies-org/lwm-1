@@ -138,52 +138,93 @@ class WindowDragger : public DragHandler {
 
 class WindowMover : public WindowDragger {
  public:
-  WindowMover(Client* c) : WindowDragger(c) {
-    window_start_ = {c->size.x, c->size.y};
-  }
+  WindowMover(Client* c)
+      : WindowDragger(c),
+        start_frame_rect_(c->FrameRect()),
+        start_content_rect_(c->ContentRect()) {}
 
   virtual void moveImpl(Client* c, int dx, int dy) {
-    const int new_x = window_start_.x + dx;
-    const int new_y = window_start_.y + dy;
-    Client_MakeSaneAndMove(c, ENone, new_x, new_y, 0, 0);
+    Rect r = Rect::Translate(start_frame_rect_, Point{dx, dy});
+    // Implement edge resistance for all of the visible areas. There can be
+    // several if we're using multiple monitors with xrandr, and they can be
+    // offset from each other. However, for each box, ensure that some part of
+    // the window is interacting with an edge.
+    // We're going to assume we always have to take struts into account, because
+    // if a window has struts set, it should be movable anyway.
+    // We only pick the first spotted edge correction factor. Otherwise if there
+    // are two screens, say, next to each other, with the same bottom location,
+    // a window that is dragged towards the bottom over the boundary will be
+    // affected twice, resulting in weird effects (the window moving upwards as
+    // it's dragged downwards).
+    int orig_dx = dx;
+    int orig_dy = dy;
+    for (const auto& vis : LScr::I->VisibleAreas(true)) {
+      // Check for top/bottom if the horizontal location of the window overlaps
+      // with that of the screen area.
+      if ((orig_dy == dy) && (r.xMin < vis.xMax) && (r.xMax > vis.xMin)) {
+        dy += getResistanceOffset(vis.yMin - r.yMin);  // Top.
+        dy -= getResistanceOffset(r.yMax - vis.yMax);  // Bottom.
+      }
+      // Check for left/right if the vertical location of the window overlaps
+      // with that of the screen area.
+      if ((orig_dx == dx) && (r.yMin < vis.yMax) && (r.yMax > vis.yMin)) {
+        dx += getResistanceOffset(vis.xMin - r.xMin);  // Left.
+        dx -= getResistanceOffset(r.xMax - vis.xMax);  // Right.
+      }
+    }
+    c->MoveTo(Rect::Translate(start_content_rect_, Point{dx, dy}));
   }
 
  private:
-  Point window_start_;
+  // The diff is expected to be the difference between a window position and
+  // some barrier (eg edge of a screen). If that difference is within
+  // 0..EDGE_RESIST, we return it; otherwise we return 0. This makes the code to
+  // apply edge resistance a simple matter of subtracting or adding the returned
+  // value.
+  int getResistanceOffset(int diff) {
+    if (diff <= 0 || diff > EDGE_RESIST) {
+      return 0;
+    }
+    return diff;
+  }
+
+  const Rect start_frame_rect_;
+  const Rect start_content_rect_;
 };
 
 class WindowResizer : public WindowDragger {
  public:
-  WindowResizer(Client* c, Edge edge) : WindowDragger(c), edge_(edge) {
-    orig_size_ = c->size;
-  }
+  WindowResizer(Client* c, Edge edge)
+      : WindowDragger(c), edge_(edge), start_content_rect_(c->ContentRect()) {}
 
   virtual void moveImpl(Client* c, int dx, int dy) {
     Client_SizeFeedback();
-    XSizeHints ns = orig_size_;
+    Rect ns = start_content_rect_;
     // Vertical.
     if (isTopEdge(edge_)) {
-      ns.y += dy;
-      ns.height -= dy;
+      ns.yMin += dy;
     }
     if (isBottomEdge(edge_)) {
-      ns.height += dy;
+      ns.yMax += dy;
     }
 
     // Horizontal.
     if (isLeftEdge(edge_)) {
-      ns.x += dx;
-      ns.width -= dx;
+      ns.xMin += dx;
     }
     if (isRightEdge(edge_)) {
-      ns.width += dx;
+      ns.xMax += dx;
     }
-    Client_MakeSaneAndMove(c, edge_, ns.x, ns.y, ns.width, ns.height);
+    // The client knows what the rules are regarding min/max size, and size
+    // increments (eg. integer numbers of characters in xterm). Let it limit our
+    // suggested size, so as to avoid unpleasantness.
+    ns = c->LimitResize(ns);
+    c->MoveResizeTo(ns);
   }
 
  private:
-  Edge edge_;
-  XSizeHints orig_size_;
+  const Edge edge_;
+  const Rect start_content_rect_;
 };
 
 // Max distance between click and release, for closing, iconising etc.
@@ -311,7 +352,6 @@ DragHandler* getDragHandlerForEvent(XEvent* ev) {
     return new WindowMover(c);
   }
   if (e->button == RESHAPE_BUTTON) {
-    xlib::XMapWindow(c->parent);
     Client_Raise(c);
     if (edge == ENone) {
       return new WindowMover(c);
@@ -323,6 +363,7 @@ DragHandler* getDragHandlerForEvent(XEvent* ev) {
 
 void EvButtonPress(XEvent* ev) {
   if (current_dragger) {
+    LOGI() << "Already doing something";
     return;  // Already doing something.
   }
   startDragging(getDragHandlerForEvent(ev), ev);
@@ -353,7 +394,7 @@ void EvCirculateRequest(XEvent* ev) {
 
 void EvMapRequest(XEvent* ev) {
   XMapRequestEvent* e = &ev->xmaprequest;
-  Client* c = LScr::I->GetOrAddClient(e->window);
+  Client* c = LScr::I->GetOrAddClient(e->window, false);
   LOGD(c) << "MapRequest";
   if (c->hidden) {
     c->Unhide();
@@ -373,7 +414,8 @@ void EvMapRequest(XEvent* ev) {
                               borderWidth() + textHeight());
       } else {
         LOGD(c) << "(map) reparenting unframed window " << WinID(c->parent);
-        xlib::XReparentWindow(c->window, c->parent, c->size.x, c->size.y);
+        const Point p = c->ContentRect().origin();
+        xlib::XReparentWindow(c->window, c->parent, p.x, p.y);
       }
       XAddToSaveSet(dpy, c->window);
     // FALLTHROUGH
@@ -383,6 +425,7 @@ void EvMapRequest(XEvent* ev) {
       xlib::XMapWindow(c->window);
       Client_Raise(c);
       c->SetState(NormalState);
+      c->SendConfigureNotify();
       break;
   }
   ewmh_set_client_list();
@@ -395,32 +438,42 @@ char const* truth(bool yes) {
 void EvUnmapNotify(XEvent* ev) {
   const XUnmapEvent& xe = ev->xunmap;
   Client* c = LScr::I->GetClient(xe.window);
-  LOGD(c) << "UnmapNotify send_event=" << truth(xe.send_event)
-          << " event=" << WinID(xe.event) << "; window=" << WinID(xe.window)
-          << "; from_configure=" << truth(xe.from_configure);
   if (c == nullptr) {
     return;
   }
-
-  // In the description of the ReparentWindow request we read: "If the window
-  // is mapped, an UnmapWindow request is performed automatically first". This
-  // might seem stupid, but it's the way it is. While a reparenting is pending
-  // we ignore UnmapWindow requests.
-  if (c->internal_state != IPendingReparenting) {
-    LOGD(c) << "Internal state is normal; withdrawing";
-    withdraw(c);
+  // Be careful here. We only want to respond to unmaps on client windows that
+  // we're managing. For example, if this isn't the direct client window,
+  // then do nothing.
+  if (c->window != xe.window) {
+    return;
   }
-  c->internal_state = INormal;
+  // Plus, when we reparent the client window to our frame, we'll receive an
+  // unmap notification with window=child window, and parent=root. Check for
+  // this, and ignore it.
+  if (xe.event == LScr::I->Root()) {
+    return;
+  }
+  // If we got here, then this is a client withdrawing its own window that we
+  // have ourselves re-framed. We therefore withdraw ourselves.
+  LOGD(c) << "Withdrawing unmapped window";
+  withdraw(c);
 }
 
 std::ostream& operator<<(std::ostream& os, const XConfigureRequestEvent& e) {
-  os << (e.send_event ? "S" : "s") << e.serial << " " << WinID(e.window) << " "
-     << Rect::FromXYWH(e.x, e.y, e.width, e.height) << ", b=" << e.border_width;
+  os << "ConfigRequestEvent " << WinID(e.window) << " (parent "
+     << WinID(e.parent) << ")";
+#define OUT(flag, var)     \
+  if (e.value_mask & flag) \
+    os << " " #var "->" << e.var;
+  OUT(CWX, x);
+  OUT(CWY, y);
+  OUT(CWWidth, width);
+  OUT(CWHeight, height);
+  OUT(CWBorderWidth, border_width);
+  OUT(CWSibling, above);
+  OUT(CWStackMode, detail);
+#undef OUT
   return os;
-}
-
-void moveResize(Window w, const Rect& r) {
-  xlib::XMoveResizeWindow(w, r.xMin, r.yMin, r.width(), r.height());
 }
 
 int absDist(int min1, int max1, int min2, int max2) {
@@ -439,7 +492,7 @@ Rect findBestScreenFor(const Rect& r, bool withStruts) {
   Rect res{};
   int ra = 0;
   for (Rect v : vis) {
-    const int area = Rect::Intersect(r, v).area();
+    const int area = Rect::Intersect(r, v).area().num_pixels();
     if (area > ra) {
       ra = area;
       res = v;
@@ -489,101 +542,103 @@ Rect makeVisible(Rect r, bool withStruts) {
 }
 
 void EvConfigureRequest(XEvent* ev) {
-  XWindowChanges wc{};
-  XConfigureRequestEvent* e = &ev->xconfigurerequest;
-  Client* c = LScr::I->GetClient(e->window);
-  if (c == nullptr) {
+  const XConfigureRequestEvent& e = ev->xconfigurerequest;
+  // There are several situations in which we can receive a configure request.
+  // Two of these are:
+  //  1: The client is setting up the initial size, before mapping the window.
+  //  2: The client has its own built-in window parts by which the user can
+  //     drag the window around (eg the Nautilus file browser).
+  //
+  // The basic thing we have to do is to allow the configure request to go
+  // through, and affect the client's window. So let's do that.
+  // Now, let's check if we're already framed and visible. If so, we also move
+  // around our frame. In this case we won't bother checking if the bounds are
+  // sensible, as the client's making this request.
+  Client* c = LScr::I->GetClient(e.window, false);
+  if (c == nullptr || c->State() != NormalState || !c->framed) {
+    XWindowChanges wc{};
+    wc.x = e.x;
+    wc.y = e.y;
+    wc.width = e.width;
+    wc.height = e.height;
+    wc.border_width = e.border_width;
+    wc.sibling = e.above;
+    wc.stack_mode = e.detail;
+    xlib::XConfigureWindow(e.window, e.value_mask, &wc);
     return;
   }
-  LOGD(c) << "ConfigureRequest: " << *e;
-
-  if (c->window == e->window) {
-    // ICCCM section 4.1.5 says that the x and y coordinates here
-    // will have been "adjusted for the border width".
-    // NOTE: this may not be the only place to bear this in mind.
-    if (e->value_mask & CWBorderWidth) {
-      e->x -= e->border_width;
-      e->y -= e->border_width;
-    }
-
-    if (e->value_mask & CWX) {
-      c->size.x = e->x;
-    }
-    if (e->value_mask & CWY) {
-      c->size.y = e->y;
-      if (c->framed) {
-        c->size.y += textHeight();
-      }
-    }
-    if (e->value_mask & CWWidth) {
-      c->size.width = e->width;
-      if (c->framed) {
-        c->size.width += 2 * borderWidth();
-      }
-    }
-    if (e->value_mask & CWHeight) {
-      c->size.height = e->height;
-      if (c->framed) {
-        c->size.height += 2 * borderWidth();
-      }
-    }
-    if (e->value_mask & CWBorderWidth) {
-      c->border = e->border_width;
-    }
-
-    if (c->parent != LScr::I->Root()) {
-      wc.x = c->size.x;
-      wc.y = c->size.y;
-      if (c->framed) {
-        wc.y -= textHeight();
-      }
-      wc.width = c->size.width;
-      wc.height = c->size.height;
-      if (c->framed) {
-        wc.height += textHeight();
-      }
-      wc.border_width = 1;
-      wc.sibling = e->above;
-      wc.stack_mode = e->detail;
-      xlib::XConfigureWindow(e->parent, e->value_mask, &wc);
-      c->SendConfigureNotify();
-    }
+  LOGD(c) << "ConfigureRequest: " << e;
+  if (!c->framed) {
+    return;
   }
-  if ((c->internal_state == INormal) && c->framed) {
-    // Offsets from outer frame window to inner window.
-    wc.x = borderWidth();
-    wc.y = titleBarHeight();
-  } else {
-    wc.x = e->x;
-    wc.y = e->y;
+  // Current situation with Nautilus is:
+  // When dragging to move, the *first* configure request has x,y = the relative
+  // position of the content window with respect to the frame window. All later
+  // requests are relative to the root. When dragging to resize (bottom edge,
+  // just above LWM's boundary), the first request has x, y = the frame origin,
+  // which makes the client window jump up and to the left, so its origin
+  // becomes that of the frame origin. Bloody weird. My best guess is that
+  // there's some client notify message that should be sent in order to let the
+  // client know where it should be placing things. Changing the move handling
+  // to add the frame rect's origin to the provided rect does *not* work - after
+  // the initial positioning, the window quickly zooms miles off out of scope of
+  // the screen.
+  // Now intercept the reconfigure and turn it into a move under our system.
+  // Only do anything if one of the size/position values changes.
+  if ((e.value_mask & (CWX | CWY | CWWidth | CWHeight)) == 0) {
+    return;
+  }
+  Rect new_rect = c->ContentRect();
+  // ICCCM section 4.1.5 says that the x and y coordinates here
+  // will have been "adjusted for the border width".
+  // In the case of reparenting (which we have done), it seems that this means
+  // the client provides the x and y coordinates of the top-left of the parent
+  // frame window (ie. the one we created and stuck the client inside).
+  // The ICCCM documentation doesn't make this clear, but testing with the
+  // Nautilus file manager suggests that this is the correct interpretation.
+  // It's damned weird is all I can say.
+  // Anyway, if you ever feel like changing this behaviour, ensure you test with
+  // Nautilus. Try dragging the window about by the thing's own internal top
+  // bar, or try resizing at the pixel or two just on the inside of the client
+  // window. With this offset-handling hack in place, the position of the
+  // window should change in a manner one might expect; without it, any drags
+  // inside the client window will cause the window (frame and all) to jump up
+  // and to the left by an amount corresponding to the offset from frame to
+  // client window.
+  const Point offset = c->ContentRectRelative().origin();
+  if (e.value_mask & CWX) {
+    int diff = (e.x + offset.x) - new_rect.xMin;
+    new_rect.xMin += diff;
+    new_rect.xMax += diff;
+  }
+  if (e.value_mask & CWY) {
+    int diff = (e.y + offset.y) - new_rect.yMin;
+    new_rect.yMin += diff;
+    new_rect.yMax += diff;
+  }
+  if (e.value_mask & CWWidth) {
+    new_rect.xMax = new_rect.xMin + e.width;
+  }
+  if (e.value_mask & CWHeight) {
+    new_rect.yMax = new_rect.yMin + e.height;
   }
 
-  wc.width = e->width;
-  wc.height = e->height;
+  XWindowChanges wc{};
+  c->FrameRect().To(wc);
+  wc.border_width = 1;
+  wc.sibling = e.above;
+  wc.stack_mode = e.detail;
+  xlib::XConfigureWindow(e.parent, e.value_mask, &wc);
+  c->SendConfigureNotify();
+
+  c->ContentRectRelative().To(wc);
   wc.border_width = 0;
-  wc.sibling = e->above;
-  wc.stack_mode = e->detail;
-  e->value_mask |= CWBorderWidth;
-  xlib::XConfigureWindow(e->window, e->value_mask, &wc);
+  xlib::XConfigureWindow(e.window, e.value_mask, &wc);
 
-  if (c->window == e->window) {
-    if (c->framed) {
-      LOGD(c) << "framed - moving/resizing to " << c->size << "; state is "
-              << (c->IsHidden()
-                      ? "hidden"
-                      : (c->IsWithdrawn()
-                             ? "withdrawn"
-                             : (c->IsNormal() ? "normal" : "unknown")));
-      Rect r_orig =
-          Rect::FromXYWH(c->size.x, c->size.y, c->size.width, c->size.height);
-      Rect r = makeVisible(r_orig, !c->HasStruts());
-      Client_MakeSaneAndMove(c, ENone, r.xMin, r.yMin, r.width(), r.height());
-    } else {
-      LOGD(c) << "unframed - moving/resizing to " << c->size;
-      const Rect& r = makeVisible(c->RectNoBorder(), !c->HasStruts());
-      moveResize(c->window, r);
-      c->SetSize(r);
-    }
+  if (new_rect.area() == c->ContentRect().area()) {
+    c->MoveTo(new_rect);
+  } else {
+    c->MoveResizeTo(new_rect);
   }
 }
 
@@ -617,22 +672,27 @@ void EvClientMessage(XEvent* ev) {
   }
   if (e->message_type == wm_change_state) {
     if (e->format == 32 && e->data.l[0] == IconicState && c->IsNormal()) {
+      LOGD(c) << "Client message: requested hide";
       c->Hide();
     }
     return;
   }
   if (e->message_type == ewmh_atom[_NET_WM_STATE] && e->format == 32) {
+    LOGD(c) << "Client message: WM state change: " << e->data.l[0] << " -> "
+            << e->data.l[1] << ", " << e->data.l[2];
     ewmh_change_state(c, e->data.l[0], e->data.l[1]);
     ewmh_change_state(c, e->data.l[0], e->data.l[2]);
     return;
   }
   if (e->message_type == ewmh_atom[_NET_ACTIVE_WINDOW] && e->format == 32) {
+    LOGD(c) << "Client message: requested set active: unhiding";
     // An EWMH enabled application has asked for this client to be made the
     // active window. Unhide also raises and gives focus to the window.
     c->Unhide();
     return;
   }
   if (e->message_type == ewmh_atom[_NET_CLOSE_WINDOW] && e->format == 32) {
+    LOGD(c) << "Client message: requested close";
     Client_Close(c);
     return;
   }
@@ -658,11 +718,13 @@ void EvClientMessage(XEvent* ev) {
     if (e->data.l[0] & (1 << 11)) {
       ev.xconfigurerequest.value_mask |= CWHeight;
     }
-    LOGI() << "Bit of a hack for " << WinID(e->window);
+    LOGD(c) << "Client message: move/resize -> " << ev.xconfigurerequest
+            << " (flags " << ev.xconfigurerequest.value_mask << ")";
     EvConfigureRequest(&ev);
     return;
   }
   if (e->message_type == ewmh_atom[_NET_WM_MOVERESIZE] && e->format == 32) {
+    LOGD(c) << "Client message: requested _NET_WM_MOVERESIZE";
     Edge edge = E_LAST;
     EWMHDirection direction = (EWMHDirection)e->data.l[2];
 
@@ -788,7 +850,8 @@ void EvPropertyNotify(XEvent* ev) {
     getTransientFor(c);
   } else if (e->atom == XA_WM_NORMAL_HINTS) {
     LOGD(c) << "Property change: XA_WM_NORMAL_HINTS";
-    getNormalHints(c);
+    // XXXXXXXXXXXXXXXXXX Reset the hints used for window sizing.
+    // getNormalHints(c);
   } else if (e->atom == ewmh_atom[_NET_WM_STRUT]) {
     LOGD(c) << "Property change: _NET_WM_STRUT";
     ewmh_get_strut(c);
@@ -812,6 +875,7 @@ void EvReparentNotify(XEvent* ev) {
   }
 
   Client* c = LScr::I->GetClient(e->window);
+  LOGD(c) << "ReparentNotify to " << WinID(c->parent);
   if (c != 0 && (c->parent == LScr::I->Root() || c->IsWithdrawn())) {
     Client_Remove(c);
   }

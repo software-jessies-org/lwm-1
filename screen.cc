@@ -121,7 +121,7 @@ void LScr::ScanWindowTree() {
   xlib::WindowTree wt = xlib::WindowTree::Query(dpy_, root_);
   for (const Window w : wt.children) {
     if (!xlib::IsLWMWindow(w)) {
-      AddClient(w);
+      AddClient(w, true);
     }
   }
   // Tell all the clients they don't have input focus. This has two effects:
@@ -135,7 +135,7 @@ void LScr::ScanWindowTree() {
   }
 }
 
-Client* LScr::GetOrAddClient(Window w) {
+Client* LScr::GetOrAddClient(Window w, bool is_startup_scan) {
   if (xlib::IsLWMWindow(w)) {
     return nullptr;  // No client for our own windows.
   }
@@ -143,33 +143,42 @@ Client* LScr::GetOrAddClient(Window w) {
   if (c) {
     return c;
   }
-  c = AddClient(w);
+  c = AddClient(w, is_startup_scan);
   DebugCLI::NotifyClientAdd(c);
   return c;
 }
 
-Client* LScr::AddClient(Window w) {
-  XWindowAttributes attr;
-  XGetWindowAttributes(dpy_, w, &attr);
+Client* LScr::AddClient(Window w, bool is_startup_scan) {
+  const XWindowAttributes attr = xlib::XGetWindowAttributes(w);
   if (attr.override_redirect) {
     return nullptr;
   }
-  Client* c = new Client(w, root_);
+  // The following check prevents us from making random stuff visible, like the
+  // currently-not-visible menu window of gummiband, or the icon-containing
+  // windows of Java apps.
+  if (is_startup_scan && attr.map_state != IsViewable) {
+    return nullptr;
+  }
+  XSizeHints size;
+  long msize;
+  DimensionLimiter xdl;
+  DimensionLimiter ydl;
+  if (XGetWMNormalHints(dpy_, w, &size, &msize)) {
+    xdl = DimensionLimiter(size.flags & PMinSize ? size.min_width : 0,
+                           size.flags & PMaxSize ? size.max_width : 0,
+                           size.flags & PBaseSize ? size.base_width : 0,
+                           size.flags & PResizeInc ? size.width_inc : 1);
+    ydl = DimensionLimiter(size.flags & PMinSize ? size.min_height : 0,
+                           size.flags & PMaxSize ? size.max_height : 0,
+                           size.flags & PBaseSize ? size.base_height : 0,
+                           size.flags & PResizeInc ? size.height_inc : 1);
+  }
+  Client* c = new Client(w, attr, xdl, ydl);
   // LOGI() << "New client " << attr.width << "x" << attr.height << "+" <<
   // attr.x
   //       << "+" << attr.y << ", g = " << attr.win_gravity;
-  c->size.x = attr.x;
-  c->size.y = attr.y;
-  c->size.width = attr.width;
-  c->size.height = attr.height;
-  c->border = attr.border_width;
-  // map_state is likely already IsViewable if we're being called from
-  // ScanWindowTree (ie on start-up), but will not be if the window is in the
-  // process of being opened (ie we've been called from GetOrAddClient).
-  // In the latter case, we don't call manage(c) here, but it'll be called
-  // later, when maprequest() calls our Furnish() function.
-  if (attr.map_state == IsViewable) {
-    c->internal_state = IPendingReparenting;
+  // Call manage if we know the window is already mapped (scanned at start-up).
+  if (is_startup_scan) {
     manage(c);
   }
   clients_[w] = c;
@@ -177,11 +186,11 @@ Client* LScr::AddClient(Window w) {
 }
 
 void LScr::Furnish(Client* c) {
-  Rect r = Rect::FromXYWH(c->size.x, c->size.y - textHeight(), c->size.width,
-                          c->size.height + textHeight());
   std::ostringstream name;
   name << "LWM frame for " << WinID(c->window);
-  c->parent = xlib::CreateNamedWindow(name.str(), r, 1, black(), white());
+  LOGD(c) << "Creating frame for client, at " << c->FrameRect();
+  c->parent =
+      xlib::CreateNamedWindow(name.str(), c->FrameRect(), 1, black(), white());
   XSetWindowAttributes attr;
   // DO NOT SET PointerMotionHintMask! Doing so allows X to send just one
   // notification to the window until the key or button state changes. This
@@ -191,9 +200,6 @@ void LScr::Furnish(Client* c) {
                     ButtonMask | SubstructureRedirectMask |
                     SubstructureNotifyMask | PointerMotionMask;
   XChangeWindowAttributes(dpy_, c->parent, CWEventMask, &attr);
-
-  xlib::XResizeWindow(c->window, c->size.width - 2 * borderWidth(),
-                      c->size.height - 2 * borderWidth());
   parents_[c->parent] = c;
 }
 
@@ -238,9 +244,9 @@ void LScr::Remove(Client* c) {
 Rect LScr::GetPrimaryVisibleArea(bool withStruts) const {
   Rect res{0, 0, 0, 0};
   for (const Rect& r : LScr::I->VisibleAreas(withStruts)) {
-    if (r.area() > res.area()) {
+    if (r.area().num_pixels() > res.area().num_pixels()) {
       res = r;
-    } else if (r.area() == res.area()) {
+    } else if (r.area().num_pixels() == res.area().num_pixels()) {
       // Two screens of the same size: we pick the one furthest up, and furthest
       // to the left.
       if (r.yMin < res.yMin) {
@@ -290,10 +296,7 @@ std::vector<Rect> LScr::VisibleAreas(bool withStruts) const {
 
 struct moveData {
   Client* c;
-  int x;
-  int y;
-  bool sendConfigNotify;
-  bool sizeChanged;
+  Rect r;
 };
 
 int quantise(int dimension, int increment) {
@@ -442,7 +445,7 @@ Rect sourceScreen(const std::vector<Rect>& vis, const Rect& r) {
   int area = 0;
   Rect res;
   for (const Rect& scr : vis) {
-    const int ra = Rect::Intersect(scr, r).area();
+    const int ra = Rect::Intersect(scr, r).area().num_pixels();
     if (ra > area) {
       area = ra;
       res = scr;
@@ -595,7 +598,7 @@ void LScr::SetVisibleAreas(std::vector<Rect> visible_areas) {
     // changes for themselves, and move their windows if necessary.
     // Of course, if we were to move them, we'd want to be using the strutless
     // visible areas, not the ones with the struts removed, otherwise we'd
-    // reposition strutty windows so they don't interesect their own struts,
+    // reposition strutty windows so they don't intersect their own struts,
     // which is wrong.
     if (c->HasStruts()) {
       // If this client has set a strut, it's reserved an area of the screen for
@@ -611,56 +614,28 @@ void LScr::SetVisibleAreas(std::vector<Rect> visible_areas) {
       continue;
     }
 
-    Rect newRect = MapToNewAreas(c->RectWithBorder(), oldVis, newVis);
+    Rect newRect = MapToNewAreas(c->FrameRect(), oldVis, newVis);
 
     // Now we have newRect, which describes where we'd like to put the window,
     // including its frame. Translate that down to the client window
     // coordinates (if the client is framed).
     if (c->framed) {
-      newRect.yMin += textHeight();
+      newRect = Client::ContentFromFrameRect(newRect);
     }
-
-    const int oldx = c->size.x;
-    const int oldy = c->size.y;
-    const int oldw = c->size.width;
-    const int oldh = c->size.height;
-
-    // Set the new window sizes, paying attention to the client's wishes on
-    // size increments.
-    c->size.x = newRect.xMin;
-    c->size.y = newRect.yMin;
-    c->size.width = quantise(newRect.width(), c->size.width_inc);
-    c->size.height = quantise(newRect.height(), c->size.height_inc);
-
-    const bool sizeChanged = c->size.width != oldw || c->size.height != oldh;
-    const bool posChanged = c->size.x != oldx || c->size.y != oldy;
-    const bool sendConfigNotify = posChanged && !sizeChanged;
-    moves.push_back(
-        moveData{c, c->size.x, c->size.y, sendConfigNotify, sizeChanged});
+    newRect = c->LimitResize(newRect);
+    moves.push_back(moveData{c, newRect});
   }
 
   // Now we've determined what we need to do with the windows, we should put the
-  // new screen geometry in place so that Client_MakeSane and friends can use
-  // it.
+  // new screen geometry in place so that it can be used properly during the
+  // window position updates.
   visible_areas_ = visible_areas;
   width_ = nScrWidth;
   height_ = nScrHeight;
 
   // All set up now, let's move all the windows around.
   for (moveData& move : moves) {
-    Client* c = move.c;
-    Client_MakeSane(c, ENone, move.x, move.y, 0, 0);
-    xlib::XMoveResizeWindow(c->parent, c->size.x, c->size.y - textHeight(),
-                            c->size.width, c->size.height + textHeight());
-    if (move.sendConfigNotify) {
-      c->SendConfigureNotify();
-    }
-    if (move.sizeChanged) {
-      xlib::XMoveResizeWindow(c->window, borderWidth(),
-                              borderWidth() + textHeight(),
-                              c->size.width - 2 * borderWidth(),
-                              c->size.height - 2 * borderWidth());
-    }
+    move.c->MoveResizeTo(move.r);
   }
 }
 

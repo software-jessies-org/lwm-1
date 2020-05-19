@@ -1,6 +1,11 @@
 Change Log for "lwm"
 
 
+2020-05-19	pn	Basel
+	Major refactor of how window sizing, movement is dealt with. Should fix
+	a lot of little bugs.
+
+
 2020-04-26	pn	Basel
 	Moved geometry declarations from lwm.h to geometry.h.
 

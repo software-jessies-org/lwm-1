@@ -82,8 +82,12 @@ extern int isShaped(Window w) {
 extern int serverSupportsShapes() {
 #ifdef SHAPE
   int shape_error;
-  return XShapeQueryExtension(dpy, &shape_event, &shape_error);
+  int res = XShapeQueryExtension(dpy, &shape_event, &shape_error);
+  LOGI() << "Shape extension supported: " << res << " (event " << shape_event
+         << ")";
+  return res;
 #else
+  LOGI() << "Shape support not enabled";
   return 0;
 #endif
 }

@@ -389,23 +389,25 @@ void ewmh_set_strut() {
                   32, PropModeReplace, (unsigned char*)data, 4);
 
   // ensure no window fully occupy reserved areas
-  for (auto it : LScr::I->Clients()) {
-    Client* c = it.second;
-    int x = c->size.x;
-    int y = c->size.y;
-
-    if (c->wstate.fullscreen) {
-      continue;
-    }
-    Client_MakeSane(c, ENone, x, y, 0, 0);
-    LOGD(c) << "MakeSane done; y=" << c->size.y << "; framed=" << c->framed;
-    if (c->framed) {
-      xlib::XMoveWindow(c->parent, c->size.x, c->size.y - textHeight());
-    } else {
-      xlib::XMoveWindow(c->parent, c->size.x, c->size.y);
-    }
-    c->SendConfigureNotify();
-  }
+  // XXXXXXXXXXXXXXXXXXXX FIX THIS! Should probably treat the changing of
+  // struts in the same way as we deal with RandR changes.
+  //  for (auto it : LScr::I->Clients()) {
+  //    Client* c = it.second;
+  //    int x = c->size.x;
+  //    int y = c->size.y;
+  //
+  //    if (c->wstate.fullscreen) {
+  //      continue;
+  //    }
+  //    Client_MakeSane(c, ENone, x, y, 0, 0);
+  //    LOGD(c) << "MakeSane done; y=" << c->size.y << "; framed=" << c->framed;
+  //    if (c->framed) {
+  //      xlib::XMoveWindow(c->parent, c->size.x, c->size.y - textHeight());
+  //    } else {
+  //      xlib::XMoveWindow(c->parent, c->size.x, c->size.y);
+  //    }
+  //    c->SendConfigureNotify();
+  //  }
 }
 
 // get _NET_WM_STRUT and if it is available recalculate the screens

@@ -69,14 +69,11 @@ void Hider::showHighlightBox(int itemIndex) {
     hideHighlightBox();
     return;
   }
-  const int xmin = c->size.x;
-  const int ymin = c->size.y - textHeight();
-  const int width = c->size.width;
-  const int height = c->size.height + textHeight();
-  mapAndRaise(highlightL, xmin, ymin, 1, height);
-  mapAndRaise(highlightR, xmin + width, ymin, 1, height);
-  mapAndRaise(highlightT, xmin, ymin, width, 1);
-  mapAndRaise(highlightB, xmin, ymin + height, width, 1);
+  const Rect r = c->FrameRect();
+  mapAndRaise(highlightL, r.xMin, r.yMin, 1, r.height());
+  mapAndRaise(highlightR, r.xMax, r.yMin, 1, r.height());
+  mapAndRaise(highlightT, r.xMin, r.yMin, r.width(), 1);
+  mapAndRaise(highlightB, r.xMin, r.yMax, r.width(), 1);
 }
 
 void Hider::hideHighlightBox() {
@@ -95,7 +92,9 @@ void Hider::Hide(Client* c) {
 
   // Actually hide the window.
   xlib::XUnmapWindow(c->parent);
-  xlib::XUnmapWindow(c->window);
+  // We don't need to unmap the client window, as it's implicitly unmapped
+  // via its frame. Indeed, doing so requires us to then re-map it, which causes
+  // extra unnecessary repositioning code to run.
 
   c->hidden = true;
   // Remove input focus, and drop from focus history.
@@ -116,30 +115,10 @@ void Hider::Unhide(Client* c) {
   // Always raise and give focus if we're trying to unhide, even if it wasn't
   // hidden.
   xlib::XMapWindow(c->parent);
-  xlib::XMapWindow(c->window);
   Client_Raise(c);
   c->SetState(NormalState);
   // Windows are given input focus when they're unhidden.
   LScr::I->GetFocuser()->FocusClient(c);
-
-  // The following is to counteract a really weird bug which happens when
-  // unhiding a window. To reproduce the bug (with the moveresize call below
-  // commented out), do this:
-  // 1: Move some window into a position where you can remember exactly where
-  //    it was (eg it's obscuring some text in an underlying window at a
-  //    specific point).
-  // 2: Hide the window (right-click on title bar).
-  // 3: Hold the right button over the root window to bring up the unhide menu -
-  //    note that the red box is showing the correct location of the window.
-  // 4: Release the right button to make the window reappear - note that without
-  //    the following conditional code, the re-opened window appears
-  //    approximately 'textHeight()' pixels lower than it previously was.
-  if (c->framed) {
-    xlib::XMoveResizeWindow(c->parent, c->size.x, c->size.y - textHeight(),
-                            c->size.width, c->size.height + textHeight());
-    xlib::XMoveWindow(c->window, borderWidth(), borderWidth() + textHeight());
-    c->SendConfigureNotify();
-  }
 }
 
 int menuItemHeight() {

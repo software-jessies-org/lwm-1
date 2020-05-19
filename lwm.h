@@ -112,31 +112,16 @@ struct EWMHStrut {
 
 class Client {
  public:
-  Client(Window w, Window parent)
-      : window(w),
-        parent(parent),
-        trans(0),
-        framed(false),
-        border(0),
-        state_(WithdrawnState),
-        hidden(false),
-        internal_state(INormal),
-        proto(0),
-        accepts_focus(true),
-        cursor(ENone),
-        wtype(WTypeNone) {
-#define ZERO_STRUCT(x) memset(&x, 0, sizeof(x))
-    ZERO_STRUCT(wstate);
-    ZERO_STRUCT(strut);
-    ZERO_STRUCT(size);
-    ZERO_STRUCT(return_size);
-#undef ZERO_STRUCT
-  }
+  Client(Window w,
+         const XWindowAttributes& attr,
+         const DimensionLimiter& x_limiter,
+         const DimensionLimiter& y_limiter);
 
-  ~Client() {
-    LOGI() << "Deleting client for " << name_;
-    delete icon_;
-  }
+  ~Client() { delete icon_; }
+
+  // Called on LWM shutdown to reparent the client window and give it back its
+  // border.
+  void Release();
 
   void SetName(const char* c, int len);
   const std::string& Name() const { return name_; }
@@ -152,23 +137,17 @@ class Client {
   void EnterFullScreen();
   void ExitFullScreen();
 
-  void SendConfigureNotify();
+  Window window = 0;  // Client's window.
+  Window parent = 0;  // Window manager frame.
+  Window trans = 0;   // Window that client is a transient for.
 
-  Window window;  // Client's window.
-  Window parent;  // Window manager frame.
-  Window trans;   // Window that client is a transient for.
-
-  bool framed;  // true is lwm is maintaining a frame
-
-  int border;  // Client's original border width.
-
-  XSizeHints size;  // Client's current geometry information.
+  bool framed = false;  // true is lwm is maintaining a frame
 
  private:
-  // return_size stores the original size of the client window when it enters
-  // full screen state, so it can be correctly brought out of full screen state
-  // again.
-  XSizeHints return_size;
+  // pre_full_screen_content_rect_ stores the original size of the client window
+  // when it enters full screen state, so it can be correctly brought out of
+  // full screen state again.
+  Rect pre_full_screen_content_rect_ = {};
 
  public:
   int State() const { return state_; }
@@ -179,6 +158,8 @@ class Client {
 
   bool HasFocus() const;
   static Client* FocusedClient();
+
+  void SendConfigureNotify();
 
   // Notifications to the Client that it has gained or lost focus.
   void FocusGained();
@@ -191,27 +172,63 @@ class Client {
     return strut.top || strut.bottom || strut.left || strut.right;
   }
 
-  void SetSize(const Rect& r);
-
   // Rect defining the bounds of the window, either including LWM's window
   // furniture (WithBorder) or not (NoBorder).
-  Rect RectWithBorder() const;
-  Rect RectNoBorder() const;
+  // ContentRectRelative returns the content rect relative to the frame.
+  Rect FrameRect() const;
+  Rect ContentRect() const { return content_rect_; }
+  Rect ContentRectRelative() const;
+
+  // Convert between frame and content rectangles.
+  static Rect ContentFromFrameRect(const Rect& r);
+  static Rect FrameFromContentRect(const Rect& r);
+
+  // Returns a string of the form "123 x 460" describing the size of the window
+  // that it is appropriate to display. This takes account of the size
+  // increment, base size etc.
+  std::string SizeString() const;
+
+  // Returns a new Rect based on the suggested resize, but which honours the
+  // client's limits on its min and max size, and size change increment.
+  Rect LimitResize(const Rect& suggested);
+
+  // Moves the client to the given rectangle. Make sure that the size of the old
+  // and new rectangle is identical, otherwise we'll crash (deliberately).
+  // No visibility bounds checking is done here, so you have to be sure you're
+  // not moving us miles off the screen.
+  void MoveTo(const Rect& new_content_rect);
+
+  // Resize, and possibly move, the visible rectangle to the new one. You must
+  // ensure that the new rectangle is OK for the client, by calling LimitResize
+  // and doing whatever other checks are necessary.
+  void MoveResizeTo(const Rect& new_content_rect);
+
+  // Only call this once per client.
+  void FurnishAt(const Rect& rect);
 
  private:
-  int state_;  // Window state. See ICCCM and <X11/Xutil.h>
+  Rect content_rect_;
+
+  const DimensionLimiter x_limiter_;
+  const DimensionLimiter y_limiter_;
+
+  // We store the original border width of the child window when we reparent it,
+  // so we can restore it to its original size when we unparent it on exit.
+  // This value should not be used for anything during normal LWM running.
+  int original_border_width_ = 0;
+  int state_ = 0;  // Window state. See ICCCM and <X11/Xutil.h>
  public:
-  bool hidden;  // true if this client is hidden.
-  IState internal_state;
-  int proto;
+  bool hidden = false;  // true if this client is hidden.
+  int proto = 0;
 
-  bool accepts_focus;  // Does this window want keyboard events?
+  bool accepts_focus = true;  // Does this window want keyboard events?
 
-  Edge cursor;  // indicates which cursor is being used for parent window
+  // indicates which cursor is being used for parent window
+  Edge cursor = ENone;
 
-  EWMHWindowType wtype;
-  EWMHWindowState wstate;
-  EWMHStrut strut;  // reserved areas
+  EWMHWindowType wtype = WTypeNone;
+  EWMHWindowState wstate = {};
+  EWMHStrut strut = {};  // reserved areas
 
   // SetIcon sets the window's title bar icon. If called with null, it will do
   // nothing (and leave any previously-set icon in place).
@@ -412,7 +429,7 @@ class LScr {
   // GetOrAddClient either returns the existing client, or creates a new one
   // and generates relevant window furniture. This may return nullptr if the
   // window should not be owned.
-  Client* GetOrAddClient(Window w);
+  Client* GetOrAddClient(Window w, bool is_startup_scan);
 
   void Furnish(Client* c);
 
@@ -433,7 +450,7 @@ class LScr {
  private:
   void InitEWMH();
   void ScanWindowTree();
-  Client* AddClient(Window w);
+  Client* AddClient(Window w, bool is_startup_scan);
   unsigned long black() const { return BlackPixel(dpy_, kOnlyScreenIndex); }
   unsigned long white() const { return WhitePixel(dpy_, kOnlyScreenIndex); }
 
@@ -531,13 +548,6 @@ extern bool forceRestart;
 extern void shell(int);
 
 /* client.cc */
-extern bool Client_MakeSane(Client*, Edge, int, int, int, int);
-extern bool Client_MakeSaneAndMove(Client* c,
-                                   Edge edge,
-                                   int x,
-                                   int y,
-                                   int w,
-                                   int h);
 extern void Client_SizeFeedback();
 extern void size_expose();
 extern void Client_Raise(Client*);
@@ -580,7 +590,6 @@ extern void panic(const char*);
 
 /* manage.cc */
 extern void getWindowName(Client*);
-extern void getNormalHints(Client*);
 extern bool motifWouldDecorate(Client*);
 extern void manage(Client*);
 extern void withdraw(Client*);

@@ -23,13 +23,16 @@
 
 namespace xlib {
 
+extern int XMoveResizeWindow(Window w, const Rect& r);
 extern int XMoveResizeWindow(Window w,
                              int x,
                              int y,
                              unsigned width,
                              unsigned height);
 
+extern int XMoveWindow(Window w, const Point& origin);
 extern int XMoveWindow(Window w, int x, int y);
+extern int XResizeWindow(Window w, const Area& area);
 extern int XResizeWindow(Window w, unsigned width, unsigned height);
 
 extern int XReparentWindow(Window w, Window new_parent, int x, int y);
@@ -40,10 +43,30 @@ extern int XUnmapWindow(Window w);
 extern int XRaiseWindow(Window w);
 extern int XLowerWindow(Window w);
 
+extern int XConfigureWindow(Window w,
+                            const Rect& rect,
+                            int border_width,
+                            Window sibling,
+                            int stack_mode);
 extern int XConfigureWindow(Window w, unsigned int val_mask, XWindowChanges* v);
 extern int XChangeWindowAttributes(Window w,
                                    unsigned int val_mask,
                                    XSetWindowAttributes* v);
+
+extern void SendClientMessage(Window w, Atom a, long data0, long data1);
+
+extern XWindowAttributes XGetWindowAttributes(Window w);
+
+struct WindowGeometry {
+  Window parent;
+  Rect rect;
+  int border_width;
+  int bpp;
+  // ok == true if the window geometry was fetched correctly.
+  bool ok;
+};
+
+extern WindowGeometry XGetGeometry(Window w);
 
 // Creates a window with the given properties, whose parent is the root window.
 extern Window CreateNamedWindow(const std::string& name,

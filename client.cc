@@ -66,7 +66,7 @@ std::ostream& operator<<(std::ostream& os, const Client& c) {
   if (c.trans) {
     os << " (trans=" << WinID(c.trans) << ")";
   }
-  os << " outer=" << c.RectWithBorder() << " inner=" << c.RectNoBorder() << " ";
+  os << " outer=" << c.FrameRect() << " inner=" << c.ContentRect() << " ";
   if (c.hidden) {
     os << "(";
   }
@@ -89,22 +89,22 @@ std::ostream& operator<<(std::ostream& os, const WinID& w) {
 // hacks, we end up with the wrong behaviour when the pointer is within this
 // border, which looks funny.
 Rect Client::EdgeBounds(Edge e) const {
+  const Rect fr = FrameRect();
   const int inset = titleBarHeight();
-  const int wh = size.height + textHeight();
-  Rect res{inset, inset, size.width - inset, wh - inset};
+  Rect res{inset, inset, fr.width() - inset, fr.height() - inset};
   if (isLeftEdge(e)) {
     res.xMin = -1;
     res.xMax = inset;
   } else if (isRightEdge(e)) {
-    res.xMin = size.width - inset;
-    res.xMax = size.width + 1;
+    res.xMin = fr.width() - inset;
+    res.xMax = fr.width() + 1;
   }
   if (isTopEdge(e)) {
     res.yMin = -1;
     res.yMax = inset;
   } else if (isBottomEdge(e)) {
-    res.yMin = wh - inset;
-    res.yMax = wh + 1;
+    res.yMin = fr.height() - inset;
+    res.yMax = fr.height() + 1;
   }
   return res;
 }
@@ -162,7 +162,7 @@ Edge Client::EdgeAt(Window w, int x, int y) const {
   if (closeBounds(false).contains(x, y)) {  // false -> get action bounds.
     return EClose;
   }
-  if (titleBarBounds(size.width).contains(x, y)) {
+  if (titleBarBounds(FrameRect().width()).contains(x, y)) {
     return ENone;  // Rename to ETitleBar.
   }
   const std::vector<Edge> movementEdges{ETopLeft, ETop,        ETopRight,
@@ -185,8 +185,7 @@ void Client::SetIcon(xlib::ImageIcon* icon) {
 void focusChildrenOf(Client* c, Window parent) {
   xlib::WindowTree wtree = xlib::WindowTree::Query(dpy, parent);
   for (Window win : wtree.children) {
-    XWindowAttributes attr{};
-    XGetWindowAttributes(dpy, win, &attr);
+    const XWindowAttributes attr = xlib::XGetWindowAttributes(win);
     if (attr.all_event_masks & FocusChangeMask) {
       LOGD(c) << "  Focusing child " << WinID(win);
       XSetInputFocus(dpy, win, RevertToPointerRoot, CurrentTime);
@@ -220,28 +219,24 @@ void Client::FocusLost() {
 }
 
 void Client::DrawBorder() {
-  if (!framed) {
+  if (parent == LScr::I->Root() || parent == 0 || !framed ||
+      wstate.fullscreen) {
     return;
   }
-  const int quarter = (titleBarHeight()) / 4;
-
-  LScr* lscr = LScr::I;
-  if (parent == lscr->Root() || parent == 0 || !framed || wstate.fullscreen) {
-    return;
-  }
-
   const bool active = HasFocus();
 
-  XSetWindowBackground(dpy, parent,
-                       active ? lscr->ActiveBorder() : lscr->InactiveBorder());
+  XSetWindowBackground(
+      dpy, parent,
+      active ? LScr::I->ActiveBorder() : LScr::I->InactiveBorder());
   XClearWindow(dpy, parent);
 
   // Cross for the close icon.
   const Rect r = closeBounds(true);  // true -> get display bounds.
-  const GC close_gc = lscr->GetCloseIconGC(active);
+  const GC close_gc = LScr::I->GetCloseIconGC(active);
   XDrawLine(dpy, parent, close_gc, r.xMin, r.yMin, r.xMax, r.yMax);
   XDrawLine(dpy, parent, close_gc, r.xMin, r.yMax, r.xMax, r.yMin);
   const int bw = borderWidth();
+  const int quarter = (titleBarHeight()) / 4;
   if (active) {
     // Give the title a nice background, and differentiate it from the
     // rest of the furniture to show it acts differently (moves the window
@@ -250,9 +245,9 @@ void Client::DrawBorder() {
     // show where the resize handle is.
     const int topBW = topBorderWidth();
     const int x = bw + 3 * quarter;
-    const int w = size.width - 2 * x;
+    const int w = FrameRect().width() - 2 * x;
     const int h = textHeight() + bw - topBW;
-    XFillRectangle(dpy, parent, lscr->GetTitleGC(), x, topBW, w, h);
+    XFillRectangle(dpy, parent, LScr::I->GetTitleGC(), x, topBW, w, h);
   }
 
   // Find where the title stuff is going to go.
@@ -274,30 +269,39 @@ void Client::DrawBorder() {
   drawString(parent, x, y, Name(), color);
 }
 
-void Client::SetSize(const Rect& r) {
-  size.x = r.xMin;
-  size.y = r.yMin;
-  size.width = r.width();
-  size.height = r.height();
+Rect Client::FrameRect() const {
+  Rect res = content_rect_;
+  if (!framed) {
+    return res;
+  }
+  return FrameFromContentRect(res);
 }
 
-Rect Client::RectWithBorder() const {
-  Rect res = Rect{size.x, size.y, size.x + size.width, size.y + size.height};
-  if (framed) {
-    res.yMin -= textHeight();
-  }
+Rect Client::ContentRectRelative() const {
+  int subX = content_rect_.xMin - borderWidth();
+  int subY = content_rect_.yMin - titleBarHeight();
+  return Rect::Translate(content_rect_, Point{-subX, -subY});
+}
+
+// static
+Rect Client::ContentFromFrameRect(const Rect& r) {
+  Rect res = r;
+  const int bw = borderWidth();
+  res.xMin += bw;
+  res.yMin += titleBarHeight();
+  res.xMax -= bw;
+  res.yMax -= bw;
   return res;
 }
 
-Rect Client::RectNoBorder() const {
-  Rect res = Rect{size.x, size.y, size.x + size.width, size.y + size.height};
-  if (framed) {
-    const int bw = borderWidth();
-    res.xMin += bw;
-    res.xMax -= bw;
-    res.yMin += bw;
-    res.yMax -= bw;
-  }
+// static
+Rect Client::FrameFromContentRect(const Rect& r) {
+  Rect res = r;
+  const int bw = borderWidth();
+  res.xMin -= bw;
+  res.yMin -= titleBarHeight();
+  res.xMax += bw;
+  res.yMax += bw;
   return res;
 }
 
@@ -311,221 +315,6 @@ void Client_Remove(Client* c) {
   LScr::I->Remove(c);
   ewmh_set_client_list();
   ewmh_set_strut();
-}
-
-// The diff is expected to be the difference between a window position and some
-// barrier (eg edge of a screen). If that difference is within 0..EDGE_RESIST,
-// we return it; otherwise we return 0.
-// This makes the code to apply edge resistance a simple matter of subtracting
-// or adding the returned value.
-int getResistanceOffset(int diff) {
-  if (diff <= 0 || diff > EDGE_RESIST) {
-    return 0;
-  }
-  return diff;
-}
-
-bool Client_MakeSaneAndMove(Client* c, Edge edge, int x, int y, int w, int h) {
-  const Rect before = c->RectNoBorder();
-  Client_MakeSane(c, edge, x, y, w, h);
-  const Rect after = c->RectNoBorder();
-  LOGD(c) << "Sanity changed rect from " << before << " to " << after;
-  const bool resized =
-      (before.width() != after.width()) || (before.height() != after.height());
-  const bool moved = (before.xMin != after.xMin) || (before.yMin != after.yMin);
-  if (resized) {
-    // May need to deal with framed windows here.
-    const int th = textHeight();
-    xlib::XMoveResizeWindow(c->parent, c->size.x, c->size.y - th, c->size.width,
-                            c->size.height + th);
-    const int border = borderWidth();
-    // We used to use some odd logic to optionally send a configureNotify.
-    // However, from my reading of this page:
-    // https://tronche.com/gui/x/xlib/events/window-state-change/configure.html
-    // ...it seems the X server is responsible for sending such things; our
-    // only job is to actually move/resize windows. So let's just do that.
-    xlib::XMoveResizeWindow(c->window, border, border + th,
-                            c->size.width - 2 * border,
-                            c->size.height - 2 * border);
-    c->SendConfigureNotify();
-  } else if (moved) {
-    if (c->framed) {
-      xlib::XMoveWindow(c->parent, c->size.x, c->size.y - textHeight());
-    } else {
-      xlib::XMoveWindow(c->parent, c->size.x, c->size.y);
-    }
-    // Do I need to send a configure notify? According to this:
-    // https://tronche.com/gui/x/xlib/events/window-state-change/configure.html
-    // ...it looks like the job of the X server itself.
-    c->SendConfigureNotify();
-  }
-  return moved || resized;
-}
-
-// x and y are the proposed new coordinates of the window. w and h are the
-// proposed new width and height, or zero if the size should remain unchanged.
-// Returns true if the window size or location was modified.
-bool Client_MakeSane(Client* c, Edge edge, int x, int y, int w, int h) {
-  const Rect old_pos =
-      Rect::FromXYWH(c->size.x, c->size.y, c->size.width, c->size.height);
-  bool horizontal_ok = true;
-  bool vertical_ok = true;
-  if (w == 0) {
-    w = c->size.width;
-  }
-  if (h == 0) {
-    h = c->size.height;
-  }
-
-  if (edge != ENone) {
-    // Make sure we're not making the window too small.
-    if (w < c->size.min_width) {
-      horizontal_ok = false;
-    }
-    if (h < c->size.min_height) {
-      vertical_ok = false;
-    }
-
-    // Make sure we're not making the window too large.
-    if (c->size.flags & PMaxSize) {
-      if (w > c->size.max_width) {
-        horizontal_ok = false;
-      }
-      if (h > c->size.max_height) {
-        vertical_ok = false;
-      }
-    }
-
-    // Make sure the window's width & height are multiples of
-    // the width & height increments (not including the base size).
-    if (c->size.width_inc > 1) {
-      int apparent_w = w - 2 * borderWidth() - c->size.base_width;
-      int x_fix = apparent_w % c->size.width_inc;
-
-      if (isLeftEdge(edge)) {
-        x += x_fix;
-      }
-      if (isLeftEdge(edge) || isRightEdge(edge)) {
-        w -= x_fix;
-      }
-    }
-
-    if (c->size.height_inc > 1) {
-      int apparent_h = h - 2 * borderWidth() - c->size.base_height;
-      int y_fix = apparent_h % c->size.height_inc;
-
-      if (isTopEdge(edge)) {
-        y += y_fix;
-      }
-      if (isTopEdge(edge) || isBottomEdge(edge)) {
-        h -= y_fix;
-      }
-    }
-
-    // Check that we may change the client horizontally and vertically.
-    if (c->size.width_inc == 0) {
-      horizontal_ok = false;
-    }
-    if (c->size.height_inc == 0) {
-      vertical_ok = false;
-    }
-  }
-
-  /* Ensure that at least one border is not entirely within the
-   * reserved areas. Keeping clients completely within the
-   * the workarea is too restrictive, but this measure means they
-   * should always be accessible.
-   * Of course all of this is only applicable if the client doesn't
-   * set a strut itself.					jfc
-   */
-  LScr* lscr = LScr::I;
-  // Go through all screens, finding the smallest movement (in both x and y, to
-  // cope with the display area shrinking) to ensure the window is visible on a
-  // screen.
-  int best_x_fix = INT_MAX;
-  int best_y_fix = INT_MAX;
-  // We get visible areas with or without the effect of struts, based on whether
-  // the client sets struts itself. If it does, we must ignore struts so we
-  // don't prevent the client being placed on its own reserved area.
-  for (const auto& r : lscr->VisibleAreas(!c->HasStruts())) {
-    const int bw = borderWidth();
-    int x_fix = 0;
-    int y_fix = 0;
-    if (x + bw >= r.xMax) {
-      x_fix = r.xMax - (x + bw);
-    } else if (x + w - bw <= r.xMin) {
-      x_fix = r.xMin - (x + w - bw);
-    }
-    if (y + bw >= r.yMax) {
-      y_fix = r.yMax - (y + bw);
-    } else if (y + h - bw <= r.yMin) {
-      y_fix = r.yMin - (y + h - bw);
-    }
-    // If we need fixing for this screen, we find the worse offender of the two
-    // axes (one of them may be zero), and check if that's the best solution
-    // yet.
-    if (std::max(abs(x_fix), abs(y_fix)) <
-        std::max(abs(best_x_fix), abs(best_y_fix))) {
-      best_x_fix = x_fix;
-      best_y_fix = y_fix;
-    }
-  }
-  // If we have found a best fix, we must fix it!
-  x += best_x_fix;
-  y += best_y_fix;
-
-  // If the edge resistance code is used for window sizes, we get funny effects
-  // during some resize events.
-  // For example if a window is very close to the bottom-right corner of the
-  // screen and is made smaller suddenly using the top-left corner, the bottom-
-  // right corner of the window moves slightly up and to the left, such that it
-  // is effectively being resized from two directions. This is wrong and
-  // annoying.
-  // Edge resistance is only useful for moves anyway, so simply disable the code
-  // for resizes to avoid the bug.
-  if (edge == ENone) {
-    // Implement edge resistance for all of the visible areas. There can be
-    // several if we're using multiple monitors with xrandr, and they can be
-    // offset from each other. However, for each box, ensure that some part of
-    // the window is interacting with an edge.
-    for (const auto& r : lscr->VisibleAreas(!c->HasStruts())) {
-      // Check for top/bottom if the horizontal location of the window overlaps
-      // with that of the screen area.
-      if ((x < r.xMax) && (x + w > r.xMin)) {
-        // Make sure we only adjust textHeight() if this is not a framed window,
-        // or we'll mess up our initial idea of the position of this window.
-        // Failure to do this was the cause of a bug where lwm would move menu's
-        // window down by textHeight() when it quit.
-        int yTop = c->framed ? (y - textHeight()) : y;
-        y += getResistanceOffset(r.yMin - yTop);     // Top.
-        y -= getResistanceOffset((y + h) - r.yMax);  // Bottom.
-      }
-      // Check for left/right if the vertical location of the window overlaps
-      // with that of the screen area.
-      if ((y < r.yMax) && (y + h > r.yMin)) {
-        x += getResistanceOffset(r.xMin - x);        // Left.
-        x -= getResistanceOffset((x + w) - r.xMax);  // Right.
-      }
-    }
-    if (horizontal_ok) {
-      c->size.x = x;
-    }
-    if (vertical_ok) {
-      c->size.y = y;
-    }
-  } else {
-    if (horizontal_ok) {
-      c->size.x = x;
-      c->size.width = w;
-    }
-    if (vertical_ok) {
-      c->size.y = y;
-      c->size.height = h;
-    }
-  }
-  const Rect new_pos = Rect::FromXYWH(x, y, w, h);
-  LOGD(c) << "MakeSane; old pos " << old_pos << "; new pos " << new_pos;
-  return new_pos != old_pos;
 }
 
 std::string makeSizeString(int x, int y) {
@@ -556,32 +345,15 @@ void size_expose() {
   if (!c) {
     return;
   }
-  int width = c->size.width - 2 * borderWidth();
-  int height = c->size.height - 2 * borderWidth();
-
-  // This dance ensures that we report 80x24 for an xterm even when
-  // it has a scrollbar.
-  if (c->size.flags & (PMinSize | PBaseSize) && c->size.flags & PResizeInc) {
-    if (c->size.flags & PBaseSize) {
-      width -= c->size.base_width;
-      height -= c->size.base_height;
-    } else {
-      width -= c->size.min_width;
-      height -= c->size.min_height;
-    }
-  }
-
-  if (c->size.width_inc != 0) {
-    width /= c->size.width_inc;
-  }
-  if (c->size.height_inc != 0) {
-    height /= c->size.height_inc;
-  }
-
-  const std::string text = makeSizeString(width, height);
+  const std::string text = c->SizeString();
   const int x = (popup_width - textWidth(text)) / 2;
   drawString(LScr::I->Popup(), x, g_font->ascent + 1, text,
              &g_font_popup_colour);
+}
+
+std::string Client::SizeString() const {
+  return makeSizeString(x_limiter_.DisplayableSize(content_rect_.width()),
+                        y_limiter_.DisplayableSize(content_rect_.height()));
 }
 
 void Client_Lower(Client* c) {
@@ -617,25 +389,13 @@ void Client_Raise(Client* c) {
   ewmh_set_client_list();
 }
 
-void sendClientMessage(Window w, Atom a, long data0, long data1) {
-  XEvent ev{};
-  ev.xclient.type = ClientMessage;
-  ev.xclient.window = w;
-  ev.xclient.message_type = a;
-  ev.xclient.format = 32;
-  ev.xclient.data.l[0] = data0;
-  ev.xclient.data.l[1] = data1;
-  const long mask = (w == LScr::I->Root()) ? SubstructureRedirectMask : 0L;
-  XSendEvent(dpy, w, false, mask, &ev);
-}
-
 void Client_Close(Client* c) {
   if (c == 0) {
     return;
   }
   // Terminate the client nicely if possible. Be brutal otherwise.
   if (c->proto & Pdelete) {
-    sendClientMessage(c->window, wm_protocols, wm_delete, CurrentTime);
+    xlib::SendClientMessage(c->window, wm_protocols, wm_delete, CurrentTime);
   } else {
     XKillClient(dpy, c->window);
   }
@@ -667,87 +427,73 @@ extern void Client_ResetAllCursors() {
 }
 
 extern void Client_FreeAll() {
+  // Take a copy of the client pointers, as releasing the clients may mutate
+  // the underlying clients map.
+  std::vector<Client*> clients;
   for (auto it : LScr::I->Clients()) {
-    Client* c = it.second;
-
-    // Reparent the client window to the root, to elide our furniture window.
-    LOGD(c) << "Client_FreeAll: reparenting window at " << c->size.x << "x"
-            << c->size.y;
-    xlib::XReparentWindow(c->window, LScr::I->Root(), c->size.x, c->size.y);
-    if (c->hidden) {
-      // The window was iconised, so map it back into view so it isn't lost
-      // forever, but lower it so it doesn't jump all over the foreground.
-      xlib::XMapWindow(c->window);
-      xlib::XLowerWindow(c->window);
-    }
-
-    // Give it back its initial border width.
-    XWindowChanges wc{};
-    wc.border_width = c->border;
-    xlib::XConfigureWindow(c->window, CWBorderWidth, &wc);
+    clients.push_back(it.second);
+  }
+  for (auto c : clients) {
+    c->Release();
   }
 }
 
-void Client::EnterFullScreen() {
-  XWindowChanges fs{};
+Client::Client(Window w,
+               const XWindowAttributes& attr,
+               const DimensionLimiter& x_limiter,
+               const DimensionLimiter& y_limiter)
+    : window(w),
+      parent(LScr::I->Root()),
+      content_rect_(Rect::From<const XWindowAttributes&>(attr)),
+      x_limiter_(x_limiter),
+      y_limiter_(y_limiter),
+      original_border_width_(attr.border_width) {}
 
-  memcpy(&return_size, &size, sizeof(XSizeHints));
+void Client::Release() {
+  // Reparent the client window to the root, to elide our furniture window.
+  const Rect cr = ContentRect();
+  LOGD(this) << "Client::Release " << cr;
+  if (!framed) {
+    return;
+  }
+  xlib::XReparentWindow(window, LScr::I->Root(), cr.xMin, cr.yMin);
+  if (hidden) {
+    // The window was iconised, so map it back into view so it isn't lost
+    // forever, but lower it so it doesn't jump all over the foreground.
+    xlib::XMapWindow(window);
+    xlib::XLowerWindow(window);
+  }
+
+  // Give it back its initial border width.
+  XWindowChanges wc{};
+  wc.border_width = original_border_width_;
+  xlib::XConfigureWindow(window, CWBorderWidth, &wc);
+}
+
+void Client::EnterFullScreen() {
+  pre_full_screen_content_rect_ = content_rect_;
   // For now, just find the 'main screen' and use that.
   // Ideally, we'd actually try to find the largest contiguous rectangle, as
   // someone might be using two identical-sized monitors next to each other
   // to get a bigger view of what they're killing, but for now we'll save that
   // for another day.
   const Rect scr = LScr::I->GetPrimaryVisibleArea(false);  // Without struts.
+  content_rect_ = scr;
   if (framed) {
-    const int bw = borderWidth();
-    size.x = fs.x = scr.xMin - bw;
-    size.y = fs.y = scr.yMin - bw;
-    size.width = fs.width = scr.width() + 2 * bw;
-    size.height = fs.height = scr.height() + 2 * bw;
-    xlib::XConfigureWindow(parent, CWX | CWY | CWWidth | CWHeight, &fs);
-
-    fs.x = 0;
-    fs.y = 0;
-    fs.width = scr.width();
-    fs.height = scr.height();
-    xlib::XConfigureWindow(window, CWX | CWY | CWWidth | CWHeight, &fs);
-    xlib::XRaiseWindow(parent);
-  } else {
-    size.x = fs.x = scr.xMin;
-    size.y = fs.y = scr.yMin;
-    size.width = fs.width = scr.width();
-    size.height = fs.height = scr.height();
-    xlib::XConfigureWindow(window, CWX | CWY | CWWidth | CWHeight, &fs);
-    xlib::XRaiseWindow(window);
+    xlib::XMoveResizeWindow(parent, FrameRect());
   }
-  SendConfigureNotify();
+  xlib::XMoveResizeWindow(window, content_rect_);
+  xlib::XRaiseWindow(framed ? parent : window);
+  // SendConfigureNotify();
 }
 
 void Client::ExitFullScreen() {
-  XWindowChanges fs{};
-
-  memcpy(&size, &return_size, sizeof(XSizeHints));
+  content_rect_ = pre_full_screen_content_rect_;
   if (framed) {
-    fs.x = size.x;
-    fs.y = size.y - textHeight();
-    fs.width = size.width;
-    fs.height = size.height + textHeight();
-    xlib::XConfigureWindow(parent, CWX | CWY | CWWidth | CWHeight, &fs);
-
-    const int bw = borderWidth();
-    fs.x = bw;
-    fs.y = bw + textHeight();
-    fs.width = size.width - 2 * bw;
-    fs.height = size.height - 2 * bw;
-    xlib::XConfigureWindow(window, CWX | CWY | CWWidth | CWHeight, &fs);
-  } else {
-    fs.x = size.x;
-    fs.y = size.y;
-    fs.width = size.width;
-    fs.height = size.height;
-    xlib::XConfigureWindow(window, CWX | CWY | CWWidth | CWHeight, &fs);
+    xlib::XMoveResizeWindow(parent, FrameRect());
   }
-  SendConfigureNotify();
+  xlib::XMoveResizeWindow(window, content_rect_);
+  // SendConfigureNotify();
 }
 
 void Client::SendConfigureNotify() {
@@ -755,21 +501,12 @@ void Client::SendConfigureNotify() {
   ce.type = ConfigureNotify;
   ce.event = window;
   ce.window = window;
-  if (framed) {
-    ce.x = size.x + borderWidth();
-    ce.y = size.y + borderWidth();
-    ce.width = size.width - 2 * borderWidth();
-    ce.height = size.height - 2 * borderWidth();
-    ce.border_width = border;
-  } else {
-    ce.x = size.x;
-    ce.y = size.y;
-    ce.width = size.width;
-    ce.height = size.height;
-    ce.border_width = border;
-  }
+  content_rect_.To(ce);
+  ce.border_width = framed ? 0 : original_border_width_;
   ce.above = None;
   ce.override_redirect = 0;
+  LOGD(this) << "Sending config notify, r=" << content_rect_ << " to "
+             << WinID(window);
   XSendEvent(dpy, window, false, StructureNotifyMask, (XEvent*)&ce);
 }
 
@@ -784,6 +521,70 @@ bool Client::HasFocus() const {
 // static
 Client* Client::FocusedClient() {
   return LScr::I->GetFocuser()->GetFocusedClient();
+}
+
+Rect Client::LimitResize(const Rect& suggested) {
+  Rect res = suggested;
+  x_limiter_.Limit(content_rect_.xMin, content_rect_.xMax, res.xMin, res.xMax);
+  y_limiter_.Limit(content_rect_.yMin, content_rect_.yMax, res.yMin, res.yMax);
+  return res;
+}
+
+void Client::MoveTo(const Rect& new_content_rect) {
+  if (content_rect_.width() != new_content_rect.width() ||
+      content_rect_.height() != new_content_rect.height()) {
+    LOGF() << "Invalid move from " << content_rect_ << " to "
+           << new_content_rect << " (size mismatch)";
+  }
+  if (content_rect_.xMin == new_content_rect.xMin &&
+      content_rect_.yMin == new_content_rect.yMin) {
+    return;  // Move to same place. AKA NOP.
+  }
+  content_rect_ = new_content_rect;
+  if (framed) {
+    Rect frame_rect = FrameRect();
+    xlib::XMoveWindow(parent, frame_rect.origin());
+  }
+  // Do I need to send a configure notify? According to this:
+  // https://tronche.com/gui/x/xlib/events/window-state-change/configure.html
+  // ...it looks like the job of the X server itself.
+  LOGD(this) << "MoveTo " << new_content_rect;
+  SendConfigureNotify();
+}
+
+void Client::MoveResizeTo(const Rect& new_content_rect) {
+  if (new_content_rect == content_rect_) {
+    // Nothing to do.
+    return;
+  }
+  const bool move_client = content_rect_.origin() != new_content_rect.origin();
+  content_rect_ = new_content_rect;
+  if (framed) {
+    xlib::XMoveResizeWindow(parent, FrameRect());
+    if (move_client) {
+      // Client was resized towards the top/left. We need to move and resize it
+      // so it stays within the right offset of its frame. Coordinates are
+      // relative to the frame window.
+      const Rect fr = FrameRect();
+      Rect r = Rect::Translate(content_rect_, Point{-fr.xMin, -fr.yMin});
+      xlib::XMoveResizeWindow(window, r);
+    } else {
+      // Client was only resized at the bottom and/or right. No move necessary.
+      xlib::XResizeWindow(window, content_rect_.area());
+    }
+  } else {
+    xlib::XMoveResizeWindow(window, content_rect_);
+  }
+  // Do I need to send a configure notify? According to this:
+  // https://tronche.com/gui/x/xlib/events/window-state-change/configure.html
+  // ...it looks like the job of the X server itself.
+  LOGD(this) << "MoveResizeTo " << new_content_rect;
+  SendConfigureNotify();
+}
+
+void Client::FurnishAt(const Rect& rect) {
+  content_rect_ = rect;
+  LScr::I->Furnish(this);
 }
 
 void Focuser::EnterWindow(Window w, Time time) {
@@ -852,7 +653,7 @@ void Focuser::ReallyFocusClient(Client* c, Time time, bool give_focus) {
       LOGD(c) << "Focusing main window " << WinID(c->window);
       XSetInputFocus(dpy, c->window, RevertToPointerRoot, CurrentTime);
       if (c->proto & Ptakefocus) {
-        sendClientMessage(c->window, wm_protocols, wm_take_focus, time);
+        xlib::SendClientMessage(c->window, wm_protocols, wm_take_focus, time);
       }
     } else if (c->proto & Ptakefocus) {
       // Main window doesn't accept focus, but there's an indication that its

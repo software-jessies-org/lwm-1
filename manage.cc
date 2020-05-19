@@ -37,7 +37,54 @@
 
 int getProperty(Window, Atom, Atom, long, unsigned char**);
 int getWindowState(Window, int*);
-void applyGravity(Client*);
+// void applyGravity(Client*);
+
+static Point NextAutoPosition(const Area& client_area) {
+  // These are static so that the windows aren't all opened at exactly
+  // the same place, but rather the opening position advances down and to
+  // the right with each successive window opened.
+  static unsigned int auto_x = 100;
+  static unsigned int auto_y = 100;
+
+  // First, find the primary screen area.
+  const Rect scr = LScr::I->GetPrimaryVisibleArea(true);  // With struts.
+  // If auto_x and auto_y are outside the main visible area, reset them.
+  // This can happen after a change of monitor configuration.
+  if (!scr.contains(auto_x, auto_y)) {
+    auto_x = scr.xMin + 100;
+    auto_y = scr.yMin + 100;
+  }
+
+  Point res{};
+  if (auto_x + client_area.width > scr.xMax &&
+      client_area.width <= scr.width()) {
+    // If the window wouldn't fit using normal auto-placement but is small
+    // enough to fit horizontally, then centre the window horizontally.
+    res.x = scr.xMin + (scr.width() - client_area.width) / 2;
+    auto_x = scr.xMin + 20;
+  } else {
+    res.x = auto_x;
+    auto_x += AUTO_PLACEMENT_INCREMENT;
+    if (auto_x > (scr.xMin + scr.xMax) / 2) {  // Past middle.
+      auto_x = scr.xMin + 20;
+    }
+  }
+
+  if (auto_y + client_area.height > scr.yMax &&
+      client_area.height <= scr.height()) {
+    // If the window wouldn't fit using normal auto-placement but is small
+    // enough to fit vertically, then centre the window vertically.
+    res.y = scr.yMin + (scr.height() - client_area.height) / 2;
+    auto_y = scr.yMin + 20;
+  } else {
+    res.y = auto_y;
+    auto_y += AUTO_PLACEMENT_INCREMENT;
+    if (auto_y > (scr.yMin + scr.yMax) / 2) {  // Past middle.
+      auto_y = scr.yMin + 20;
+    }
+  }
+  return res;
+}
 
 /*ARGSUSED*/
 void manage(Client* c) {
@@ -74,7 +121,6 @@ void manage(Client* c) {
   }
 
   getWindowName(c);
-  getNormalHints(c);
 
   // Scan the list of atoms on WM_PROTOCOLS to see which of the
   // protocols that we understand the client is prepared to
@@ -97,7 +143,6 @@ void manage(Client* c) {
 
   // Work out details for the Client structure from the hints.
   if (hints && (hints->flags & InputHint)) {
-    LOGD(c) << "Got InputHint: setting focus to " << hints->input;
     c->accepts_focus = hints->input;
   }
 
@@ -107,109 +152,35 @@ void manage(Client* c) {
   }
 
   // Sort out the window's position.
-  {
-    Window root_window;
-    int x, y;
-    unsigned int w, h;
-    unsigned int border_width, depth;
-
-    XGetGeometry(dpy, c->window, &root_window, &x, &y, &w, &h, &border_width,
-                 &depth);
-
-    // Do the size first.
-    //
-    // "The size specifiers refer to the width and height of the
-    // client excluding borders" -- ICCCM 4.1.2.3.
-    c->size.width = w;
-    c->size.height = h;
-    if (c->framed) {
-      c->size.width += 2 * borderWidth();
-      c->size.height += 2 * borderWidth();
-    }
-
-    // THIS IS A HACK!
-    //
-    // OpenGL programs have a habit of appearing smaller than their
-    // minimum sizes, which they don't like.
-    if (c->size.width < c->size.min_width) {
-      c->size.width = c->size.min_width;
-    }
-    if (c->size.height < c->size.min_height) {
-      c->size.height = c->size.min_height;
-    }
-
-    // Do the position next.
-
-    // If we have a user-specified position for a top-level window,
-    // or a program-specified position for a dialogue box, we'll
-    // take it. We'll also just take it during initialisation,
-    // since the previous manage probably placed its windows
-    // sensibly.
-    if (c->trans != None && c->size.flags & PPosition) {
-      // It's a "dialogue box". Trust it.
-      c->size.x = x;
-      c->size.y = y;
-    } else if ((c->size.flags & USPosition) || !c->framed || is_initialising) {
-      // Use the specified window position.
-      c->size.x = x;
-      c->size.y = y;
-
-      // We need to be careful of the right-hand edge and
-      // bottom. We can use the window gravity (if specified)
-      // to handle this. (See section 4.1.2.3 of the ICCCM.)
-      applyGravity(c);
-    } else {
-      // No position was specified: use the auto-placement heuristics.
-      // These are static so that the windows aren't all opened at exactly
-      // the same place, but rather the opening position advances down and to
-      // the right with each successive window opened.
-      static unsigned int auto_x = 100;
-      static unsigned int auto_y = 100;
-
-      // First, find the primary screen area.
-      const Rect scr = LScr::I->GetPrimaryVisibleArea(true);  // With struts.
-      // If auto_x and auto_y are outside the main visible area, reset them.
-      // This can happen after a change of monitor configuration.
-      if (!scr.contains(auto_x, auto_y)) {
-        auto_x = scr.xMin + 100;
-        auto_y = scr.yMin + 100;
-      }
-
-      if (auto_x + c->size.width > scr.xMax && c->size.width <= scr.width()) {
-        // If the window wouldn't fit using normal auto-placement but is small
-        // enough to fit horizontally, then centre the window horizontally.
-        c->size.x = scr.xMin + (scr.width() - c->size.width) / 2;
-        auto_x = scr.xMin + 20;
-      } else {
-        c->size.x = auto_x;
-        auto_x += AUTO_PLACEMENT_INCREMENT;
-        if (auto_x > (scr.xMin + scr.xMax) / 2) {  // Past middle.
-          auto_x = scr.xMin + 20;
-        }
-      }
-
-      if (auto_y + c->size.height > scr.yMax &&
-          c->size.height <= scr.height()) {
-        // If the window wouldn't fit using normal auto-placement but is small
-        // enough to fit vertically, then centre the window vertically.
-        c->size.y = scr.yMin + (scr.height() - c->size.height) / 2;
-        auto_y = scr.yMin + 20;
-      } else {
-        c->size.y = auto_y;
-        auto_y += AUTO_PLACEMENT_INCREMENT;
-        if (auto_y > (scr.yMin + scr.yMax) / 2) {  // Past middle.
-          auto_y = scr.yMin + 20;
-        }
-      }
-    }
+  xlib::WindowGeometry geom = xlib::XGetGeometry(c->window);
+  if (!geom.ok) {
+    LOGE() << "Failed to get geometry for " << WinID(c->window);
+    return;
   }
+  // OpenGL programs (according to an old comment in here) can apparently
+  // appear with 0 size, while their minimum sizes are larger than this.
+  // Therefore, use the client's size limitations to ensure the original
+  // size is sane.
+  Rect rect = c->LimitResize(geom.rect);
+
+  // If the position is zero, we assume there's none specified and we have
+  // to invent a good position ourselves. However, we only do this for framed
+  // windows, as it's perfectly reasonable for a launcher (eg gummiband) to
+  // want to place itself at the origin of the screen.
+  if (c->framed && rect.xMin == 0 && rect.yMin == 0) {
+    Point p = NextAutoPosition(rect.area());
+    rect = Rect::Translate(rect, p);
+  }
+  // There was code here which called 'applyGravity' if there was a user-
+  // -specified position, or is_initialising was set. Apparently this is
+  // in accordance with section 4.1.2.3 of the ICCCM.
 
   if (hints) {
     XFree(hints);
   }
 
   if (c->framed) {
-    LScr::I->Furnish(c);
+    c->FurnishAt(rect);
   }
 
   // Stupid X11 doesn't let us change border width in the above
@@ -217,8 +188,7 @@ void manage(Client* c) {
   //
   // As pointed out by Adrian Colley, we can't change the window
   // border width at all for InputOnly windows.
-  XWindowAttributes current_attr;
-  XGetWindowAttributes(dpy, c->window, &current_attr);
+  const XWindowAttributes current_attr = xlib::XGetWindowAttributes(c->window);
   if (current_attr.c_class != InputOnly) {
     XSetWindowBorderWidth(dpy, c->window, 0);
   }
@@ -234,8 +204,6 @@ void manage(Client* c) {
   if (c->framed) {
     xlib::XReparentWindow(c->window, c->parent, borderWidth(),
                           borderWidth() + textHeight());
-  } else {
-    xlib::XReparentWindow(c->window, c->parent, c->size.x, c->size.y);
   }
 
   setShape(c);
@@ -261,26 +229,6 @@ void manage(Client* c) {
   LOGD(c) << "<<< manage";
 }
 
-void applyGravity(Client* c) {
-  if (!c->framed) {
-    return;  // Only required for framed windows.
-  }
-  if (c->size.flags & PWinGravity) {
-    switch (c->size.win_gravity) {
-      case NorthEastGravity:
-        c->size.x -= 2 * borderWidth();
-        break;
-      case SouthWestGravity:
-        c->size.y -= 2 * borderWidth();
-        break;
-      case SouthEastGravity:
-        c->size.x -= 2 * borderWidth();
-        c->size.y -= 2 * borderWidth();
-        break;
-    }
-  }
-}
-
 void getTransientFor(Client* c) {
   Window trans = None;
   // XGetTransientForHint returns a Status, which is zero on failure.
@@ -293,7 +241,11 @@ void getTransientFor(Client* c) {
 void withdraw(Client* c) {
   if (c->parent != LScr::I->Root()) {
     xlib::XUnmapWindow(c->parent);
-    xlib::XReparentWindow(c->parent, LScr::I->Root(), c->size.x, c->size.y);
+    // This seems to make no sense. Surely we just want to unmap our frame,
+    // but we certainly shouldn't then reparent our frame to the root. That's
+    // just weird.
+    //    xlib::XReparentWindow(c->parent, LScr::I->Root(), c->size.x,
+    //    c->size.y);
   }
 
   XRemoveFromSaveSet(dpy, c->window);
@@ -357,73 +309,6 @@ void getWindowName(Client* c) {
   if (old_name != c->Name()) {
     c->DrawBorder();
   }
-}
-
-void getNormalHints(Client* c) {
-  // We have to be a little careful here. The ICCCM says that the x, y
-  // and width, height components aren't used. So we use them. That means
-  // that we need to save and restore them whenever we fill the size
-  // struct.
-  int x = c->size.x;
-  int y = c->size.y;
-  int w = c->size.width;
-  int h = c->size.height;
-  LOGD(c) << "Initial size = " << Rect::FromXYWH(x, y, w, h);
-
-  // Do the get.
-  long msize;
-  // XGetWMNormalHints returns a Status, so 0 means error.
-  if (XGetWMNormalHints(dpy, c->window, &c->size, &msize)) {
-    LOGD(c) << "Got normal hints: " << c->size;
-    c->size.flags = 0;
-  } else {
-    LOGD(c) << "No hints; current is: " << c->size;
-  }
-
-  if (c->framed) {
-    // Correct the minimum allowable size of this client to take
-    // account of the window border.
-    if (c->size.flags & PMinSize) {
-      c->size.min_width += 2 * borderWidth();
-      c->size.min_height += 2 * borderWidth();
-    } else {
-      c->size.flags |= PMinSize;
-      c->size.min_width = 2 * (2 * borderWidth());
-      c->size.min_height = 2 * (2 * borderWidth());
-    }
-
-    // Correct the maximum allowable size of this client to take
-    // account of the window border.
-    if (c->size.flags & PMaxSize) {
-      c->size.max_width += 2 * borderWidth();
-      c->size.max_height += 2 * borderWidth();
-    }
-  }
-
-  // Ensure that the base width & height and the width & height increments
-  // are set correctly so that we don't have to do this in MakeSane.
-  if (!(c->size.flags & PBaseSize)) {
-    c->size.base_width = c->size.base_height = 0;
-  }
-  if (!(c->size.flags & PResizeInc)) {
-    c->size.width_inc = c->size.height_inc = 1;
-  }
-
-  // If the client gives identical minimum and maximum sizes, we don't
-  // want the user to resize in that direction.
-  if (c->size.min_width == c->size.max_width) {
-    c->size.width_inc = 0;
-  }
-  if (c->size.min_height == c->size.max_height) {
-    c->size.height_inc = 0;
-  }
-
-  // Restore the window-manager bits.
-  c->size.x = x;
-  c->size.y = y;
-  c->size.width = w;
-  c->size.height = h;
-  LOGD(c) << "Post-processed hints: " << c->size;
 }
 
 int getWindowState(Window w, int* state) {
