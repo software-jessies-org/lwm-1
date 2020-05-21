@@ -43,11 +43,6 @@ extern int XUnmapWindow(Window w);
 extern int XRaiseWindow(Window w);
 extern int XLowerWindow(Window w);
 
-extern int XConfigureWindow(Window w,
-                            const Rect& rect,
-                            int border_width,
-                            Window sibling,
-                            int stack_mode);
 extern int XConfigureWindow(Window w, unsigned int val_mask, XWindowChanges* v);
 extern int XChangeWindowAttributes(Window w,
                                    unsigned int val_mask,
