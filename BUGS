@@ -16,14 +16,6 @@ covers a small gap between A and B, focus is given to C, despite the fact
 that the pointer last enters B. This only seems to happen for me on linux,
 not on FreeBSD.
 
-ImageMagick's "display" program doesn't work well *at all* with LWM - it has a
-tendency to open the main window far too large, and then make it disappear when
-anything is done to it. My current guess is that this has something to do with
-its use of 'group leader' windows, and possibly also due to the specification
-that if a window manager tries to impose an unacceptable size, a client should
-respond by iconifying itself. LWM may be mishandling the size constraints of
-the display program.
-
 I believe LWM isn't properly extracting struts on start-up; several times I've
 had to pkill -HUP menu, after which its struts reappear. Not sure precisely why.
 
@@ -33,11 +25,8 @@ had to pkill -HUP menu, after which its struts reappear. Not sure precisely why.
 
 === ERROR LOGS ===
 
-LWM produces error messages like these:
-lwm: protocol request X_ConfigureWindow on resource 0x1200001 failed: BadMatch (invalid parameter attributes)
-lwm: protocol request X_ConfigureWindow on resource 0x1800001 failed: BadMatch (invalid parameter attributes)
-lwm: protocol request X_ConfigureWindow on resource 0x1a00001 failed: BadMatch (invalid parameter attributes)
-lwm: protocol request X_ConfigureWindow on resource 0x1c00001 failed: BadMatch (invalid parameter attributes)
+LWM may still produce errors at certain times. These should be tracked down and
+fixed. I've recently fixed a bunch, though.
 
 
 === FEATURES ===
@@ -64,13 +53,21 @@ pointer to its middle.
 
 === CLEANUPS ===
 
-The way we deal with window sizes seems rather odd. The 'size' variable in a
-Client is actually the client window size, plus the width of LWM's frame on all
-sides, *BUT* excluding the title bar! I vaguely remember something about an old
-version of LWM where a title bar was only shown on the focused window; maybe
-it's from way back then. Anyway, the way sizes are manipulated is unclear,
-badly-indicated in code/comments, and inconsistent. I'm not at all confident
-it's correct in all cases.
+The work on xlib.h and xlib.cc has helped a lot, but this could be extended
+such that:
+1: All xlib access goes through this shim layer.
+2: The shim layer becomes an interface with a concrete implementation.
+3: We can then add a test implementation, and then proper unit testing.
+
+We still have too many globals and static variables. These should be moved into
+classes.
+
+The Client class is getting better, but it's still a mess of public-access
+instance variables. This needs further tightening up.
+
+The interfaces between components aren't well-defined; they're on the way to
+sanity, but the process of migrating the original C code to some kind of modern
+structure is still very much in progress.
 
 
 === DEBUGGING TOOLS ===

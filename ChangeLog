@@ -1,6 +1,11 @@
 Change Log for "lwm"
 
 
+2020-05-22	pn	Basel
+	Wrote 'ruler', a debug aid that displays a 2d ruler on the root window.
+	Fixed a few bad window lookup bugs, which were dumping stack traces.
+
+
 2020-05-19	pn	Basel
 	Major refactor of how window sizing, movement is dealt with. Should fix
 	a lot of little bugs.
