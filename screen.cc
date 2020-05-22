@@ -66,8 +66,8 @@ void LScr::Init() {
   // Announce our interest in the root_ window.
   attr.cursor = cursor_map_->Root();
   attr.event_mask = SubstructureRedirectMask | SubstructureNotifyMask |
-                    ColormapChangeMask | ButtonPressMask | PropertyChangeMask |
-                    EnterWindowMask;
+                    ColormapChangeMask | ButtonPressMask | ButtonReleaseMask |
+                    PropertyChangeMask | EnterWindowMask;
   XChangeWindowAttributes(dpy_, root_, CWCursor | CWEventMask, &attr);
 
   // Tell all the applications what icon sizes we prefer.
