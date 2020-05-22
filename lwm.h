@@ -351,7 +351,7 @@ class Focuser {
   // is *NOT* necessarily the window with input focus. In fact, if a new window
   // was opened and was given focus, the pointer may be over a completely
   // different (and unfocused) window.
-  Window last_entered_;
+  Window last_entered_ = 0;
 
   // The following list contains the history of focused windows. The Focuser
   // is notified of all window destructions, and must keep this list free of

@@ -431,13 +431,11 @@ void EvMapRequest(XEvent* ev) {
   ewmh_set_client_list();
 }
 
-char const* truth(bool yes) {
-  return yes ? "true" : "false";
-}
-
 void EvUnmapNotify(XEvent* ev) {
   const XUnmapEvent& xe = ev->xunmap;
-  Client* c = LScr::I->GetClient(xe.window);
+  // Don't scan the window's parents for a match - we only care about unmapping
+  // of top-level client windows, so anything underneath we can ignore.
+  Client* c = LScr::I->GetClient(xe.window, false);
   if (c == nullptr) {
     return;
   }

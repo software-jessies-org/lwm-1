@@ -595,11 +595,11 @@ void Focuser::EnterWindow(Window w, Time time) {
   // 3: Mouse pointer is moved such that it crosses into a different window in
   //    the client of X.
   // In this situation, window Y should still keep focus.
-  Client* c = LScr::I->GetClient(w);
+  Client* c = LScr::I->GetClient(w, false);
   LOGD(c) << "EnterWindow " << WinID(w) << " at " << time;
   const Window le = last_entered_;
   last_entered_ = w;
-  if (!c || (c == LScr::I->GetClient(le))) {
+  if (!c || (c == LScr::I->GetClient(le, false))) {
     return;  // No change in pointed-at client, so we have nothing to do.
   }
   if (!Resources::I->ClickToFocus()) {
