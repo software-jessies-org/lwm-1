@@ -81,11 +81,9 @@ xwininfo -root -tree
 To print details about a window:
 xprop -id <id>
 
-Test LWM changes in a VNC session (I use tightvnc). Believe me, testing LWM in
-the same X session as you're using to edit its code is a seriously painful
-experience.
-vncserver -geometry 2000x1500 -name test
-vncviewer localhost:1
+Test LWM changes in Xephyr. Believe me, testing LWM in the same X session as
+you're using to edit its code is a seriously painful experience.
+Xephyr :2 -screen 2000x1400 &
 
 In this directory there's a file called 'xdbg.cc', which can be compiled and
 run. It shows a window which displays the mouse coordinates, and its last

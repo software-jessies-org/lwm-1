@@ -1,4 +1,5 @@
-// g++ -std=c++14 -g -lX11 -lXft -I/usr/include/freetype2 -oxdbg xdbg.cc
+// g++ -oxdbg -std=c++14 -g -lXft -rdynamic xdbg.cc -lXext -lX11  -lSM \
+//    -lXrandr -lICE -L/usr/lib -I/usr/include/freetype2 -lXft
 // g++ -std=c++14 -g -lX11 -lXft -I/usr/local/include/freetype2 -oxdbg xdbg.cc
 //
 // This program opens a window at the bottom of the screen, showing the location
@@ -113,7 +114,7 @@ void DoNullEvent() {
   static bool wasShifted = 0;
   unsigned mask = 0;
   XQueryPointer(dpy, root, &wign, &child, &mouseX, &mouseY, &ign, &ign, &mask);
-  const bool shifted = mask & ShiftMask;
+  bool shifted = mask & ShiftMask;
   if (shifted != wasShifted) {
     shifted = wasShifted;
     if (shifted) {
@@ -228,7 +229,7 @@ int main(int argc, char* const argv[]) {
   gc = XCreateGC(dpy, window, GCForeground | GCBackground, &gv);
 
   // Bring up the window.
-  xlib::XMoveResizeWindow(window);
+  XMapRaised(dpy, window);
 
   // Make sure all our communication to the server got through.
   XSync(dpy, False);
