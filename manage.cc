@@ -231,11 +231,23 @@ void manage(Client* c) {
 
 void getTransientFor(Client* c) {
   Window trans = None;
-  // XGetTransientForHint returns a Status, which is zero on failure.
-  // That can happen if we got a properly notify even for a just-deleted window.
+  // XGetTransientForHint returns a Status indicating success or failure.
+  // It is important to realise, however, that a zero status does not
+  // necessarily indicate an error, but also occurs when there is no transient
+  // window.
+  // It is therefore vitally important to, on failure, set c->trans to None.
+  // If this is not done, it causes a really annoying bug in Terminator, such
+  // that if you open a window from another, then open a modal dialog from the
+  // second, then the first window will now start considering the second
+  // terminal to be its 'trans' window. This is caused by the wacky way in
+  // which Java implements modal dialogs.
+  // Anyway, you have been warned: do not remove the setting of c->trans to
+  // None on failure!
   if (XGetTransientForHint(dpy, c->window, &trans)) {
     LOGD(c) << "Transient for window " << WinID(trans);
     c->trans = trans;
+  } else {
+    c->trans = None;
   }
 }
 
