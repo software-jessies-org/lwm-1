@@ -453,7 +453,7 @@ void fix_stack() {
     if (!c->wstate.below) {
       continue;
     }
-    Client_Lower(c);
+    c->Lower();
   }
 
   // lower desktops - they are always the lowest
@@ -462,7 +462,7 @@ void fix_stack() {
     if (c->wtype != WTypeDesktop) {
       continue;
     }
-    Client_Lower(c);
+    c->Lower();
     break;  // only one desktop, surely
   }
 
@@ -473,7 +473,7 @@ void fix_stack() {
     if (!(c->wstate.above || (c->wtype == WTypeDock && !c->wstate.below))) {
       continue;
     }
-    Client_Raise(c);
+    c->Raise();
   }
 
   // raise fullscreens - they're always on top
@@ -487,7 +487,7 @@ void fix_stack() {
     if (!c->wstate.fullscreen) {
       continue;
     }
-    Client_Raise(c);
+    c->Raise();
   }
 }
 

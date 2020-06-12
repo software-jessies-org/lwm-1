@@ -270,7 +270,7 @@ class WindowCloser : public WindowClicker {
   WindowCloser(Client* c) : WindowClicker(c) {}
   virtual void act(Client* c) {
     LOGD(c) << "Closing (user action)";
-    Client_Close(c);
+    c->Close();
   }
 };
 
@@ -288,7 +288,7 @@ class WindowLowerer : public WindowClicker {
   WindowLowerer(Client* c) : WindowClicker(c) {}
   virtual void act(Client* c) {
     LOGD(c) << "Lowering (user action)";
-    Client_Lower(c);
+    c->Lower();
   }
 };
 
@@ -352,7 +352,7 @@ DragHandler* getDragHandlerForEvent(XEvent* ev) {
     return new WindowMover(c);
   }
   if (e->button == RESHAPE_BUTTON) {
-    Client_Raise(c);
+    c->Raise();
     if (edge == ENone) {
       return new WindowMover(c);
     }
@@ -377,7 +377,7 @@ void EvCirculateRequest(XEvent* ev) {
   XCirculateRequestEvent* e = &ev->xcirculaterequest;
   Client* c = LScr::I->GetClient(e->window);
   LOGD(c) << "CirculateRequest";
-  if (c == 0) {
+  if (c == nullptr) {
     if (e->place == PlaceOnTop) {
       xlib::XRaiseWindow(e->window);
     } else {
@@ -385,9 +385,9 @@ void EvCirculateRequest(XEvent* ev) {
     }
   } else {
     if (e->place == PlaceOnTop) {
-      Client_Raise(c);
+      c->Raise();
     } else {
-      Client_Lower(c);
+      c->Lower();
     }
   }
 }
@@ -423,7 +423,7 @@ void EvMapRequest(XEvent* ev) {
       LOGD(c) << "(map) NormalState " << WinID(c->window);
       xlib::XMapWindow(c->parent);
       xlib::XMapWindow(c->window);
-      Client_Raise(c);
+      c->Raise();
       c->SetState(NormalState);
       c->SendConfigureNotify();
       break;
@@ -657,9 +657,8 @@ void EvDestroyNotify(XEvent* ev) {
   if (c == 0) {
     return;
   }
-
   ScopedIgnoreBadWindow ignorer;
-  Client_Remove(c);
+  c->Remove();
 }
 
 void EvClientMessage(XEvent* ev) {
@@ -691,7 +690,7 @@ void EvClientMessage(XEvent* ev) {
   }
   if (e->message_type == ewmh_atom[_NET_CLOSE_WINDOW] && e->format == 32) {
     LOGD(c) << "Client message: requested close";
-    Client_Close(c);
+    c->Close();
     return;
   }
   if (e->message_type == ewmh_atom[_NET_MOVERESIZE_WINDOW] && e->format == 32) {
@@ -731,7 +730,7 @@ void EvClientMessage(XEvent* ev) {
       c->Unhide();
     }
     xlib::XMapWindow(c->parent);
-    Client_Raise(c);
+    c->Raise();
     // FIXME: we're ignoring x_root, y_root and button!
     switch (direction) {
       case DSizeTopLeft:
@@ -875,7 +874,7 @@ void EvReparentNotify(XEvent* ev) {
   Client* c = LScr::I->GetClient(e->window);
   LOGD(c) << "ReparentNotify to " << WinID(c->parent);
   if (c != 0 && (c->parent == LScr::I->Root() || c->IsWithdrawn())) {
-    Client_Remove(c);
+    c->Remove();
   }
 }
 

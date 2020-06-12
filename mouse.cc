@@ -115,7 +115,7 @@ void Hider::Unhide(Client* c) {
   // Always raise and give focus if we're trying to unhide, even if it wasn't
   // hidden.
   xlib::XMapWindow(c->parent);
-  Client_Raise(c);
+  c->Raise();
   c->SetState(NormalState);
   // Windows are given input focus when they're unhidden.
   LScr::I->GetFocuser()->FocusClient(c);

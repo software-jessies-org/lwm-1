@@ -144,11 +144,6 @@ class Client {
   bool framed = false;  // true is lwm is maintaining a frame
 
  private:
-  // pre_full_screen_content_rect_ stores the original size of the client window
-  // when it enters full screen state, so it can be correctly brought out of
-  // full screen state again.
-  Rect pre_full_screen_content_rect_ = {};
-
  public:
   int State() const { return state_; }
   void SetState(int state);
@@ -164,6 +159,22 @@ class Client {
   // Notifications to the Client that it has gained or lost focus.
   void FocusGained();
   void FocusLost();
+
+  // Lower this window in the window stack.
+  void Lower();
+
+  // Raise this window in the window stack, plus any other windows which are
+  // 'transient' for it. Transient windows are things like dialogs which open
+  // over the top of their corresponding client window.
+  void Raise();
+
+  // Tells the client to kill its window, in response to a user clicking on the
+  // close button.
+  void Close();
+
+  // Destroys this client, removing it from the LScr, in response to a
+  // notification that the client's window has been destroyed.
+  void Remove();
 
   // Draws the contents of the furniture window.
   void DrawBorder();
@@ -208,6 +219,11 @@ class Client {
 
  private:
   Rect content_rect_;
+
+  // pre_full_screen_content_rect_ stores the original size of the client window
+  // when it enters full screen state, so it can be correctly brought out of
+  // full screen state again.
+  Rect pre_full_screen_content_rect_ = {};
 
   const DimensionLimiter x_limiter_;
   const DimensionLimiter y_limiter_;
@@ -550,10 +566,6 @@ extern void shell(int);
 /* client.cc */
 extern void Client_SizeFeedback();
 extern void size_expose();
-extern void Client_Raise(Client*);
-extern void Client_Lower(Client*);
-extern void Client_Close(Client*);
-extern void Client_Remove(Client*);
 extern void Client_FreeAll();
 extern void Client_ResetAllCursors();
 extern int titleBarHeight();

@@ -234,6 +234,7 @@ void getTransientFor(Client* c) {
   // XGetTransientForHint returns a Status, which is zero on failure.
   // That can happen if we got a properly notify even for a just-deleted window.
   if (XGetTransientForHint(dpy, c->window, &trans)) {
+    LOGD(c) << "Transient for window " << WinID(trans);
     c->trans = trans;
   }
 }

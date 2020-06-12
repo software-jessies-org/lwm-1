@@ -305,14 +305,11 @@ Rect Client::FrameFromContentRect(const Rect& r) {
   return res;
 }
 
-void Client_Remove(Client* c) {
-  if (c == 0) {
-    return;
+void Client::Remove() {
+  if (parent != LScr::I->Root()) {
+    XDestroyWindow(dpy, parent);
   }
-  if (c->parent != LScr::I->Root()) {
-    XDestroyWindow(dpy, c->parent);
-  }
-  LScr::I->Remove(c);
+  LScr::I->Remove(this);
   ewmh_set_client_list();
   ewmh_set_strut();
 }
@@ -356,29 +353,23 @@ std::string Client::SizeString() const {
                         y_limiter_.DisplayableSize(content_rect_.height()));
 }
 
-void Client_Lower(Client* c) {
-  if (c == 0) {
-    return;
-  }
-  xlib::XLowerWindow(c->window);
-  if (c->framed) {
-    xlib::XLowerWindow(c->parent);
+void Client::Lower() {
+  xlib::XLowerWindow(window);
+  if (framed) {
+    xlib::XLowerWindow(parent);
   }
   ewmh_set_client_list();
 }
 
-void Client_Raise(Client* c) {
-  if (c == 0) {
-    return;
+void Client::Raise() {
+  if (framed) {
+    xlib::XRaiseWindow(parent);
   }
-  if (c->framed) {
-    xlib::XRaiseWindow(c->parent);
-  }
-  xlib::XRaiseWindow(c->window);
+  xlib::XRaiseWindow(window);
 
   for (auto it : LScr::I->Clients()) {
     Client* tr = it.second;
-    if (tr->trans != c->window && !(c->framed && tr->trans == c->parent)) {
+    if (tr->trans != window && !(framed && tr->trans == parent)) {
       continue;
     }
     if (tr->framed) {
@@ -389,15 +380,12 @@ void Client_Raise(Client* c) {
   ewmh_set_client_list();
 }
 
-void Client_Close(Client* c) {
-  if (c == 0) {
-    return;
-  }
+void Client::Close() {
   // Terminate the client nicely if possible. Be brutal otherwise.
-  if (c->proto & Pdelete) {
-    xlib::SendClientMessage(c->window, wm_protocols, wm_delete, CurrentTime);
+  if (proto & Pdelete) {
+    xlib::SendClientMessage(window, wm_protocols, wm_delete, CurrentTime);
   } else {
-    XKillClient(dpy, c->window);
+    XKillClient(dpy, window);
   }
 }
 
@@ -627,7 +615,7 @@ void Focuser::FocusClient(Client* c, Time time) {
     // Old LWM seems to always have raised the window being focused, so let's
     // copy that. Maybe it should be a separate resource option though?
     if (Resources::I->ClickToFocus()) {
-      Client_Raise(c);
+      c->Raise();
     }
   } else {
     LOGD(c) << "Ignoring FocusClient request";
