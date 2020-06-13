@@ -303,6 +303,27 @@ class ShellRunner : public DragHandler {
   int button_;
 };
 
+void RunConfiguredAltCommand(Window w, Edge edge, int button) {
+  // For now, we only run commands on the title bar, so we have two cases to
+  // deal with. If and when we end up being able to configure any button on any
+  // Edge, this will need a more elegant solution.
+  if (edge != ENone) {
+    return;
+  }
+  std::string command;
+  if (button == Button1) {
+    command = Resources::I->Get(Resources::ALT_BUTTON1_TITLE_COMMAND);
+  } else if (button == Button2) {
+    command = Resources::I->Get(Resources::ALT_BUTTON2_TITLE_COMMAND);
+  }
+  if (command.empty()) {
+    return;
+  }
+  std::ostringstream oss;
+  oss << command << " " << WinID(w);
+  RunCommand(oss.str());
+}
+
 DragHandler* getDragHandlerForEvent(XEvent* ev) {
   XButtonEvent* e = &ev->xbutton;
   // Deal with root window button presses.
@@ -329,6 +350,13 @@ DragHandler* getDragHandlerForEvent(XEvent* ev) {
   if (edge == EContents) {
     return nullptr;
   }
+
+  // If the user has alt held, then we run special configured commands as
+  // configured in the user's xresources.
+  if (e->state & Mod1Mask) {
+    RunConfiguredAltCommand(c->window, edge, e->button);
+  }
+
   if (edge == EClose) {
     return new WindowCloser(c);
   }
@@ -842,6 +870,9 @@ void EvPropertyNotify(XEvent* ev) {
   if (e->atom == _mozilla_url || e->atom == XA_WM_NAME) {
     LOGD(c) << "Property change: XA_WM_NAME";
     getWindowName(c);
+  } else if (e->atom == ewmh_atom[_NET_WM_VISIBLE_NAME]) {
+    LOGD(c) << "Property change: _NET_WM_VISIBLE_NAME";
+    getVisibleWindowName(c);
   } else if (e->atom == XA_WM_TRANSIENT_FOR) {
     LOGD(c) << "Property change: XA_WM_TRANSIENT_FOR";
     getTransientFor(c);

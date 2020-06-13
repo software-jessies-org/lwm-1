@@ -1,6 +1,19 @@
 Change Log for "lwm"
 
 
+2020-06-13	pn	Basel
+	Added ability to run user-configured commands on an alt-click on the
+	title bar of a window. By default (assuming the new force_title.sh and
+	setvisname programs are on the user's path), alt-left-click on the title
+	bar of a window will pop up a zenity dialog box, and allow the user to
+	enter a new name for the window. This is then set as the
+	_NET_WM_VISIBLE_NAME property on the window, which LWM will then display
+	in preference to the client's own provided name.
+	This is mainly so that annoying web apps which animate the window title
+	can be muted. The 1Hz constant flapping that Google Hangouts Chat keeps
+	up has been annoying the hell out of me for months now.
+
+
 2020-05-22	pn	Basel
 	Wrote 'ruler', a debug aid that displays a 2d ruler on the root window.
 	Fixed a few bad window lookup bugs, which were dumping stack traces.

@@ -37,9 +37,9 @@ A button 1 click on a window frame brings it to the top.  Dragging
 button 1 on the frame of a resizable window repositions that edge of
 the window.  If a corner rather than an edge is dragged, then both edges
 forming the corner are repositioned.  While you're reshaping a window,
-a little window pops up to show you the window's current size.  Dragging the
-title bar always moves the window.  If you wish to resize from the top edge,
-use the top-right corner.
+a little window pops up to show you the window's current size. Whether there is
+a resize widget at the top of the title bar depends on Xresource config - see
+below.
 .PP
 In the default configuration, button 1 on the root window does nothing.
 .PP
@@ -63,6 +63,16 @@ to the back, under any other windows.
 .PP
 A window may be closed by clicking on the little white cross in the top-left
 corner of its frame.
+.PP
+It is possible to run commands when alt-clicking on a window's title bar.
+The configured command is run with the window id (in hex with 0x prefix)
+appended to it (separated by a space), so that the command run can be a script
+that does some user-specified action to the window.
+Separate commands can be configured for buttons 1 and 2. The default for
+alt-button1 on the title bar is to run "force_title.sh", which can be found
+alongside the LWM source code. This script allows the user to override a
+window's visible title, so that annoying web apps that animate the window
+title can be muted.
 .SH OPTIONS
 \fILwm\fP accepts the following command line options:
 .PP
@@ -104,6 +114,16 @@ program spawned when button 1 is clicked on the root window
 .TP 12
 .B button2
 program spawned when button 2 is clicked on the root window
+.TP 12
+.B altButton1Title
+program spawned when alt+button 1 is clicked on a window's title bar. The window
+ID will be appended to this string (in hex with 0x prefix, separated with space)
+and the resulting program will be run. Default value is "force_title.sh", which
+for window 0x120002 will be run as "force_title.sh 0x120002".
+.TP 12
+.B altButton2Title
+program spawned when alt+button 2 is clicked on a window's title bar. See the
+description of altButton1Title for more info.
 .TP 12
 .B titleBGColour
 background colour of the active window's title bar

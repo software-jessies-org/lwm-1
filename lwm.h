@@ -123,8 +123,11 @@ class Client {
   // border.
   void Release();
 
-  void SetName(const char* c, int len);
-  const std::string& Name() const { return name_; }
+  void SetName(const std::string& n) { name_ = n; }
+  void SetVisibleName(const std::string& n) { visible_name_ = n; }
+  const std::string& Name() const {
+    return visible_name_ == "" ? name_ : visible_name_;
+  }
   std::string MenuName() const;
 
   // Returns the edge corresponding to the action to be performed on the window.
@@ -254,7 +257,14 @@ class Client {
  private:
   Rect EdgeBounds(Edge e) const;
 
-  std::string name_;  // Name used for title in frame.
+  // name_ is the frame title as specified by the client.
+  std::string name_;
+  // If the user has set a name themselves, it is stored in visible_name_.
+  // If this is set, it is used in preference to 'name_'.
+  // The main purpose for this is to allow the user to stop browser window
+  // titles from flip-flopping between different strings (which, for example,
+  // Google's "Hangouts Chat" tends to do at a rate of
+  std::string visible_name_;
   xlib::ImageIcon* icon_ = nullptr;
 
   Client(const Client&) = delete;
@@ -267,8 +277,15 @@ struct WinID {
   Window w;
 };
 
+// AtomName is only used to pretty-print atoms.
+struct AtomName {
+  explicit AtomName(Atom a) : a(a) {}
+  Atom a;
+};
+
 std::ostream& operator<<(std::ostream& os, const Client& c);
 std::ostream& operator<<(std::ostream& os, const WinID& w);
+std::ostream& operator<<(std::ostream& os, const AtomName& an);
 
 class CursorMap {
  public:
@@ -561,7 +578,10 @@ extern bool shape;
 extern int shape_event;
 extern char* argv0;
 extern bool forceRestart;
-extern void shell(int);
+extern void shell(int button);
+
+// Runs <command> in a child process.
+extern void RunCommand(const std::string& command);
 
 /* client.cc */
 extern void Client_SizeFeedback();
@@ -602,6 +622,7 @@ extern void panic(const char*);
 
 /* manage.cc */
 extern void getWindowName(Client*);
+extern void getVisibleWindowName(Client*);
 extern bool motifWouldDecorate(Client*);
 extern void manage(Client*);
 extern void withdraw(Client*);
@@ -640,6 +661,8 @@ class Resources {
     TITLE_FONT,
     BUTTON1_COMMAND,
     BUTTON2_COMMAND,
+    ALT_BUTTON1_TITLE_COMMAND,
+    ALT_BUTTON2_TITLE_COMMAND,
     TITLE_BG_COLOUR,
     BORDER_COLOUR,
     INACTIVE_BORDER_COLOUR,
@@ -773,6 +796,7 @@ extern Atom ewmh_atom[];
 extern void ewmh_init();
 extern EWMHWindowType ewmh_get_window_type(Window w);
 extern bool ewmh_get_window_name(Client* c);
+extern bool ewmh_get_visible_window_name(Client* c);
 extern xlib::ImageIcon* ewmh_get_window_icon(Client* c);
 extern bool ewmh_hasframe(Client* c);
 extern void ewmh_set_state(Client* c);
@@ -784,7 +808,6 @@ extern void ewmh_set_allowed(Client* c);
 extern void ewmh_set_client_list();
 extern void ewmh_get_strut(Client* c);
 extern void ewmh_set_strut();
-extern char const* ewmh_atom_name(Atom at);
 
 // geometry.cc
 extern bool isLeftEdge(Edge e);

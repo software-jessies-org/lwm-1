@@ -121,6 +121,7 @@ void manage(Client* c) {
   }
 
   getWindowName(c);
+  getVisibleWindowName(c);
 
   // Scan the list of atoms on WM_PROTOCOLS to see which of the
   // protocols that we understand the client is prepared to
@@ -319,6 +320,17 @@ void getWindowName(Client* c) {
   }
   const std::string old_name = c->Name();
   ewmh_get_window_name(c);
+  if (old_name != c->Name()) {
+    c->DrawBorder();
+  }
+}
+
+void getVisibleWindowName(Client* c) {
+  if (!c) {
+    return;
+  }
+  const std::string old_name = c->Name();
+  ewmh_get_visible_window_name(c);
   if (old_name != c->Name()) {
     c->DrawBorder();
   }

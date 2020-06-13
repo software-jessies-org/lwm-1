@@ -27,6 +27,21 @@ Atom ewmh_atom[EWMH_ATOM_LAST];
 char const* ewmh_atom_names[EWMH_ATOM_LAST];
 Atom utf8_string;
 
+std::ostream& operator<<(std::ostream& os, const AtomName& an) {
+  if (an.a == utf8_string) {
+    os << "UTF8_STRING";
+    return os;
+  }
+  for (int i = 0; i < EWMH_ATOM_LAST; i++) {
+    if (an.a == ewmh_atom[i]) {
+      os << ewmh_atom_names[i];
+      return os;
+    }
+  }
+  os << "Atom " << an.a;
+  return os;
+}
+
 void ewmh_init() {
   // Build half a million EWMH atoms.
 #define SET_ATOM(x)                             \
@@ -97,15 +112,6 @@ void ewmh_init() {
   utf8_string = XInternAtom(dpy, "UTF8_STRING", false);
 }
 
-char const* ewmh_atom_name(Atom at) {
-  for (int i = 0; i < EWMH_ATOM_LAST; i++) {
-    if (at == ewmh_atom[i]) {
-      return ewmh_atom_names[i];
-    }
-  }
-  return "unknown atom";
-}
-
 EWMHWindowType ewmh_get_window_type(Window w) {
   Atom rt = 0;
   Atom* type = nullptr;
@@ -159,7 +165,7 @@ EWMHWindowType ewmh_get_window_type(Window w) {
 
 bool ewmh_get_window_name(Client* c) {
   Atom rt;
-  char* name = NULL;
+  char* name = nullptr;
   int fmt = 0;
   unsigned long n = 0;
   unsigned long extra = 0;
@@ -177,7 +183,24 @@ bool ewmh_get_window_name(Client* c) {
   if (i != Success || name == nullptr) {
     return false;
   }
-  c->SetName(name, n);
+  c->SetName(std::string(name, n));
+  XFree(name);
+  return true;
+}
+
+bool ewmh_get_visible_window_name(Client* c) {
+  Atom rt;
+  char* name = nullptr;
+  int fmt = 0;
+  unsigned long n = 0;
+  unsigned long extra = 0;
+  int i = XGetWindowProperty(dpy, c->window, ewmh_atom[_NET_WM_VISIBLE_NAME], 0,
+                             100, false, LScr::I->GetUTF8StringAtom(), &rt,
+                             &fmt, &n, &extra, (unsigned char**)&name);
+  if (i != Success || name == nullptr) {
+    return false;
+  }
+  c->SetVisibleName(std::string(name, n));
   XFree(name);
   return true;
 }

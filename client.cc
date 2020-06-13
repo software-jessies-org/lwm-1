@@ -115,20 +115,22 @@ Rect Client::EdgeBounds(Edge e) const {
 static constexpr int maxMenuNameChars = 100;
 
 std::string Client::MenuName() const {
-  if (name_.size() <= maxMenuNameChars) {
-    return name_;
+  const std::string& name = Name();
+  if (name.size() <= maxMenuNameChars) {
+    return name;
   }
   int chars = 0;
   int uniLeft = 0;
-  for (int i = 0; i < name_.size(); i++) {
-    if (uniLeft && --uniLeft)
+  for (int i = 0; i < name.size(); i++) {
+    if (uniLeft && --uniLeft) {
       continue;  // Skip trailing UTF8 only.
-    char ch = name_[i];
+    }
+    char ch = name[i];
     chars++;
     if (chars == maxMenuNameChars) {
       // i must be at the start of a unicode character (or ascii), and we've
       // seen as many visible characters as we wanted.
-      return name_.substr(0, i) + "...";
+      return name.substr(0, i) + "...";
     }
     int mask = 0xf8;
     int val = 0xf0;
@@ -144,7 +146,7 @@ std::string Client::MenuName() const {
   }
   // Dropped off the end? The name must be under maxMenuNameChars UTF8
   // characters in length then.
-  return name_;
+  return name;
 }
 
 void Client::Hide() {
@@ -496,10 +498,6 @@ void Client::SendConfigureNotify() {
   LOGD(this) << "Sending config notify, r=" << content_rect_ << " to "
              << WinID(window);
   XSendEvent(dpy, window, false, StructureNotifyMask, (XEvent*)&ce);
-}
-
-void Client::SetName(const char* c, int len) {
-  name_ = (c && len) ? std::string(c, len) : "";
 }
 
 bool Client::HasFocus() const {

@@ -45,6 +45,13 @@ Resources::Resources() {
   Set(BUTTON1_COMMAND, db, "button1", "Command", "");
   // Command to execute when button 2 (middle) is clicked on root window.
   Set(BUTTON2_COMMAND, db, "button2", "Command", "xterm");
+  // Command to execute when button 1 (left) is clicked on title bar with Alt
+  // held.
+  Set(ALT_BUTTON1_TITLE_COMMAND, db, "altButton1Title", "Command",
+      "force_title.sh");
+  // Command to execute when button 2 (middle) is clicked on title bar with Alt
+  // held.
+  Set(ALT_BUTTON2_TITLE_COMMAND, db, "altButton2Title", "Command", "");
   // Background colour for title bar of the active window.
   Set(TITLE_BG_COLOUR, db, "titleBGColour", "String", "#A0522D");
   // Border background colour of the active window.

@@ -300,18 +300,7 @@ void setScreenAreasFromXRandR() {
   LScr::I->SetVisibleAreas(visible);
 }
 
-/*ARGSUSED*/
-extern void shell(int button) {
-  std::string command;
-  if (button == Button1) {
-    command = Resources::I->Get(Resources::BUTTON1_COMMAND);
-  } else if (button == Button2) {
-    command = Resources::I->Get(Resources::BUTTON2_COMMAND);
-  }
-  if (command.empty()) {
-    return;
-  }
-
+extern void RunCommand(const std::string& command) {
   const char* sh = getenv("SHELL");
   if (!sh) {
     sh = "/bin/sh";
@@ -336,6 +325,19 @@ extern void shell(int button) {
       fprintf(stderr, "%s: couldn't fork\n", argv0);
       break;
   }
+}
+
+extern void shell(int button) {
+  std::string command;
+  if (button == Button1) {
+    command = Resources::I->Get(Resources::BUTTON1_COMMAND);
+  } else if (button == Button2) {
+    command = Resources::I->Get(Resources::BUTTON2_COMMAND);
+  }
+  if (command.empty()) {
+    return;
+  }
+  RunCommand(command);
 }
 
 extern int textHeight() {
