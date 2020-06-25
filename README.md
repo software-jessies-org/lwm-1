@@ -1,5 +1,4 @@
 # lwm - the Lightweight Window Manager
-===
 
 LWM stands for Lightweight Window Manager. It is a window manager for the X11
 window system. LWM has a limited feature set, and does not take on the tasks
