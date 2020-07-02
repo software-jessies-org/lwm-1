@@ -568,8 +568,37 @@ void Client::MoveResizeTo(const Rect& new_content_rect) {
   SendConfigureNotify();
 }
 
-void Client::FurnishAt(const Rect& rect) {
+void Client::FurnishAt(Rect rect) {
+  bool is_visible = false;
+  for (const Rect& area : LScr::I->VisibleAreas(true)) {
+    // If there's any overlap with one of the displays, that's OK.
+    if (!Rect::Intersect(rect, area).empty()) {
+      is_visible = true;
+      break;
+    }
+  }
+  if (!is_visible) {
+    // Oh no, the client tried to open the window outside the visible areas
+    // (ImageMagick's 'display' program does this sometimes, when the total
+    // screen area is non-rectangular - so when there are multiple monitors).
+    // Just try to centre the window within the 'main' screen, which is
+    // generally the biggest one, and the one the user most cares about.
+    Rect scr = LScr::I->GetPrimaryVisibleArea(true);
+    // We must work in terms of the frame rect, then transform back to content
+    // rect, otherwise we run the risk of the client's content being within the
+    // screen, but having no window move/resize widgets visible.
+    rect = FrameFromContentRect(rect);
+    const int w = std::min(rect.width(), scr.width());
+    const int h = std::min(rect.height(), scr.height());
+    const int x_off = (scr.width() - w) / 2;
+    const int y_off = (scr.height() - h) / 2;
+    const int x = scr.xMin + x_off;
+    const int y = scr.yMin + y_off;
+    rect = Rect::FromXYWH(x, y, w, h);
+    rect = ContentFromFrameRect(rect);
+  }
   content_rect_ = rect;
+  content_rect_ = LimitResize(rect);
   LScr::I->Furnish(this);
 }
 

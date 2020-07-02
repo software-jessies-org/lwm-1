@@ -218,7 +218,7 @@ class Client {
   void MoveResizeTo(const Rect& new_content_rect);
 
   // Only call this once per client.
-  void FurnishAt(const Rect& rect);
+  void FurnishAt(Rect rect);
 
  private:
   Rect content_rect_;
