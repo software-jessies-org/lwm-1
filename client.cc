@@ -20,6 +20,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/timerfd.h>
 #include <time.h>
 #include <sstream>
 
@@ -602,23 +603,100 @@ void Client::FurnishAt(Rect rect) {
   LScr::I->Furnish(this);
 }
 
-void Focuser::EnterWindow(Window w, Time time) {
-  // If the window being entered is still part of the same client, we do
-  // nothing. This avoids giving focus to a window in the following situation:
+Focuser::Focuser()
+    : timer_fd_(timerfd_create(CLOCK_MONOTONIC, 0)),
+      second_entry_delay_millis_(
+          Resources::I->GetInt(Resources::FOCUS_DELAY_MILLIS)) {}
+
+uint64_t GetTimeMilliseconds() {
+  struct timespec spec = {};
+  clock_gettime(CLOCK_MONOTONIC, &spec);
+  return (uint64_t(spec.tv_sec) * 1000) + (uint64_t(spec.tv_nsec) / 1e6);
+}
+
+void Focuser::EnterWindow(Window w) {
+  // There isn't any point in doing anything if we're in click-to-focus mode.
+  if (Resources::I->ClickToFocus()) {
+    return;
+  }
+  Client* c = LScr::I->GetClient(w, false);
+  // If there's no client, we don't ever give it focus. It's on its own.
+  if (!c) {
+    return;
+  }
+  // Normalise the window we're talking about so it's the main client window.
+  // This mainly dedups a lot of noise, but including this:
   // 1: Mouse pointer is over window X.
   // 2: Window Y is opened and is given focus.
   // 3: Mouse pointer is moved such that it crosses into a different window in
   //    the client of X.
   // In this situation, window Y should still keep focus.
-  Client* c = LScr::I->GetClient(w, false);
-  LOGD(c) << "EnterWindow " << WinID(w) << " at " << time;
-  const Window le = last_entered_;
-  last_entered_ = w;
-  if (!c || (c == LScr::I->GetClient(le, false))) {
-    return;  // No change in pointed-at client, so we have nothing to do.
+  w = c->window;
+  LOGD(c) << "EnterWindow " << WinID(w);
+  if (pending_entry_ && (pending_entry_ == w)) {
+    // Yeah, we're working on this one. It's a dup.
+    return;
   }
-  if (!Resources::I->ClickToFocus()) {
-    FocusClient(c, time);
+  if (!pending_entry_ && (last_entered_ == w)) {
+    // Trying to set focus to same window we're already in, and we're not in
+    // the process of waiting to change focus window to pending_entry_. So this
+    // is a nop.
+    return;
+  }
+  // At this point, we need the time.
+  uint64_t now = GetTimeMilliseconds();
+  // Determine whether this is to be an immediate focus change, or we should
+  // delay it. We always delay if there's a delayed focus already going on,
+  // and we also delay if the last change of focus was too recent.
+  const bool should_delay =
+      (pending_entry_ != 0) ||
+      ((now - last_entry_time_millis_) < second_entry_delay_millis_);
+  // Update last_entry_time_millis_, so the next time we're called we use that.
+  // This means if we get a whole sequence of mouse-entered events, very close
+  // together, the timer will continue to be put off into the future, but
+  // that's OK.
+  last_entry_time_millis_ = now;
+  // Stick w in pending_entry_ so that the code that actually grants focus can
+  // always give it to whatever is in pending_entry_.
+  pending_entry_ = w;
+  if (!should_delay) {
+    FocusPending();
+    return;
+  }
+  // Trigger the timer to go off in second_entry_delay_millis_ time to
+  // actually change focus.
+  struct itimerspec spec = {};
+  spec.it_value.tv_sec = second_entry_delay_millis_ / 1000;
+  spec.it_value.tv_nsec = (second_entry_delay_millis_ % 1000) * 1000 * 1000;
+  timerfd_settime(timer_fd_, 0 /* no flags */, &spec, nullptr);
+  return;
+}
+
+void Focuser::TimerFDTriggered() {
+  // We must read a single uint64_t value from the file descriptor, to silence
+  // it and stop it continually pinging the switch loop.
+  uint64_t buf;
+  read(timer_fd_, &buf, sizeof(uint64_t));
+  // Good. Now actually focus the pending window.
+  FocusPending();
+}
+
+void Focuser::FocusPending() {
+  // Sanity check first.
+  if (pending_entry_ == 0) {
+    return;
+  }
+  // Move pending_entry_ to last_focused_, and clear the former. We always
+  // assume we're waiting for the timer if pending_entry_ isn't zero, so we must
+  // ensure we properly set it back to zero when appropriate.
+  last_entered_ = pending_entry_;
+  pending_entry_ = 0;
+  // The following lookup could fail, because the client might have been
+  // deleted, particularly if this is a delayed focus. If we don't find the
+  // client now, then just ignore this call.
+  Client* c = LScr::I->GetClient(last_entered_);
+  if (c) {
+    FocusClient(c);
   }
 }
 
@@ -632,13 +710,13 @@ void Focuser::UnfocusClient(Client* c) {
   if (focus_history_.empty()) {
     return;  // No one left to give focus to.
   }
-  ReallyFocusClient(focus_history_.front(), CurrentTime, true);
+  ReallyFocusClient(focus_history_.front(), true);
 }
 
-void Focuser::FocusClient(Client* c, Time time) {
+void Focuser::FocusClient(Client* c) {
   // If this window is already focused, ignore.
   if (!c->HasFocus()) {
-    ReallyFocusClient(c, time, true);
+    ReallyFocusClient(c, true);
     // Old LWM seems to always have raised the window being focused, so let's
     // copy that. Maybe it should be a separate resource option though?
     if (Resources::I->ClickToFocus()) {
@@ -649,7 +727,7 @@ void Focuser::FocusClient(Client* c, Time time) {
   }
 }
 
-void Focuser::ReallyFocusClient(Client* c, Time time, bool give_focus) {
+void Focuser::ReallyFocusClient(Client* c, bool give_focus) {
   Client* was_focused = GetFocusedClient();
   RemoveFromHistory(c);
   focus_history_.push_front(c);
@@ -668,7 +746,8 @@ void Focuser::ReallyFocusClient(Client* c, Time time, bool give_focus) {
       LOGD(c) << "Focusing main window " << WinID(c->window);
       XSetInputFocus(dpy, c->window, RevertToPointerRoot, CurrentTime);
       if (c->proto & Ptakefocus) {
-        xlib::SendClientMessage(c->window, wm_protocols, wm_take_focus, time);
+        xlib::SendClientMessage(c->window, wm_protocols, wm_take_focus,
+                                CurrentTime);
       }
     } else if (c->proto & Ptakefocus) {
       // Main window doesn't accept focus, but there's an indication that its

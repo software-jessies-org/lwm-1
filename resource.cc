@@ -89,6 +89,16 @@ Resources::Resources() {
   // bar cannot be used to resize the window up and down (although the top-left
   // and top-right corners will work).
   Set(TOP_BORDER_WIDTH, db, "topBorder", "Border", 4);
+
+  // The number of milliseconds between consecutive attempts to give focus to
+  // a window because the mouse has entered it. This is a hack to avoid a race
+  // condition whereby fast changes of window (moving the pointer from window
+  // A to window B via a brief transition across window C) will end up giving
+  // C focus, whereas it should be B.
+  // If this value is set too low, you may get race conditions; set it too high
+  // and you may get annoyingly long delays between when you expect to see
+  // focus change, and when it does.
+  Set(FOCUS_DELAY_MILLIS, db, "focusDelayMillis", "Border", 50);
 }
 
 const std::string& Resources::Get(SR sr) {

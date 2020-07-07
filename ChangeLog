@@ -1,6 +1,12 @@
 Change Log for "lwm"
 
 
+2020-07-04	pn	Basel
+	Added a delay timer which kicks in when focus-follows-mouse changes the
+	focus recipient too quickly. This can cause a race condition in X11,
+	so that the wrong window ends up stealing focus.
+
+
 2020-06-13	pn	Basel
 	Added ability to run user-configured commands on an alt-click on the
 	title bar of a window. By default (assuming the new force_title.sh and

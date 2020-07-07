@@ -158,6 +158,12 @@ background colour of the popup window
 .B appIcon
 where to show application icons. Possible values are 'none', 'title' (show only
 in the app's window title bar), 'menu' (only in the unhide menu) or 'both'.
+.TP 12
+.B focusDelayMillis
+how many milliseconds to delay repeated sloppy-focus focus events by. The
+default is 50ms. If you find this is slow, reduce it. If you find that you can
+move the mouse from window A to window B to window C, and sometimes have focus
+remaining in window B, then increase this time a bit.
 .SH "SEE ALSO"
 .PP
 X(7)

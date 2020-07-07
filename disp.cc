@@ -976,7 +976,7 @@ void EvEnterNotify(XEvent* ev) {
   if (current_dragger) {
     return;
   }
-  LScr::I->GetFocuser()->EnterWindow(ev->xcrossing.window, ev->xcrossing.time);
+  LScr::I->GetFocuser()->EnterWindow(ev->xcrossing.window);
   // We receive enter events for our client windows too. When we do, we need
   // to switch the mouse pointer's shape to the default pointer.
   // If we don't do this, then for apps like Rhythmbox which don't

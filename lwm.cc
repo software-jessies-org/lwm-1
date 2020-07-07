@@ -22,6 +22,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include <sys/timerfd.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
@@ -187,8 +188,12 @@ extern int main(int argc, char* argv[]) {
   // The main event loop.
   int dpy_fd = ConnectionNumber(dpy);
   int max_fd = dpy_fd + 1;
-  if (ice_fd > dpy_fd) {
+  int delayed_focus_fd = LScr::I->GetFocuser()->GetTimerFD();
+  if (ice_fd >= max_fd) {
     max_fd = ice_fd + 1;
+  }
+  if (delayed_focus_fd >= max_fd) {
+    max_fd = delayed_focus_fd + 1;
   }
 
   // Just before we start the loop, execute any commands we've been told to
@@ -202,6 +207,7 @@ extern int main(int argc, char* argv[]) {
 
     FD_ZERO(&readfds);
     FD_SET(dpy_fd, &readfds);
+    FD_SET(delayed_focus_fd, &readfds);
     if (ice_fd > 0) {
       FD_SET(ice_fd, &readfds);
     }
@@ -224,6 +230,20 @@ extern int main(int argc, char* argv[]) {
       }
       if (ice_fd > 0 && FD_ISSET(ice_fd, &readfds)) {
         session_process();
+      }
+      if (FD_ISSET(delayed_focus_fd, &readfds)) {
+        LScr::I->GetFocuser()->TimerFDTriggered();
+        // My best guess as to why we need this is that, because the event we
+        // received didn't come off the Xlib connection (but rather our own
+        // timer file descriptor), messages to the X server don't get flushed
+        // automatically. The effect of this is that the delayed focus granting
+        // sort of happens, but doesn't look like it did until the user does
+        // something that triggers any event in LWM (like moving the mouse by
+        // a pixel).
+        // So call XSync so that we're sure all outstanding messages to, for
+        // example, tell the client it has input focus, and redraw its frame,
+        // get through.
+        XSync(dpy, false);
       }
       if (debugCLI && FD_ISSET(STDIN_FILENO, &readfds)) {
         debugCLI->Read();
