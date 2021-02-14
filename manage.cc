@@ -18,6 +18,7 @@
  */
 
 #include <signal.h>
+#include <optional>
 
 // These are Motif definitions from Xm/MwmUtil.h, but Motif isn't available
 // everywhere.
@@ -86,6 +87,20 @@ static Point NextAutoPosition(const Area& client_area) {
   return res;
 }
 
+std::optional<bool> motifWouldDecorate(Client* c) {
+  unsigned long* p = 0;
+  if (getProperty(c->window, motif_wm_hints, motif_wm_hints, 5L,
+                  (unsigned char**)&p) <= 0) {
+    return {};
+  }
+  if ((p[0] & MWM_HINTS_DECORATIONS) &&
+      !(p[2] & (MWM_DECOR_BORDER | MWM_DECOR_ALL))) {
+    return false;
+  }
+  XFree(p);
+  return true;
+}
+
 /*ARGSUSED*/
 void manage(Client* c) {
   LOGD(c) << ">>> manage";
@@ -96,13 +111,18 @@ void manage(Client* c) {
   // set EWMH allowable actions, now we intend to manage this window
   ewmh_set_allowed(c);
   // is this window to have a frame?
-  if (c->wtype == WTypeNone) {
-    // this breaks the ewmh spec (section 5.6) because in the
-    // absence of a _NET_WM_WINDOW_TYPE, _WM_WINDOW_TYPE_NORMAL
-    // must be taken. bummer.
-    c->framed = motifWouldDecorate(c);
-  } else {
-    c->framed = ewmh_hasframe(c);
+  c->framed = ewmh_hasframe(c);
+  // Java JFrames with 'setUndecorated(true)' use motif WM hints (specifically
+  // MWM_DECOR_ALL) to disable borders. They also set _OL_DECOR_DEL, but LWM
+  // doesn't interpret those.
+  // What Java does _not_ do is to use the EWMH window type to remove borders.
+  // So rather than relying exclusively on the EWMH type when the window type
+  // is present, we also add the motif hint if it's there.
+  // Changed on 2021-02-14 to make Evergreen's auto-completion popup be
+  // correctly drawn without borders. Hopefully this won't have any negative
+  // side-effects.
+  if (auto motif_decor = motifWouldDecorate(c); motif_decor) {
+    c->framed = *motif_decor;
   }
   if (isShaped(c->window)) {
     c->framed = false;
@@ -345,20 +365,4 @@ int getWindowState(Window w, int* state) {
   *state = (int)*p;
   XFree(p);
   return 1;
-}
-
-extern bool motifWouldDecorate(Client* c) {
-  unsigned long* p = 0;
-  bool ret = true;  // if all else fails - decorate
-
-  if (getProperty(c->window, motif_wm_hints, motif_wm_hints, 5L,
-                  (unsigned char**)&p) <= 0) {
-    return ret;
-  }
-  if ((p[0] & MWM_HINTS_DECORATIONS) &&
-      !(p[2] & (MWM_DECOR_BORDER | MWM_DECOR_ALL))) {
-    ret = false;
-  }
-  XFree(p);
-  return ret;
 }

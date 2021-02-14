@@ -666,7 +666,6 @@ extern void panic(const char*);
 /* manage.cc */
 extern void getWindowName(Client*);
 extern void getVisibleWindowName(Client*);
-extern bool motifWouldDecorate(Client*);
 extern void manage(Client*);
 extern void withdraw(Client*);
 extern void getTransientFor(Client*);

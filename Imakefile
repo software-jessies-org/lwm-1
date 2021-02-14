@@ -22,7 +22,7 @@ DEFINES = -DSHAPE
 CXX=g++
 CC=g++
 CCLINK=g++
-CXXFLAGS=-std=c++14 -g3 -O0 $(DEFINES) -Wall -Werror -Wextra -Wpedantic -Wno-sign-compare -I/usr/include/freetype2
+CXXFLAGS=-std=c++17 -g3 -O0 $(DEFINES) -Wall -Werror -Wextra -Wpedantic -Wno-sign-compare -I/usr/include/freetype2
 LDOPTIONS=-g3 -lXft -rdynamic
 
 HEADERS = lwm.h ewmh.h xlib.h log.h geometry.h
