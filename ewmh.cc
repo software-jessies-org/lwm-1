@@ -309,9 +309,11 @@ void ewmh_change_state(Client* c, unsigned long action, unsigned long atom) {
 
     c->wstate.fullscreen = new_state(action, c->wstate.fullscreen);
     if (!was_fullscreen && c->wstate.fullscreen) {
+      LOGD(c) << "Entering full-screen mode";
       c->EnterFullScreen();
     }
     if (was_fullscreen && !c->wstate.fullscreen) {
+      LOGD(c) << "Exiting full-screen mode";
       c->ExitFullScreen();
     }
   }

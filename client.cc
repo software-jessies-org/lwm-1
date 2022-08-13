@@ -471,20 +471,34 @@ void Client::EnterFullScreen() {
   const Rect scr = LScr::I->GetPrimaryVisibleArea(false);  // Without struts.
   content_rect_ = scr;
   if (framed) {
-    xlib::XMoveResizeWindow(parent, FrameRect());
+    // This looks weird (moving the parent window to be full-screen, rather than
+    // including the border offsets and moving it to 'FrameRect()', but this is
+    // necessary in order to get the client window in the right place. For
+    // some reason, moving the parent to FrameRect() causes the client window to
+    // be positioned slightly above and to the left of the origin. It's as if
+    // the client is assuming that if it's in full screen mode, it should ignore
+    // any borders and assume the parent frame is the same size as the client
+    // frame. This is weird, but it works.
+    xlib::XMoveResizeWindow(parent, content_rect_);
   }
   xlib::XMoveResizeWindow(window, content_rect_);
   xlib::XRaiseWindow(framed ? parent : window);
-  // SendConfigureNotify();
+  SendConfigureNotify();
 }
 
 void Client::ExitFullScreen() {
   content_rect_ = pre_full_screen_content_rect_;
   if (framed) {
     xlib::XMoveResizeWindow(parent, FrameRect());
+    // When exiting from full screen mode, we have to move the client window to
+    // coordinates relative to the *frame*, rather than its actual coordinates
+    // on the screen. If we move it to 'content_rect_', it ends up being offset
+    // within the frame window by the frame origin coordinates.
+    xlib::XMoveResizeWindow(window, ContentRectRelative());
+  } else {
+    xlib::XMoveResizeWindow(window, content_rect_);
   }
-  xlib::XMoveResizeWindow(window, content_rect_);
-  // SendConfigureNotify();
+  SendConfigureNotify();
 }
 
 void Client::SendConfigureNotify() {
